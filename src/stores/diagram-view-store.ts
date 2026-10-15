@@ -29,7 +29,7 @@ interface DiagramViewState extends DiagramViewOptions {
   setPendingViewport: (viewport: LayoutViewport | null) => void;
 }
 
-const STORAGE_KEY = "dbml-studio-diagram-view";
+const STORAGE_KEY = "dbvolio-diagram-view";
 
 const defaults: DiagramViewOptions = {
   layoutDirection: "LR",

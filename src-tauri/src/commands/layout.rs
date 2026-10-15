@@ -5,24 +5,30 @@ use std::fs;
 use std::sync::Mutex;
 use tauri::State;
 
-const LAYOUT_RELATIVE: &str = ".dbml-studio/layout.json";
+const LAYOUT_RELATIVE: &str = ".dbvolio/layout.json";
+const LEGACY_LAYOUT_RELATIVE: &str = ".dbml-studio/layout.json";
+
+fn read_layout_file(root: &std::path::Path) -> Result<Option<String>, String> {
+    for relative in [LAYOUT_RELATIVE, LEGACY_LAYOUT_RELATIVE] {
+        let path = match resolve_path(root, relative) {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+        if !path.is_file() {
+            continue;
+        }
+        let content =
+            fs::read_to_string(&path).map_err(|e| format!("Failed to read layout: {e}"))?;
+        return Ok(Some(content));
+    }
+    Ok(None)
+}
 
 #[tauri::command]
 pub fn read_layout_metadata(
     state: State<'_, Mutex<ProjectState>>,
 ) -> Result<Option<String>, String> {
-    with_root(&state, |root| {
-        let path = match resolve_path(root, LAYOUT_RELATIVE) {
-            Ok(p) => p,
-            Err(_) => return Ok(None),
-        };
-        if !path.is_file() {
-            return Ok(None);
-        }
-        let content =
-            fs::read_to_string(&path).map_err(|e| format!("Failed to read layout: {e}"))?;
-        Ok(Some(content))
-    })
+    with_root(&state, |root| read_layout_file(root))
 }
 
 #[tauri::command]

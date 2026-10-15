@@ -10,7 +10,7 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(() => ({
   plugins: [react()],
   define: {
-    __DBML_STUDIO_VERSION__: JSON.stringify(pkg.version),
+    __DBVOLIO_VERSION__: JSON.stringify(pkg.version),
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

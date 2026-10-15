@@ -6,7 +6,7 @@ import {
 } from "../services/tauri-bridge";
 import type { ProjectFileEntry } from "../types/project";
 
-const RECENT_KEY = "dbml-studio-recent-projects";
+const RECENT_KEY = "dbvolio-recent-projects";
 const MAX_RECENT = 8;
 
 function loadRecent(): string[] {

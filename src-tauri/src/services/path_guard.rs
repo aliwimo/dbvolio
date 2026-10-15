@@ -105,7 +105,7 @@ mod tests {
 
     #[test]
     fn rejects_parent_dir() {
-        let dir = std::env::temp_dir().join("dbml_studio_path_guard");
+        let dir = std::env::temp_dir().join("dbvolio_path_guard");
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let err = resolve_path(&dir, "../etc/passwd").unwrap_err();
@@ -115,7 +115,7 @@ mod tests {
 
     #[test]
     fn allows_nested_file() {
-        let dir = std::env::temp_dir().join("dbml_studio_path_guard_nested");
+        let dir = std::env::temp_dir().join("dbvolio_path_guard_nested");
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(dir.join("tables")).unwrap();
         let file = dir.join("tables/users.dbml");

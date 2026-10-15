@@ -28,13 +28,13 @@ interface UiState {
   closeTableEdit: () => void;
 }
 
-const storedTheme = localStorage.getItem("dbml-studio-theme");
+const storedTheme = localStorage.getItem("dbvolio-theme");
 const initialTheme: Theme =
   storedTheme === "dark" ? "dark" : "light";
 
 function loadPanels(): PanelVisibility {
   try {
-    const raw = localStorage.getItem("dbml-studio-panels");
+    const raw = localStorage.getItem("dbvolio-panels");
     if (raw) {
       return { ...defaultPanels, ...(JSON.parse(raw) as PanelVisibility) };
     }
@@ -52,11 +52,11 @@ const defaultPanels: PanelVisibility = {
 };
 
 function persistPanels(panels: PanelVisibility) {
-  localStorage.setItem("dbml-studio-panels", JSON.stringify(panels));
+  localStorage.setItem("dbvolio-panels", JSON.stringify(panels));
 }
 
 function loadExplorerShowAllFiles(): boolean {
-  return localStorage.getItem("dbml-studio-explorer-show-all") === "true";
+  return localStorage.getItem("dbvolio-explorer-show-all") === "true";
 }
 
 export const useUiStore = create<UiState>((set, get) => ({
@@ -67,7 +67,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   tableEditOpen: false,
 
   setTheme: (theme) => {
-    localStorage.setItem("dbml-studio-theme", theme);
+    localStorage.setItem("dbvolio-theme", theme);
     document.documentElement.dataset.theme = theme;
     set({ theme });
   },
@@ -97,7 +97,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   },
 
   setExplorerShowAllFiles: (show) => {
-    localStorage.setItem("dbml-studio-explorer-show-all", String(show));
+    localStorage.setItem("dbvolio-explorer-show-all", String(show));
     set({ explorerShowAllFiles: show });
   },
 

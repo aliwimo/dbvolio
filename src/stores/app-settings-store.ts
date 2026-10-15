@@ -13,7 +13,7 @@ interface AppSettingsState extends EditorSettings {
   resetEditorSettings: () => void;
 }
 
-const STORAGE_KEY = "dbml-studio-app-settings";
+const STORAGE_KEY = "dbvolio-app-settings";
 
 const defaults = {
   ...editorSettingsDefaults,

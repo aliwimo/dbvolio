@@ -1,4 +1,4 @@
-# DBML Studio — Technical Plan and Setup Guide
+# dbvolio — Technical Plan and Setup Guide
 
 **Target:** macOS on Apple Silicon (M1)  
 **Stack:** Tauri 2, Rust, React, TypeScript, Vite  
@@ -6,7 +6,7 @@
 
 ## 1. Product vision
 
-DBML Studio is a desktop workspace for managing `.dbml` projects. Users can open a project folder, browse and edit multiple DBML files, select an entry-point file, preview tables and relationships, inspect schema objects, see parsing diagnostics, and persist diagram layout separately from source files.
+dbvolio is a desktop workspace for managing `.dbml` projects. Users can open a project folder, browse and edit multiple DBML files, select an entry-point file, preview tables and relationships, inspect schema objects, see parsing diagnostics, and persist diagram layout separately from source files.
 
 The first version requires no account, cloud service, remote API, or application database.
 
@@ -50,7 +50,7 @@ Use `@tauri-apps/plugin-fs` only if the project deliberately uses its scoped fil
 ## 4. Target repository structure
 
 ```text
-dbml-studio/
+dbvolio/
 ├── src/
 │   ├── app/                    # App.tsx, Workspace.tsx
 │   ├── components/
@@ -103,14 +103,14 @@ my-database/
 │   └── comments.dbml
 ├── enums/
 │   └── common.dbml
-└── .dbml-studio/
+└── .dbvolio/
     └── layout.json
 ```
 
 - `main.dbml` is the chosen entry point.
 - Resolve imports using the syntax and multi-file API supported by the installed `@dbml/core` version.
 - The explorer may display imported and unreferenced files; the active schema is determined by the entry point and its imports.
-- `.dbml-studio/layout.json` stores optional node positions, viewport, and layout preferences.
+- `.dbvolio/layout.json` stores optional node positions, viewport, and layout preferences (legacy `.dbml-studio/layout.json` is still read if present).
 - Never concatenate files into one string and assume import resolution remains correct.
 - Verify file registration, import paths, and diagnostics using real fixtures before treating multi-file support as complete.
 

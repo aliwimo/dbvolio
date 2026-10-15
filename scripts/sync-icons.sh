@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ICON_SRC="$ROOT/src/assets/iconset"
 TAURI_ICONS="$ROOT/src-tauri/icons"
-PUBLIC_ICON="$ROOT/public/dbml-studio-icon.png"
+PUBLIC_ICON="$ROOT/public/dbvolio-icon.png"
 
 if [[ ! -d "$ICON_SRC" ]]; then
   echo "Missing icon source: $ICON_SRC" >&2
@@ -80,4 +80,4 @@ cp "$ICON_SRC/512-mac.png" "$TAURI_ICONS/icon.png"
 
 cp "$ICON_SRC/128-mac.png" "$PUBLIC_ICON"
 
-echo "Synced icons from src/assets/iconset -> src-tauri/icons and public/dbml-studio-icon.png"
+echo "Synced icons from src/assets/iconset -> src-tauri/icons and public/dbvolio-icon.png"

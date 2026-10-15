@@ -544,11 +544,11 @@ function DiagramOptionToggle({
 
 function AboutSection() {
   return (
-    <SettingsSectionBlock title="DBML Studio">
+    <SettingsSectionBlock title="dbvolio">
       <dl className="settings-about-list">
         <div>
           <dt>Version</dt>
-          <dd>{__DBML_STUDIO_VERSION__}</dd>
+          <dd>{__DBVOLIO_VERSION__}</dd>
         </div>
         <div>
           <dt>Runtime</dt>
@@ -557,7 +557,7 @@ function AboutSection() {
       </dl>
       <p className="settings-section-desc">
         DBML source files remain authoritative. Diagram layout is stored
-        separately under <code>.dbml-studio/layout.json</code> in your project.
+        separately under <code>.dbvolio/layout.json</code> in your project.
       </p>
     </SettingsSectionBlock>
   );

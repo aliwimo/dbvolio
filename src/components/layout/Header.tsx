@@ -23,7 +23,7 @@ export function Header() {
   return (
     <header className="header header-compact">
       <div className="header-brand">
-        <span className="header-title">DBML Studio</span>
+        <span className="header-title">dbvolio</span>
         {projectName && (
           <>
             <span className="header-brand-sep">/</span>

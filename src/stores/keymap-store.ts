@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { keybindingToString } from "../features/keymap/default-keybindings";
 import type { CommandId, Keybinding, KeybindingOverrides } from "../features/keymap/types";
 
-const STORAGE_KEY = "dbml-studio-keybindings";
+const STORAGE_KEY = "dbvolio-keybindings";
 
 interface KeymapState {
   overrides: KeybindingOverrides;

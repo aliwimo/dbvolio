@@ -9,7 +9,7 @@ use std::time::UNIX_EPOCH;
 use tauri::State;
 
 const DBML_EXT: &str = "dbml";
-const STUDIO_DIR: &str = ".dbml-studio";
+const STUDIO_DIRS: [&str; 2] = [".dbvolio", ".dbml-studio"];
 
 #[derive(Serialize)]
 pub struct ProjectFileEntry {
@@ -33,7 +33,7 @@ fn modified_ms(path: &Path) -> Option<u64> {
 
 fn should_list(relative: &Path) -> bool {
     let s = relative.to_string_lossy();
-    if s.starts_with(STUDIO_DIR) {
+    if STUDIO_DIRS.iter().any(|dir| s.starts_with(dir)) {
         return false;
     }
     true

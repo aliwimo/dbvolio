@@ -1,4 +1,4 @@
-# DBML Studio
+# dbvolio
 
 Local-first desktop workspace for multi-file DBML projects: side-by-side editing, schema diagnostics, and an interactive ER diagram.
 
@@ -34,7 +34,7 @@ my-database/
 ├── main.dbml              # typical entry point (selectable in the app)
 ├── tables/
 │   └── users.dbml
-└── .dbml-studio/
+└── .dbvolio/
     └── layout.json        # diagram positions (not DBML source)
 ```
 
