@@ -84,11 +84,11 @@ export function DiagramToolbar({
         {searchQuery.trim() && (
           <button
             type="button"
-            className="btn-icon"
+            className="diagram-search-focus"
             title="Focus matches"
             onClick={onFocusSearch}
           >
-            <Focus size={14} />
+            <Focus size={13} />
           </button>
         )}
       </div>

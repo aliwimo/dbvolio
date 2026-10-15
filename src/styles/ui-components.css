@@ -58,11 +58,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   background: transparent;
   color: var(--text-muted);
 }
@@ -73,8 +73,8 @@
 }
 
 .btn-icon.active {
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--bg-subtle);
+  color: var(--text);
 }
 
 .btn-icon-xs {
@@ -107,6 +107,12 @@
   gap: 2px;
 }
 
+.header.header-compact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px;
+}
+
 .header-compact .header-brand {
   flex-direction: row;
   align-items: baseline;
@@ -128,6 +134,23 @@
 
 .header-entry-select {
   max-width: 140px;
+}
+
+@media (max-width: 980px) {
+  .header-btn-label {
+    display: none;
+  }
+}
+
+.header-actions .btn-ghost {
+  border-color: transparent;
+  background: transparent;
+}
+
+.header-actions .btn-ghost:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  border-color: transparent;
+  color: var(--text);
 }
 
 .header-dropdown {
@@ -235,16 +258,17 @@
 }
 
 .panel-toggles-icons {
-  gap: 0;
-  padding: 2px;
-  border-radius: 9px;
+  gap: 2px;
+  padding: 0;
+  border-radius: 0;
 }
 
 .panel-toggles-icons .panel-toggle {
-  width: 34px;
-  height: 32px;
+  width: 30px;
+  height: 28px;
   padding: 0;
   justify-content: center;
+  border-radius: 6px;
 }
 
 .panel-toggles-icons .panel-toggle-label {
@@ -255,12 +279,24 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 6px 10px;
+  flex-wrap: nowrap;
+  gap: 4px;
+  padding: 6px 8px;
   background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  min-width: 0;
+}
+
+.diagram-toolbar .btn {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+
+.diagram-toolbar .btn:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  color: var(--text);
 }
 
 .diagram-search.diagram-search-compact {
@@ -268,19 +304,48 @@
   align-items: center;
   position: relative;
   max-width: 200px;
-  flex: 0 1 200px;
-  min-width: 120px;
+  flex: 1 1 140px;
+  min-width: 0;
 }
 
 .diagram-search.diagram-search-compact input {
   width: 100%;
   flex: 1;
   min-width: 0;
-  padding: 6px 10px 6px 28px;
+  height: 28px;
+  padding: 0 28px;
   font-size: 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg-app);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: var(--bg-subtle);
+}
+
+.diagram-search.diagram-search-compact input:focus {
+  border-color: var(--border-strong);
+  background: var(--bg-panel);
+  outline: none;
+}
+
+.diagram-search-focus {
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.diagram-search-focus:hover {
+  background: var(--bg-panel);
+  color: var(--text);
 }
 
 .diagram-search-icon {
@@ -441,7 +506,7 @@
 
 .status-pill {
   font-weight: 500;
-  color: var(--text);
+  color: var(--text-muted);
 }
 
 .status-pill.error {
@@ -490,7 +555,7 @@
 
 .inspector-tab.active {
   color: var(--text);
-  border-bottom-color: var(--accent);
+  border-bottom-color: var(--text);
 }
 
 .inspector-empty {

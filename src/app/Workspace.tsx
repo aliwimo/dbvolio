@@ -1,3 +1,4 @@
+import { FolderOpen } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { ProjectExplorer } from "../components/explorer/ProjectExplorer";
 import { DbmlEditor } from "../components/editor/DbmlEditor";
@@ -27,6 +28,27 @@ function EditorPanel() {
   );
 }
 
+function Welcome() {
+  const openProjectDialog = useProjectStore((s) => s.openProjectDialog);
+
+  return (
+    <div className="welcome">
+      <p className="welcome-title">Open a project</p>
+      <p className="empty-hint">
+        Browse DBML files, edit them, and see the schema as a diagram.
+      </p>
+      <button
+        type="button"
+        className="btn btn-primary btn-sm"
+        onClick={() => void openProjectDialog()}
+      >
+        <FolderOpen size={15} />
+        Open folder
+      </button>
+    </div>
+  );
+}
+
 export function Workspace() {
   useDebouncedParse();
   useRevealTableInEditor();
@@ -48,6 +70,9 @@ export function Workspace() {
   const reloadFromDisk = useEditorStore((s) => s.reloadFromDisk);
   const saveFile = useEditorStore((s) => s.saveFile);
   const mainContent = useMemo(() => {
+    if (!projectRoot) {
+      return <Welcome />;
+    }
     if (panels.editor && panels.diagram) {
       return (
         <SplitPane
@@ -73,7 +98,7 @@ export function Workspace() {
         </p>
       </div>
     );
-  }, [panels.editor, panels.diagram]);
+  }, [panels.editor, panels.diagram, projectRoot]);
 
   return (
     <div className="workspace">
@@ -106,7 +131,7 @@ export function Workspace() {
           </aside>
         )}
         <main className="workspace-main">{mainContent}</main>
-        {panels.inspector && (
+        {projectRoot && panels.inspector && (
           <aside className="workspace-rail workspace-rail-right">
             <SchemaInspector />
           </aside>

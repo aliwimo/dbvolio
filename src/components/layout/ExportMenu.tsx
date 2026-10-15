@@ -58,12 +58,13 @@ export function ExportMenu() {
           type="button"
           className="btn btn-ghost btn-sm"
           disabled={!canExport || busy}
+          aria-label="Export"
           aria-expanded={open}
           aria-haspopup="menu"
           onClick={() => setOpen((v) => !v)}
         >
           <Download size={15} />
-          Export
+          <span className="header-btn-label">Export</span>
           <ChevronDown size={14} className="header-dropdown-caret" />
         </button>
       </div>

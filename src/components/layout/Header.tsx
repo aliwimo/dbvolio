@@ -45,11 +45,12 @@ export function Header() {
               type="button"
               className={`btn btn-sm ${activeTab?.isDirty ? "btn-primary" : "btn-ghost"}`}
               disabled={!activePath}
+              aria-label="Save"
               onClick={() => void saveActive()}
               title={saveShortcut ? `Save (${saveShortcut})` : "Save"}
             >
               <Save size={15} />
-              Save
+              <span className="header-btn-label">Save</span>
             </button>
           </>
         )}

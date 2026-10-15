@@ -27,16 +27,18 @@ export function RecentProjectsList({
     return (
       <div className={`recent-projects recent-projects-${variant} recent-projects-empty`}>
         <p className="recent-projects-empty-text">No recent projects yet.</p>
-        <button
-          type="button"
-          className="btn btn-primary btn-sm"
-          onClick={() => {
-            void openProjectDialog().then(onOpened);
-          }}
-        >
-          <FolderOpen size={14} />
-          Open folder…
-        </button>
+        {variant !== "compact" && (
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => {
+              void openProjectDialog().then(onOpened);
+            }}
+          >
+            <FolderOpen size={14} />
+            Open folder…
+          </button>
+        )}
       </div>
     );
   }

@@ -30,9 +30,15 @@ export function OpenProjectMenu() {
   return (
     <div className="header-dropdown open-project-menu" ref={wrapRef}>
       <div className="header-dropdown-trigger open-project-menu-trigger">
-        <button type="button" className="btn btn-ghost btn-sm" onClick={openFolder}>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          title="Open folder"
+          aria-label="Open folder"
+          onClick={openFolder}
+        >
           <FolderOpen size={15} />
-          Open
+          <span className="header-btn-label">Open</span>
         </button>
         {recentProjects.length > 0 && (
           <button

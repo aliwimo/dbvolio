@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import { useEditorStore } from "../../stores/editor-store";
 
 export function EditorTabs() {
@@ -28,13 +29,14 @@ export function EditorTabs() {
           <span>{tab.relativePath.split("/").pop()}</span>
           <button
             type="button"
+            className="editor-tab-close"
             aria-label="Close tab"
             onClick={(e) => {
               e.stopPropagation();
               closeTab(tab.relativePath);
             }}
           >
-            ×
+            <X size={12} />
           </button>
         </div>
       ))}

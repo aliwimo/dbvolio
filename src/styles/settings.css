@@ -128,8 +128,8 @@
 }
 
 .settings-nav-item.active {
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--bg-subtle);
+  color: var(--text);
 }
 
 .settings-content {

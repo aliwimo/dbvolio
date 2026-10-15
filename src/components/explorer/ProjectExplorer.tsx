@@ -4,11 +4,9 @@ import {
   File,
   FileCode,
   Folder,
-  Pencil,
   Plus,
   Search,
   Star,
-  Trash2,
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -158,7 +156,6 @@ function TreeItems({
 export function ProjectExplorer() {
   const files = useProjectStore((s) => s.files);
   const projectRoot = useProjectStore((s) => s.projectRoot);
-  const projectName = useProjectStore((s) => s.projectName);
   const refreshFiles = useProjectStore((s) => s.refreshFiles);
   const createFile = useEditorStore((s) => s.createFile);
   const deleteFile = useEditorStore((s) => s.deleteFile);
@@ -254,51 +251,15 @@ export function ProjectExplorer() {
   return (
     <div className="panel panel-fill explorer-panel">
       <div className="explorer-header">
-        <div className="explorer-header-top">
-          <span className="explorer-title">Explorer</span>
-          {projectRoot && (
-            <div className="explorer-actions">
-              <button
-                type="button"
-                className="header-btn icon-only"
-                title="New DBML file"
-                onClick={() => void onCreate()}
-              >
-                <Plus size={14} />
-              </button>
-              <button
-                type="button"
-                className="header-btn icon-only"
-                title="Rename active file"
-                disabled={!activePath}
-                onClick={() => void onRename()}
-              >
-                <Pencil size={14} />
-              </button>
-              <button
-                type="button"
-                className="header-btn icon-only"
-                title="Delete active file"
-                disabled={!activePath}
-                onClick={() => void onDelete()}
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          )}
-        </div>
-        {projectRoot && (
-          <>
-            <p className="explorer-project-name" title={projectRoot}>
-              {projectName ?? "Project"}
-            </p>
+        {projectRoot ? (
+          <div className="explorer-header-row">
             <label className="explorer-search">
               <Search size={14} className="explorer-search-icon" aria-hidden />
               <input
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Filter files…"
+                placeholder="Filter files"
                 spellCheck={false}
               />
               {query && (
@@ -313,33 +274,39 @@ export function ProjectExplorer() {
                 </button>
               )}
             </label>
-            <div className="explorer-options-row">
-              <label className="explorer-option">
-                <input
-                  type="checkbox"
-                  checked={showAllFiles}
-                  onChange={(e) => setShowAllFiles(e.target.checked)}
-                />
-                Show all project files
-              </label>
+            <div className="explorer-actions">
+              <button
+                type="button"
+                className="btn-icon btn-icon-xs"
+                title="New DBML file"
+                onClick={() => void onCreate()}
+              >
+                <Plus size={15} />
+              </button>
               <ExplorerTreeMenu
-                disabled={fileCount === 0}
+                disabled={false}
                 canRevealActive={Boolean(activePath)}
                 canClearFilter={query.trim().length > 0}
+                showAllFiles={showAllFiles}
+                canRename={Boolean(activePath)}
+                canDelete={Boolean(activePath)}
                 onExpandAll={expandAllFolders}
                 onCollapseAll={collapseAllFolders}
                 onRevealActive={revealActiveFile}
                 onClearFilter={() => setQuery("")}
                 onRefresh={() => void refreshFiles()}
+                onToggleShowAllFiles={() => setShowAllFiles(!showAllFiles)}
+                onRename={() => void onRename()}
+                onDelete={() => void onDelete()}
               />
             </div>
-          </>
-        )}
+          </div>
+        ) : null}
       </div>
       <div className="explorer-tree" role="tree">
         {!projectRoot && (
           <div className="explorer-recent">
-            <p className="explorer-empty">Open a project folder to browse DBML files.</p>
+            <p className="explorer-empty">Recent projects</p>
             <RecentProjectsList variant="compact" />
           </div>
         )}

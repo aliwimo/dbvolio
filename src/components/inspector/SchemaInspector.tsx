@@ -38,7 +38,7 @@ export function SchemaInspector() {
             </div>
             <button
               type="button"
-              className="btn btn-sm btn-primary"
+              className="btn btn-sm btn-ghost"
               onClick={openTableEdit}
             >
               <Pencil size={14} aria-hidden />

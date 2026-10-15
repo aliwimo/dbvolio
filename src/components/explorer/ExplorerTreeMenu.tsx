@@ -2,9 +2,12 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
   Ellipsis,
+  Files,
   FolderSync,
+  Pencil,
   SearchX,
   Target,
+  Trash2,
 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
@@ -12,22 +15,34 @@ export interface ExplorerTreeMenuProps {
   disabled?: boolean;
   canRevealActive: boolean;
   canClearFilter: boolean;
+  showAllFiles: boolean;
+  canRename: boolean;
+  canDelete: boolean;
   onExpandAll: () => void;
   onCollapseAll: () => void;
   onRevealActive: () => void;
   onClearFilter: () => void;
   onRefresh: () => void;
+  onToggleShowAllFiles: () => void;
+  onRename: () => void;
+  onDelete: () => void;
 }
 
 export function ExplorerTreeMenu({
   disabled,
   canRevealActive,
   canClearFilter,
+  showAllFiles,
+  canRename,
+  canDelete,
   onExpandAll,
   onCollapseAll,
   onRevealActive,
   onClearFilter,
   onRefresh,
+  onToggleShowAllFiles,
+  onRename,
+  onDelete,
 }: ExplorerTreeMenuProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -64,7 +79,7 @@ export function ExplorerTreeMenu({
     <div className="explorer-tree-menu" ref={rootRef}>
       <button
         type="button"
-        className="header-btn icon-only"
+        className="btn-icon btn-icon-xs"
         title="Tree actions"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -103,6 +118,36 @@ export function ExplorerTreeMenu({
           >
             <Target size={14} />
             Reveal active file
+          </button>
+          <div className="explorer-tree-menu-separator" role="separator" />
+          <label className="explorer-tree-menu-item explorer-tree-menu-check">
+            <Files size={14} />
+            <span>Show all project files</span>
+            <input
+              type="checkbox"
+              checked={showAllFiles}
+              onChange={onToggleShowAllFiles}
+            />
+          </label>
+          <button
+            type="button"
+            role="menuitem"
+            className="explorer-tree-menu-item"
+            disabled={!canRename}
+            onClick={() => run(onRename)}
+          >
+            <Pencil size={14} />
+            Rename active file
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="explorer-tree-menu-item explorer-tree-menu-danger"
+            disabled={!canDelete}
+            onClick={() => run(onDelete)}
+          >
+            <Trash2 size={14} />
+            Delete active file
           </button>
           <div className="explorer-tree-menu-separator" role="separator" />
           <button
