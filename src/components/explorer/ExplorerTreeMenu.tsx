@@ -18,6 +18,7 @@ export interface ExplorerTreeMenuProps {
   showAllFiles: boolean;
   canRename: boolean;
   canDelete: boolean;
+  canUseForDiagram: boolean;
   onExpandAll: () => void;
   onCollapseAll: () => void;
   onRevealActive: () => void;
@@ -26,6 +27,7 @@ export interface ExplorerTreeMenuProps {
   onToggleShowAllFiles: () => void;
   onRename: () => void;
   onDelete: () => void;
+  onUseForDiagram: () => void;
 }
 
 export function ExplorerTreeMenu({
@@ -35,6 +37,7 @@ export function ExplorerTreeMenu({
   showAllFiles,
   canRename,
   canDelete,
+  canUseForDiagram,
   onExpandAll,
   onCollapseAll,
   onRevealActive,
@@ -43,6 +46,7 @@ export function ExplorerTreeMenu({
   onToggleShowAllFiles,
   onRename,
   onDelete,
+  onUseForDiagram,
 }: ExplorerTreeMenuProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -129,6 +133,16 @@ export function ExplorerTreeMenu({
               onChange={onToggleShowAllFiles}
             />
           </label>
+          <button
+            type="button"
+            role="menuitem"
+            className="explorer-tree-menu-item"
+            disabled={!canUseForDiagram}
+            onClick={() => run(onUseForDiagram)}
+          >
+            <Target size={14} />
+            Use for diagram
+          </button>
           <button
             type="button"
             role="menuitem"

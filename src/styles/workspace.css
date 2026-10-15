@@ -612,36 +612,6 @@
   white-space: nowrap;
 }
 
-.tree-item-entry {
-  flex-shrink: 0;
-  color: var(--warning);
-  fill: currentColor;
-}
-
-.tree-item-set-entry {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.tree-item.file:hover .tree-item-set-entry {
-  display: flex;
-}
-
-.tree-item-set-entry:hover {
-  color: var(--warning);
-  background: var(--bg-subtle);
-}
-
 .tree-item:hover {
   background: var(--bg-subtle);
 }

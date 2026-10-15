@@ -41,6 +41,7 @@ interface EditorState {
   renameFile: (from: string, to: string) => Promise<void>;
   deleteFile: (relativePath: string) => Promise<void>;
   getOpenFileContents: () => Record<string, string>;
+  resetSession: () => void;
 }
 
 function markDirty(tab: EditorTab, content: string): EditorTab {
@@ -196,4 +197,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
     return map;
   },
+
+  resetSession: () =>
+    set({
+      tabs: [],
+      activePath: null,
+      externalConflict: null,
+      pendingEditorReveal: null,
+    }),
 }));

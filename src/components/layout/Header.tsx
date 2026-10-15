@@ -5,6 +5,7 @@ import { useEditorStore } from "../../stores/editor-store";
 import { useProjectStore } from "../../stores/project-store";
 import { useUiStore } from "../../stores/ui-store";
 import { useCommandKeybindingLabel } from "../../features/keymap/format-command-keybinding";
+import { DiagramRootSelect } from "./DiagramRootSelect";
 import { PanelToggles } from "./PanelToggles";
 
 export function Header() {
@@ -30,6 +31,7 @@ export function Header() {
             <span className="header-project" title={projectName}>
               {projectName}
             </span>
+            <DiagramRootSelect />
           </>
         )}
       </div>

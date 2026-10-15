@@ -4,6 +4,7 @@ import {
   listProjectFiles,
   setProjectRoot,
 } from "../services/tauri-bridge";
+import { useEditorStore } from "./editor-store";
 import type { ProjectFileEntry } from "../types/project";
 
 const RECENT_KEY = "dbvolio-recent-projects";
@@ -42,6 +43,7 @@ interface ProjectState {
   recentProjects: string[];
   openProjectDialog: () => Promise<void>;
   openProjectPath: (path: string) => Promise<void>;
+  openProjectAtFile: (projectRoot: string, relativePath: string) => Promise<void>;
   removeRecentProject: (path: string) => void;
   clearRecentProjects: () => void;
   setEntryPoint: (relativePath: string) => void;
@@ -68,6 +70,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   openProjectPath: async (path) => {
     try {
+      if (get().projectRoot !== path) {
+        useEditorStore.getState().resetSession();
+      }
       await setProjectRoot(path);
       const files = await listProjectFiles();
       const dbmlFiles = files.filter(
@@ -90,6 +95,36 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const recentProjects = removeRecentPath(path);
       set({ recentProjects });
       throw new Error(`Could not open project at ${path}`);
+    }
+  },
+
+  openProjectAtFile: async (projectRoot, relativePath) => {
+    if (get().projectRoot !== projectRoot) {
+      useEditorStore.getState().resetSession();
+    }
+    try {
+      await setProjectRoot(projectRoot);
+      const files = await listProjectFiles();
+      const hasFile = files.some(
+        (f) => !f.isDirectory && f.relativePath === relativePath,
+      );
+      if (!hasFile) {
+        throw new Error(`File not found in project: ${relativePath}`);
+      }
+      const recentProjects = pushRecent(projectRoot);
+      const name = projectRoot.split(/[/\\]/).pop() ?? projectRoot;
+      set({
+        projectRoot,
+        projectName: name,
+        files,
+        entryPoint: relativePath,
+        recentProjects,
+      });
+      await useEditorStore.getState().openFile(relativePath);
+    } catch {
+      const recentProjects = removeRecentPath(projectRoot);
+      set({ recentProjects });
+      throw new Error(`Could not open ${relativePath}`);
     }
   },
 

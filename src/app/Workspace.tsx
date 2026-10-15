@@ -14,6 +14,7 @@ import { useRevealTableInEditor } from "../features/editor/useRevealTableInEdito
 import { useDebouncedParse } from "../features/parsing/useDebouncedParse";
 import { useEditorStore } from "../stores/editor-store";
 import { useProjectStore } from "../stores/project-store";
+import { useExternalDbmlOpen } from "../features/open/useExternalDbmlOpen";
 import { useAppKeymap } from "../features/keymap/use-app-keymap";
 import { useUiStore } from "../stores/ui-store";
 
@@ -35,7 +36,8 @@ function Welcome() {
     <div className="welcome">
       <p className="welcome-title">Open a project</p>
       <p className="empty-hint">
-        Browse DBML files, edit them, and see the schema as a diagram.
+        Open a folder, or double-click a <code>.dbml</code> file in Finder to
+        start here.
       </p>
       <button
         type="button"
@@ -52,6 +54,7 @@ function Welcome() {
 export function Workspace() {
   useDebouncedParse();
   useRevealTableInEditor();
+  useExternalDbmlOpen();
 
   useAppKeymap();
 

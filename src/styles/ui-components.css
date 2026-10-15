@@ -133,7 +133,24 @@
 }
 
 .header-entry-select {
-  max-width: 140px;
+  max-width: 160px;
+}
+
+.header-diagram-root {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+  min-width: 0;
+}
+
+.header-diagram-root-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
 }
 
 @media (max-width: 980px) {

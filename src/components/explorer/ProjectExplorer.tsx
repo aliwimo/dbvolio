@@ -6,7 +6,6 @@ import {
   Folder,
   Plus,
   Search,
-  Star,
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -43,9 +42,6 @@ function TreeItems({
   const openFile = useEditorStore((s) => s.openFile);
   const activePath = useEditorStore((s) => s.activePath);
   const tabs = useEditorStore((s) => s.tabs);
-  const entryPoint = useProjectStore((s) => s.entryPoint);
-  const setEntryPoint = useProjectStore((s) => s.setEntryPoint);
-
   const dirtyPaths = useMemo(
     () => new Set(tabs.filter((t) => t.isDirty).map((t) => t.relativePath)),
     [tabs],
@@ -61,7 +57,6 @@ function TreeItems({
         const expanded =
           forceExpand || !collapsed.has(node.path) || node.children.length === 0;
         const isActive = activePath === node.path;
-        const isEntry = entryPoint === node.path;
         const isDirty = dirtyPaths.has(node.path);
         const isOpen = openPaths.has(node.path);
         const isDbml = isDbmlPath(node.path);
@@ -86,7 +81,6 @@ function TreeItems({
                   return;
                 }
                 if (isDbml) {
-                  setEntryPoint(node.path);
                   void openFile(node.path);
                 }
               }}
@@ -95,7 +89,6 @@ function TreeItems({
                   if (node.isDirectory) {
                     onToggleFolder(node.path);
                   } else if (isDbml) {
-                    setEntryPoint(node.path);
                     void openFile(node.path);
                   }
                 }
@@ -128,14 +121,6 @@ function TreeItems({
                 <File size={14} className="tree-item-icon" />
               )}
               <span className="tree-item-label">{node.name}</span>
-              {!node.isDirectory && isDbml && isEntry && (
-                <Star
-                  size={12}
-                  className="tree-item-entry"
-                  fill="currentColor"
-                  aria-label="Schema entry point"
-                />
-              )}
             </div>
             {node.isDirectory && expanded && node.children.length > 0 && (
               <TreeItems
@@ -161,6 +146,7 @@ export function ProjectExplorer() {
   const deleteFile = useEditorStore((s) => s.deleteFile);
   const renameFile = useEditorStore((s) => s.renameFile);
   const activePath = useEditorStore((s) => s.activePath);
+  const setEntryPoint = useProjectStore((s) => s.setEntryPoint);
   const showAllFiles = useUiStore((s) => s.explorerShowAllFiles);
   const setShowAllFiles = useUiStore((s) => s.setExplorerShowAllFiles);
 
@@ -290,6 +276,7 @@ export function ProjectExplorer() {
                 showAllFiles={showAllFiles}
                 canRename={Boolean(activePath)}
                 canDelete={Boolean(activePath)}
+                canUseForDiagram={Boolean(activePath && isDbmlPath(activePath))}
                 onExpandAll={expandAllFolders}
                 onCollapseAll={collapseAllFolders}
                 onRevealActive={revealActiveFile}
@@ -298,6 +285,11 @@ export function ProjectExplorer() {
                 onToggleShowAllFiles={() => setShowAllFiles(!showAllFiles)}
                 onRename={() => void onRename()}
                 onDelete={() => void onDelete()}
+                onUseForDiagram={() => {
+                  if (activePath && isDbmlPath(activePath)) {
+                    setEntryPoint(activePath);
+                  }
+                }}
               />
             </div>
           </div>

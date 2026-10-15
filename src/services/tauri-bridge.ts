@@ -95,3 +95,12 @@ export async function readLayoutMetadata(): Promise<string | null> {
 export async function writeLayoutMetadata(content: string): Promise<void> {
   await invoke("write_layout_metadata", { content });
 }
+
+export interface DbmlOpenPayload {
+  projectRoot: string;
+  relativePath: string;
+}
+
+export async function takePendingDbmlOpens(): Promise<DbmlOpenPayload[]> {
+  return invoke<DbmlOpenPayload[]>("take_pending_dbml_opens");
+}
