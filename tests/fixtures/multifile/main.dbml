@@ -1,0 +1,4 @@
+use * from './tables/users.dbml'
+use * from './tables/posts.dbml'
+
+Ref: posts.author_id > users.id

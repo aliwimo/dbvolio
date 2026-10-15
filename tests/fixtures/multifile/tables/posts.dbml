@@ -1,0 +1,5 @@
+Table posts {
+  id int [pk]
+  author_id int [not null]
+  title varchar
+}
