@@ -17,10 +17,18 @@ export function EditorTabs() {
         <div
           key={tab.relativePath}
           className={`editor-tab ${activePath === tab.relativePath ? "active" : ""} ${tab.isDirty ? "dirty" : ""}`}
-          onClick={() => setActivePath(tab.relativePath)}
+          onClick={() => {
+            setActivePath(tab.relativePath);
+            if (tab.relativePath.endsWith(".dbml")) {
+              useProjectStore.getState().setEntryPoint(tab.relativePath);
+            }
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               setActivePath(tab.relativePath);
+              if (tab.relativePath.endsWith(".dbml")) {
+                useProjectStore.getState().setEntryPoint(tab.relativePath);
+              }
             }
           }}
           role="tab"

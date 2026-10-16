@@ -1,7 +1,6 @@
 import {
   ArrowLeft,
   ArrowRight,
-  FileCode2,
   Hash,
   KeyRound,
   Layers,
@@ -11,9 +10,7 @@ import {
   Table2,
 } from "lucide-react";
 import { useMemo } from "react";
-import { openTableSourceFile } from "../../features/schema/apply-schema-edits";
 import { useDiagramStore } from "../../stores/diagram-store";
-import { useProjectStore } from "../../stores/project-store";
 import { useUiStore } from "../../stores/ui-store";
 import type { SchemaEnum, SchemaModel, SchemaTable } from "../../types/schema";
 
@@ -54,11 +51,6 @@ export function SchemaInspector() {
   const table = useDiagramStore((s) => s.selectedTable());
   const model = useDiagramStore((s) => s.lastValidModel);
   const selectTable = useDiagramStore((s) => s.selectTable);
-  const files = useProjectStore((s) => s.files);
-  const projectFiles = useMemo(
-    () => files.filter((f) => !f.isDirectory),
-    [files],
-  );
   const openTableEdit = useUiStore((s) => s.openTableEdit);
 
   return (
@@ -82,7 +74,6 @@ export function SchemaInspector() {
           model={model}
           onEdit={openTableEdit}
           onSelectTable={selectTable}
-          onOpenSource={() => void openTableSourceFile(table, projectFiles)}
         />
       )}
     </div>
@@ -94,13 +85,11 @@ function TableInspectorView({
   model,
   onEdit,
   onSelectTable,
-  onOpenSource,
 }: {
   table: SchemaTable;
   model: SchemaModel | null;
   onEdit: () => void;
   onSelectTable: (tableId: string) => void;
-  onOpenSource: () => void;
 }) {
   const enums = model?.enums ?? [];
   const references = model?.references ?? [];
@@ -156,15 +145,6 @@ function TableInspectorView({
             </div>
           </div>
           <div className="inspector-header-actions">
-            <button
-              type="button"
-              className="btn-icon btn-icon-xs"
-              onClick={onOpenSource}
-              title="Open DBML source"
-              aria-label="Open DBML source"
-            >
-              <FileCode2 size={14} aria-hidden />
-            </button>
             <button
               type="button"
               className="btn btn-sm btn-ghost inspector-edit-btn"

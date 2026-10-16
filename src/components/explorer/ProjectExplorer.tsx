@@ -82,6 +82,7 @@ function TreeItems({
                   return;
                 }
                 if (isDbml) {
+                  useProjectStore.getState().setEntryPoint(node.path);
                   void openFile(node.path);
                 }
               }}
@@ -90,6 +91,7 @@ function TreeItems({
                   if (node.isDirectory) {
                     onToggleFolder(node.path);
                   } else if (isDbml) {
+                    useProjectStore.getState().setEntryPoint(node.path);
                     void openFile(node.path);
                   }
                 }
