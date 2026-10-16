@@ -11,9 +11,11 @@ import {
   type EditorWordWrap,
 } from "../../features/editor/editor-settings";
 import { useAppSettingsStore } from "../../stores/app-settings-store";
+import { LAYOUT_PRESET_COPY } from "../../features/diagram-layout/layout-preset-copy";
 import {
   useDiagramViewStore,
   type DiagramViewOptions,
+  type LayoutAlgorithm,
   type LayoutDirection,
   type LayoutSpacing,
 } from "../../stores/diagram-view-store";
@@ -465,6 +467,7 @@ function EditorSection() {
 }
 
 function DiagramSection() {
+  const layoutAlgorithm = useDiagramViewStore((s) => s.layoutAlgorithm);
   const layoutDirection = useDiagramViewStore((s) => s.layoutDirection);
   const layoutSpacing = useDiagramViewStore((s) => s.layoutSpacing);
   const layoutFitView = useDiagramViewStore((s) => s.layoutFitView);
@@ -476,7 +479,22 @@ function DiagramSection() {
 
   return (
     <SettingsSectionBlock title="Diagram defaults">
-      <SettingsField label="Auto-layout direction">
+      <SettingsField label="Auto-arrange preset">
+        <select
+          className="select-compact settings-select-wide"
+          value={layoutAlgorithm}
+          onChange={(e) =>
+            setOption("layoutAlgorithm", e.target.value as typeof layoutAlgorithm)
+          }
+        >
+          {(Object.keys(LAYOUT_PRESET_COPY) as LayoutAlgorithm[]).map((key) => (
+            <option key={key} value={key}>
+              {LAYOUT_PRESET_COPY[key].label}
+            </option>
+          ))}
+        </select>
+      </SettingsField>
+      <SettingsField label="Relationship flow direction">
         <select
           className="select-compact settings-select-wide"
           value={layoutDirection}

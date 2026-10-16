@@ -469,6 +469,48 @@
   box-shadow: var(--shadow-md);
 }
 
+.diagram-layout-dropdown-wide {
+  width: min(340px, calc(100vw - 24px));
+  max-height: min(520px, calc(100vh - 120px));
+}
+
+.diagram-arrange-preset {
+  align-items: flex-start;
+}
+
+.diagram-arrange-preset.active {
+  background: var(--accent-soft);
+}
+
+.diagram-arrange-preset-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.diagram-arrange-preset-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.diagram-arrange-shortcut {
+  flex-shrink: 0;
+  min-width: 20px;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg-app);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-muted);
+  text-align: center;
+}
+
 .diagram-layout-dropdown-divider {
   height: 1px;
   margin: 10px 0;
@@ -506,29 +548,46 @@
   color: var(--accent);
 }
 
-.diagram-layout-spacing-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.diagram-layout-spacing-segment {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
 }
 
-.diagram-layout-radio-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 6px 8px;
+.diagram-layout-spacing-btn {
+  min-width: 0;
+  padding: 8px 6px;
+  border: 1px solid var(--border);
   border-radius: 8px;
+  background: var(--bg-app);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--text-muted);
+  text-align: center;
   cursor: pointer;
-  font-size: 12px;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
 }
 
-.diagram-layout-radio-row:hover {
+.diagram-layout-spacing-btn:hover {
   background: var(--bg-subtle);
+  color: var(--text);
 }
 
-.diagram-layout-radio-row input {
-  margin-top: 3px;
-  accent-color: var(--accent);
+.diagram-layout-spacing-btn.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.diagram-layout-spacing-caption {
+  margin: 8px 2px 0;
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--text-muted);
 }
 
 .diagram-options-wrap {
@@ -767,6 +826,314 @@
 
 .table-edit-body .inspector-section-title {
   margin: 0 0 10px;
+}
+
+.table-edit-body .inspector-section-header .inspector-section-title {
+  margin: 0;
+}
+
+.table-form-dialog .table-form-header {
+  align-items: flex-start;
+}
+
+.table-form-header-text {
+  min-width: 0;
+}
+
+.table-form-subtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.table-form-body {
+  padding-top: 4px;
+}
+
+.table-form-meta-card {
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  overflow: hidden;
+}
+
+.table-form-meta-fields {
+  display: grid;
+  grid-template-columns: minmax(100px, 160px) minmax(0, 1fr);
+  gap: 10px;
+  padding: 12px 14px 0;
+}
+
+.table-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.table-form-field input,
+.table-form-field select,
+.table-form-add-grid input,
+.table-form-insert-after select {
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-app);
+  color: var(--text);
+}
+
+.table-form-field input:focus,
+.table-form-field select:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent, #6366f1) 35%, transparent);
+  outline-offset: 0;
+  border-color: color-mix(in srgb, var(--accent, #6366f1) 50%, var(--border));
+}
+
+.table-form-meta-qualified {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 8px 14px 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.table-form-meta-qualified code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.table-form-meta-qualified-label {
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.table-form-field-file {
+  margin: 10px 14px 0;
+}
+
+.table-form-field-file-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.table-form-meta-divider {
+  height: 1px;
+  margin: 12px 14px 0;
+  background: var(--border);
+}
+
+.table-form-meta-color {
+  padding: 10px 14px 12px;
+}
+
+.table-form-meta-sublabel {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.table-form-color-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.table-form-color-swatch {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 7px;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.table-form-color-swatch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.table-form-color-swatch.active {
+  border-color: var(--text);
+  box-shadow: 0 0 0 1px var(--bg-panel);
+}
+
+.table-form-color-none {
+  display: grid;
+  place-items: center;
+  background: var(--bg-app);
+  border: 1px dashed var(--border-strong, var(--border));
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.table-form-color-none.active {
+  border-style: solid;
+}
+
+.table-form-color-custom {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-app);
+  border: 1px solid var(--border);
+}
+
+.table-form-color-custom-preview {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 5px;
+}
+
+.table-form-color-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+}
+
+.table-form-meta-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--text-muted) 3%, var(--bg-panel));
+}
+
+.table-form-add-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.table-form-columns-shell {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-panel);
+}
+
+.table-form-columns {
+  margin: 0;
+}
+
+.table-form-columns th.table-form-col-order {
+  width: 52px;
+}
+
+.table-form-columns th.table-form-col-flags {
+  min-width: 140px;
+}
+
+.table-form-columns th.table-form-col-actions {
+  width: 72px;
+}
+
+.table-form-columns tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table-form-row-pk td:first-of-type + td input {
+  font-weight: 600;
+}
+
+.table-form-row-dirty {
+  background: color-mix(in srgb, var(--accent, #6366f1) 6%, transparent);
+}
+
+.table-form-constraints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.table-form-constraint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.table-form-constraint-compact span {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.table-form-add-panel {
+  padding: 10px 10px 12px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--text-muted) 4%, var(--bg-panel));
+}
+
+.table-form-add-label {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.table-form-add-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+
+@media (max-width: 640px) {
+  .table-form-add-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.table-form-insert-after {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  max-width: 240px;
+}
+
+.table-form-add-btn {
+  margin-top: 8px;
+}
+
+.table-form-save-active {
+  color: var(--accent, #6366f1);
+}
+
+.table-form-delete-btn:hover {
+  color: var(--danger);
+}
+
+.table-form-form-error {
+  margin: 12px 0 4px;
 }
 
 .inspector-section-count {

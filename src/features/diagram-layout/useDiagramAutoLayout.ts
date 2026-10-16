@@ -7,8 +7,9 @@ import {
 import { useDiagramStore } from "../../stores/diagram-store";
 import { useDiagramViewStore } from "../../stores/diagram-view-store";
 import { useProjectStore } from "../../stores/project-store";
-import { applyDagreLayoutAsync } from "./dagre-layout-async";
+import { applyAutoLayoutAsync } from "./apply-auto-layout";
 import type { LayoutScope } from "./layout-options";
+import type { LayoutAlgorithm } from "../../stores/diagram-view-store";
 
 export function useDiagramAutoLayout({
   nodes,
@@ -28,6 +29,7 @@ export function useDiagramAutoLayout({
   const setFlow = useDiagramStore((s) => s.setFlow);
   const selectedTableId = useDiagramStore((s) => s.selectedTableId);
 
+  const layoutAlgorithm = useDiagramViewStore((s) => s.layoutAlgorithm);
   const layoutDirection = useDiagramViewStore((s) => s.layoutDirection);
   const layoutSpacing = useDiagramViewStore((s) => s.layoutSpacing);
   const layoutFitView = useDiagramViewStore((s) => s.layoutFitView);
@@ -36,7 +38,7 @@ export function useDiagramAutoLayout({
   );
 
   const runLayout = useCallback(
-    (scope: LayoutScope = "all") => {
+    (scope: LayoutScope = "all", algorithmOverride?: LayoutAlgorithm) => {
       if (runningRef.current || nodes.length === 0) {
         return;
       }
@@ -44,11 +46,14 @@ export function useDiagramAutoLayout({
         return;
       }
 
+      const algorithm = algorithmOverride ?? layoutAlgorithm;
+
       const generation = ++generationRef.current;
       runningRef.current = true;
       setIsRunning(true);
 
-      void applyDagreLayoutAsync(nodes, edges, {
+      void applyAutoLayoutAsync(nodes, edges, {
+        algorithm,
         rankdir: layoutDirection,
         spacing: layoutSpacing,
         scope,
@@ -84,6 +89,7 @@ export function useDiagramAutoLayout({
       nodes,
       edges,
       selectedTableId,
+      layoutAlgorithm,
       layoutDirection,
       layoutSpacing,
       layoutSeparateComponents,

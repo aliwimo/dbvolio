@@ -168,7 +168,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         entryPoint: entry,
         recentProjects,
       });
-      await useEditorStore.getState().openFile(entry);
     } catch (err) {
       const recentProjects = removeRecentPath(projectRoot);
       set({ recentProjects });

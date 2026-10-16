@@ -3,8 +3,14 @@ import type { LayoutViewport } from "../types/layout";
 
 export type LayoutDirection = "LR" | "TB" | "RL" | "BT";
 export type LayoutSpacing = "compact" | "default" | "relaxed";
+export type LayoutAlgorithm =
+  | "left-right"
+  | "pipeline"
+  | "snowflake"
+  | "compact";
 
 export interface DiagramViewOptions {
+  layoutAlgorithm: LayoutAlgorithm;
   layoutDirection: LayoutDirection;
   layoutSpacing: LayoutSpacing;
   layoutFitView: boolean;
@@ -32,6 +38,7 @@ interface DiagramViewState extends DiagramViewOptions {
 const STORAGE_KEY = "dbvolio-diagram-view";
 
 const defaults: DiagramViewOptions = {
+  layoutAlgorithm: "left-right",
   layoutDirection: "LR",
   layoutSpacing: "default",
   layoutFitView: true,
@@ -46,7 +53,7 @@ const defaults: DiagramViewOptions = {
   animateRelationships: false,
 };
 
-const STORAGE_VERSION = 3;
+const STORAGE_VERSION = 4;
 
 function loadOptions(): DiagramViewOptions {
   try {
@@ -61,6 +68,9 @@ function loadOptions(): DiagramViewOptions {
           merged.layoutSpacing = defaults.layoutSpacing;
           merged.layoutFitView = defaults.layoutFitView;
           merged.layoutSeparateComponents = defaults.layoutSeparateComponents;
+        }
+        if (parsed.version === 3) {
+          merged.layoutAlgorithm = defaults.layoutAlgorithm;
         }
         merged.emphasizeRelated = true;
         localStorage.setItem(
@@ -91,6 +101,7 @@ export const useDiagramViewStore = create<DiagramViewState>((set, get) => ({
     set((state) => {
       const next = { ...state, [key]: value };
       persistOptions({
+        layoutAlgorithm: next.layoutAlgorithm,
         layoutDirection: next.layoutDirection,
         layoutSpacing: next.layoutSpacing,
         layoutFitView: next.layoutFitView,

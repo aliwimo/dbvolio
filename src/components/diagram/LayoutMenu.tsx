@@ -1,37 +1,50 @@
 import {
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
   ChevronRight,
   Focus,
-  LayoutGrid,
+  Grid3x3,
+  Layers,
   Network,
+  Orbit,
+  Waypoints,
+  Wand2,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { LayoutScope } from "../../features/diagram-layout/layout-options";
+import { LAYOUT_PRESET_COPY } from "../../features/diagram-layout/layout-preset-copy";
 import {
   useDiagramViewStore,
-  type LayoutDirection,
+  type LayoutAlgorithm,
   type LayoutSpacing,
 } from "../../stores/diagram-view-store";
 
-const DIRECTIONS: {
-  value: LayoutDirection;
-  label: string;
-  icon: typeof ArrowRight;
-}[] = [
-  { value: "LR", label: "Left to right", icon: ArrowRight },
-  { value: "TB", label: "Top to bottom", icon: ArrowDown },
-  { value: "RL", label: "Right to left", icon: ArrowLeft },
-  { value: "BT", label: "Bottom to top", icon: ArrowUp },
+const SPACING: { value: LayoutSpacing; label: string; hint: string }[] = [
+  { value: "compact", label: "Compact", hint: "Tighter gaps between tables" },
+  { value: "default", label: "Default", hint: "Balanced spacing" },
+  { value: "relaxed", label: "Relaxed", hint: "Extra room between tables" },
 ];
 
-const SPACING: { value: LayoutSpacing; label: string; hint: string }[] = [
-  { value: "compact", label: "Compact", hint: "Tighter tables" },
-  { value: "default", label: "Default", hint: "Balanced spacing" },
-  { value: "relaxed", label: "Relaxed", hint: "More room" },
-];
+const PRESET_ICONS: Record<LayoutAlgorithm, typeof Waypoints> = {
+  "left-right": Waypoints,
+  pipeline: Layers,
+  snowflake: Orbit,
+  compact: Grid3x3,
+};
+
+const PRESETS: {
+  value: LayoutAlgorithm;
+  label: string;
+  hint: string;
+  shortcut: string;
+  icon: typeof Waypoints;
+}[] = (
+  ["left-right", "pipeline", "snowflake", "compact"] as LayoutAlgorithm[]
+).map((value, index) => ({
+  value,
+  label: LAYOUT_PRESET_COPY[value].label,
+  hint: LAYOUT_PRESET_COPY[value].description,
+  shortcut: String(index + 1),
+  icon: PRESET_ICONS[value],
+}));
 
 export function LayoutMenu({
   isRunning,
@@ -43,13 +56,13 @@ export function LayoutMenu({
   isRunning: boolean;
   canRun: boolean;
   canRunSelection: boolean;
-  onRunLayout: (scope: LayoutScope) => void;
+  onRunLayout: (scope: LayoutScope, algorithm?: LayoutAlgorithm) => void;
   onFitView: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  const layoutDirection = useDiagramViewStore((s) => s.layoutDirection);
+  const layoutAlgorithm = useDiagramViewStore((s) => s.layoutAlgorithm);
   const layoutSpacing = useDiagramViewStore((s) => s.layoutSpacing);
   const layoutFitView = useDiagramViewStore((s) => s.layoutFitView);
   const layoutSeparateComponents = useDiagramViewStore(
@@ -70,6 +83,15 @@ export function LayoutMenu({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setMenuOpen(false);
+        return;
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey) {
+        return;
+      }
+      const preset = PRESETS.find((p) => p.shortcut === e.key);
+      if (preset && canRun && !isRunning) {
+        e.preventDefault();
+        runPreset(preset.value);
       }
     };
     document.addEventListener("mousedown", onDocClick);
@@ -78,12 +100,21 @@ export function LayoutMenu({
       document.removeEventListener("mousedown", onDocClick);
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [menuOpen]);
+  }, [menuOpen, canRun, isRunning]);
+
+  const runPreset = (algorithm: LayoutAlgorithm) => {
+    setOption("layoutAlgorithm", algorithm);
+    setMenuOpen(false);
+    onRunLayout("all", algorithm);
+  };
 
   const run = (scope: LayoutScope) => {
     setMenuOpen(false);
     onRunLayout(scope);
   };
+
+  const activePreset = PRESETS.find((p) => p.value === layoutAlgorithm);
+  const activeSpacing = SPACING.find((s) => s.value === layoutSpacing);
 
   return (
     <div className="diagram-layout-menu-wrap" ref={wrapRef}>
@@ -92,11 +123,11 @@ export function LayoutMenu({
           type="button"
           className="btn btn-sm diagram-layout-main"
           disabled={!canRun || isRunning}
-          title="Auto layout all tables"
+          title="Auto-arrange all tables"
           onClick={() => run("all")}
         >
-          <LayoutGrid size={14} />
-          {isRunning ? "Layout…" : "Layout"}
+          <Wand2 size={14} />
+          {isRunning ? "Arranging…" : "Arrange"}
         </button>
         <button
           type="button"
@@ -104,8 +135,12 @@ export function LayoutMenu({
           disabled={!canRun}
           aria-expanded={menuOpen}
           aria-haspopup="menu"
-          aria-label="Layout options"
-          title="Layout options"
+          aria-label="Auto-arrange options"
+          title={
+            activePreset
+              ? `Auto-arrange: ${activePreset.label}`
+              : "Auto-arrange options"
+          }
           onClick={() => setMenuOpen((open) => !open)}
         >
           <ChevronRight size={14} />
@@ -114,26 +149,60 @@ export function LayoutMenu({
 
       {menuOpen && (
         <div
-          className="diagram-layout-dropdown"
+          className="diagram-layout-dropdown diagram-layout-dropdown-wide"
           role="menu"
-          aria-label="Layout options"
+          aria-label="Auto-arrange"
         >
-          <p className="header-dropdown-section-label">Run</p>
-          <button
-            type="button"
-            className="header-dropdown-item"
-            role="menuitem"
-            disabled={!canRun || isRunning}
-            onClick={() => run("all")}
-          >
-            <LayoutGrid size={15} />
-            <span>
-              <span className="header-dropdown-item-label">Auto layout all</span>
-              <span className="header-dropdown-item-hint">
-                Rearrange every table on the canvas
+          <p className="header-dropdown-section-label">Auto-arrange</p>
+          {PRESETS.map(({ value, label, hint, shortcut, icon: Icon }) => (
+            <button
+              key={value}
+              type="button"
+              className={`header-dropdown-item diagram-arrange-preset ${layoutAlgorithm === value ? "active" : ""}`}
+              role="menuitem"
+              disabled={!canRun || isRunning}
+              onClick={() => runPreset(value)}
+            >
+              <Icon size={16} />
+              <span className="diagram-arrange-preset-body">
+                <span className="diagram-arrange-preset-title">
+                  <span className="header-dropdown-item-label">{label}</span>
+                  <kbd className="diagram-arrange-shortcut">{shortcut}</kbd>
+                </span>
+                <span className="header-dropdown-item-hint">{hint}</span>
               </span>
-            </span>
-          </button>
+            </button>
+          ))}
+
+          <div className="diagram-layout-dropdown-divider" />
+
+          <p className="header-dropdown-section-label">Spacing</p>
+          <div
+            className="diagram-layout-spacing-segment"
+            role="radiogroup"
+            aria-label="Table spacing"
+          >
+            {SPACING.map(({ value, label, hint }) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={layoutSpacing === value}
+                title={hint}
+                className={`diagram-layout-spacing-btn ${layoutSpacing === value ? "active" : ""}`}
+                onClick={() => setOption("layoutSpacing", value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {activeSpacing && (
+            <p className="diagram-layout-spacing-caption">{activeSpacing.hint}</p>
+          )}
+
+          <div className="diagram-layout-dropdown-divider" />
+
+          <p className="header-dropdown-section-label">More</p>
           <button
             type="button"
             className="header-dropdown-item"
@@ -171,45 +240,6 @@ export function LayoutMenu({
 
           <div className="diagram-layout-dropdown-divider" />
 
-          <p className="header-dropdown-section-label">Direction</p>
-          <div className="diagram-layout-direction-grid" role="group">
-            {DIRECTIONS.map(({ value, label, icon: Icon }) => (
-              <button
-                key={value}
-                type="button"
-                className={`diagram-layout-direction-btn ${layoutDirection === value ? "active" : ""}`}
-                title={label}
-                aria-pressed={layoutDirection === value}
-                onClick={() => setOption("layoutDirection", value)}
-              >
-                <Icon size={14} />
-                <span>{value}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="diagram-layout-dropdown-divider" />
-
-          <p className="header-dropdown-section-label">Spacing</p>
-          <div className="diagram-layout-spacing-list" role="radiogroup">
-            {SPACING.map(({ value, label, hint }) => (
-              <label key={value} className="diagram-layout-radio-row">
-                <input
-                  type="radio"
-                  name="layout-spacing"
-                  checked={layoutSpacing === value}
-                  onChange={() => setOption("layoutSpacing", value)}
-                />
-                <span>
-                  <span className="header-dropdown-item-label">{label}</span>
-                  <span className="header-dropdown-item-hint">{hint}</span>
-                </span>
-              </label>
-            ))}
-          </div>
-
-          <div className="diagram-layout-dropdown-divider" />
-
           <p className="header-dropdown-section-label">Options</p>
           <label className="diagram-option-row">
             <input
@@ -217,7 +247,7 @@ export function LayoutMenu({
               checked={layoutFitView}
               onChange={() => toggleOption("layoutFitView")}
             />
-            <span>Fit view after layout</span>
+            <span>Fit view after arrange</span>
           </label>
           <label className="diagram-option-row">
             <input
@@ -225,7 +255,7 @@ export function LayoutMenu({
               checked={layoutSeparateComponents}
               onChange={() => toggleOption("layoutSeparateComponents")}
             />
-            <span>Layout disconnected groups separately</span>
+            <span>Arrange disconnected groups separately</span>
           </label>
         </div>
       )}
