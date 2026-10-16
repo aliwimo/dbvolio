@@ -1,6 +1,12 @@
+# Builds DB-Volio for macOS, Linux, and Windows and publishes a GitHub Release.
+#
+# Triggers:
+#   - Push a version tag (e.g. v0.1.0) after bumping package.json / tauri.conf.json / Cargo.toml
+#   - Run manually from Actions → release → Run workflow (uses app version from tauri.conf.json)
 name: release
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - 'v*'
