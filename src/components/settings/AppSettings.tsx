@@ -218,7 +218,8 @@ function WorkspaceSection() {
       <SettingsSectionBlock title="Panels">
         <p className="settings-section-desc">
           Choose which panels are visible in the workspace. You can also toggle
-          them from the header.
+          them from the header or with keyboard shortcuts (see tooltips on each
+          toggle).
         </p>
         {(Object.keys(PANEL_LABELS) as PanelId[]).map((id) => (
           <SettingsToggle

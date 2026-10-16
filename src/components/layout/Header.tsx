@@ -1,4 +1,4 @@
-import { Moon, Save, Settings, Sun, X } from "lucide-react";
+import { FileText, FolderOpen, Save, Settings, X } from "lucide-react";
 import { ExportMenu } from "./ExportMenu";
 import { OpenProjectMenu } from "./OpenProjectMenu";
 import { useEditorStore } from "../../stores/editor-store";
@@ -8,9 +8,8 @@ import { useCommandKeybindingLabel } from "../../features/keymap/format-command-
 import { PanelToggles } from "./PanelToggles";
 
 export function Header() {
-  const theme = useUiStore((s) => s.theme);
-  const toggleTheme = useUiStore((s) => s.toggleTheme);
   const openSettings = useUiStore((s) => s.openSettings);
+  const projectRoot = useProjectStore((s) => s.projectRoot);
   const projectName = useProjectStore((s) => s.projectName);
   const projectScope = useProjectStore((s) => s.projectScope);
   const closeProject = useProjectStore((s) => s.closeProject);
@@ -23,17 +22,24 @@ export function Header() {
   const saveShortcut = useCommandKeybindingLabel("file.save");
   const settingsShortcut = useCommandKeybindingLabel("settings.open");
 
+  const isDirty = Boolean(activeTab?.isDirty);
   const closeLabel =
     projectScope === "file" ? "Close file" : "Close folder";
   const closeTitle = closeShortcut
     ? `${closeLabel} (${closeShortcut})`
     : closeLabel;
+  const ProjectIcon = projectScope === "file" ? FileText : FolderOpen;
 
   return (
-    <header className="header header-compact">
-      <div className="header-brand">
-        {projectName && (
+    <header className="header header-toolbar">
+      <div className="header-toolbar-start">
+        {projectName ? (
           <div className="header-project-wrap">
+            <ProjectIcon
+              size={14}
+              className="header-project-icon"
+              aria-hidden
+            />
             <span className="header-project" title={projectName}>
               {projectName}
             </span>
@@ -53,34 +59,56 @@ export function Header() {
               <X size={14} />
             </button>
           </div>
+        ) : (
+          <div className="header-app-id" aria-hidden>
+            <span className="header-mark">DB</span>
+            <span className="header-title header-app-name">dbvolio</span>
+          </div>
         )}
       </div>
 
-      <PanelToggles />
+      <div className="header-toolbar-end">
+        <div
+          className="toolbar-segment header-toolbar-actions"
+          role="toolbar"
+          aria-label="Toolbar"
+        >
+          {projectRoot && (
+            <>
+              <PanelToggles />
+              <span className="toolbar-segment-split" aria-hidden />
+            </>
+          )}
 
-      <div className="header-actions">
-        <div className="header-action-group">
-          <OpenProjectMenu />
-          {projectName && <ExportMenu />}
-        </div>
-        {projectName && (
-          <button
-            type="button"
-            className={`btn btn-sm header-save ${activeTab?.isDirty ? "btn-primary" : "btn-ghost"}`}
-            disabled={!activePath}
-            aria-label="Save"
-            onClick={() => void saveActive()}
-            title={saveShortcut ? `Save (${saveShortcut})` : "Save"}
+          <div
+            className="header-toolbar-file-cluster"
+            role="group"
+            aria-label="File actions"
           >
-            <Save size={14} />
-            <span className="header-btn-label">Save</span>
-          </button>
-        )}
-        <span className="header-actions-sep" aria-hidden />
-        <div className="header-utility">
+            <OpenProjectMenu />
+            {projectName && (
+              <>
+                <ExportMenu />
+                <button
+                  type="button"
+                  className={`btn btn-sm header-toolbar-action header-toolbar-action-icon header-save ${isDirty ? "header-save-dirty btn-primary" : "btn-ghost"}`}
+                  disabled={!activePath}
+                  aria-label={isDirty ? "Save (unsaved changes)" : "Save"}
+                  data-dirty={isDirty || undefined}
+                  onClick={() => void saveActive()}
+                  title={saveShortcut ? `Save (${saveShortcut})` : "Save"}
+                >
+                  <Save size={15} />
+                </button>
+              </>
+            )}
+          </div>
+
+          <span className="toolbar-segment-split" aria-hidden />
+
           <button
             type="button"
-            className="btn-icon"
+            className="btn-icon header-toolbar-action header-toolbar-action-icon"
             onClick={openSettings}
             title={
               settingsShortcut ? `Settings (${settingsShortcut})` : "Settings"
@@ -88,15 +116,6 @@ export function Header() {
             aria-label="Settings"
           >
             <Settings size={15} />
-          </button>
-          <button
-            type="button"
-            className="btn-icon"
-            onClick={toggleTheme}
-            title={theme === "dark" ? "Use light theme" : "Use dark theme"}
-            aria-label={theme === "dark" ? "Use light theme" : "Use dark theme"}
-          >
-            {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
           </button>
         </div>
       </div>

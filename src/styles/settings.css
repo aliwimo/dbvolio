@@ -339,6 +339,18 @@
   margin-top: 10px;
 }
 
+.recent-projects-actions-end {
+  justify-content: flex-end;
+}
+
+.recent-projects-welcome {
+  width: 100%;
+}
+
+.recent-projects-welcome .recent-projects-open {
+  background: var(--bg-panel);
+}
+
 .recent-projects-empty {
   display: flex;
   flex-direction: column;

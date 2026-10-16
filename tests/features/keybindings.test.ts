@@ -60,6 +60,21 @@ describe("resolve keybindings", () => {
     expect(getEffectiveKeybindingString("file.save", {})).toBe("mod+s");
   });
 
+  it("binds panel layout toggles", () => {
+    expect(getEffectiveKeybindingString("workbench.toggleExplorer", {})).toBe(
+      "mod+b",
+    );
+    expect(getEffectiveKeybindingString("panel.toggleEditor", {})).toBe(
+      "mod+shift+1",
+    );
+    expect(getEffectiveKeybindingString("panel.toggleDiagram", {})).toBe(
+      "mod+shift+2",
+    );
+    expect(getEffectiveKeybindingString("panel.toggleInspector", {})).toBe(
+      "mod+shift+i",
+    );
+  });
+
   it("respects explicit unbind", () => {
     expect(
       getEffectiveKeybindingString("file.save", { "file.save": null }),

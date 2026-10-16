@@ -15,6 +15,7 @@ import { AppSettings } from "../components/settings/AppSettings";
 import { useRevealTableInEditor } from "../features/editor/useRevealTableInEditor";
 import { useDebouncedParse } from "../features/parsing/useDebouncedParse";
 import { useEditorStore } from "../stores/editor-store";
+import { RecentProjectsList } from "../components/projects/RecentProjectsList";
 import { useProjectStore } from "../stores/project-store";
 import { useExternalDbmlOpen } from "../features/open/useExternalDbmlOpen";
 import { useAppKeymap } from "../features/keymap/use-app-keymap";
@@ -38,6 +39,7 @@ function EditorPanel() {
 function Welcome() {
   const openProjectDialog = useProjectStore((s) => s.openProjectDialog);
   const openDbmlFileDialog = useProjectStore((s) => s.openDbmlFileDialog);
+  const recentProjects = useProjectStore((s) => s.recentProjects);
 
   const openWithError = (action: () => Promise<void>) => {
     void action().catch((err: unknown) => {
@@ -48,29 +50,45 @@ function Welcome() {
 
   return (
     <div className="welcome">
-      <p className="welcome-title">Open a project</p>
-      <p className="empty-hint">
-        Open a folder or a single <code>.dbml</code> file, or double-click a
-        file in Finder to start here.
-      </p>
-      <div className="welcome-actions">
-        <button
-          type="button"
-          className="btn btn-primary btn-sm"
-          onClick={() => openWithError(openProjectDialog)}
-        >
-          <FolderOpen size={15} />
-          Open folder
-        </button>
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          onClick={() => openWithError(openDbmlFileDialog)}
-        >
-          <FileText size={15} />
-          Open file
-        </button>
+      <div className="welcome-intro">
+        <p className="welcome-title">Open a project</p>
+        <p className="empty-hint">
+          Open a folder or a single <code>.dbml</code> file, or double-click a
+          file in Finder to start here.
+        </p>
+        <div className="welcome-actions">
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => openWithError(openProjectDialog)}
+          >
+            <FolderOpen size={15} />
+            Open folder
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => openWithError(openDbmlFileDialog)}
+          >
+            <FileText size={15} />
+            Open file
+          </button>
+        </div>
       </div>
+
+      <section
+        className="welcome-recent"
+        aria-labelledby="welcome-recent-heading"
+      >
+        <h2 id="welcome-recent-heading" className="welcome-recent-heading">
+          Recent
+        </h2>
+        {recentProjects.length === 0 ? (
+          <p className="welcome-recent-empty">No recent projects yet.</p>
+        ) : (
+          <RecentProjectsList variant="welcome" />
+        )}
+      </section>
     </div>
   );
 }
@@ -185,7 +203,7 @@ export function Workspace() {
         </div>
       )}
       <div className="workspace-body">
-        {panels.explorer && (
+        {projectRoot && panels.explorer && (
           <aside className="workspace-rail workspace-rail-left">
             <ProjectExplorer />
           </aside>

@@ -14,7 +14,7 @@ export function RecentProjectsList({
   variant = "default",
   onOpened,
 }: {
-  variant?: "default" | "compact" | "settings";
+  variant?: "default" | "compact" | "settings" | "welcome";
   onOpened?: () => void;
 }) {
   const recentProjects = useProjectStore((s) => s.recentProjects);
@@ -28,7 +28,7 @@ export function RecentProjectsList({
     return (
       <div className={`recent-projects recent-projects-${variant} recent-projects-empty`}>
         <p className="recent-projects-empty-text">No recent projects yet.</p>
-        {variant !== "compact" && (
+        {variant !== "compact" && variant !== "welcome" && (
           <div className="welcome-actions">
             <button
               type="button"
@@ -98,28 +98,41 @@ export function RecentProjectsList({
           );
         })}
       </ul>
-      <div className="recent-projects-actions">
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          onClick={() => {
-            void openProjectDialog().then(onOpened);
-          }}
-        >
-          <FolderOpen size={14} />
-          Open folder…
-        </button>
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          onClick={() => {
-            void openDbmlFileDialog().then(onOpened);
-          }}
-        >
-          <FileText size={14} />
-          Open file…
-        </button>
-        {variant !== "compact" && (
+      {variant !== "welcome" && (
+        <div className="recent-projects-actions">
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              void openProjectDialog().then(onOpened);
+            }}
+          >
+            <FolderOpen size={14} />
+            Open folder…
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              void openDbmlFileDialog().then(onOpened);
+            }}
+          >
+            <FileText size={14} />
+            Open file…
+          </button>
+          {variant !== "compact" && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={clearRecentProjects}
+            >
+              Clear list
+            </button>
+          )}
+        </div>
+      )}
+      {variant === "welcome" && recentProjects.length > 0 && (
+        <div className="recent-projects-actions recent-projects-actions-end">
           <button
             type="button"
             className="btn btn-ghost btn-sm"
@@ -127,8 +140,8 @@ export function RecentProjectsList({
           >
             Clear list
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -4,6 +4,10 @@ import { useQuickPickStore } from "../../stores/quick-pick-store";
 import { useUiStore } from "../../stores/ui-store";
 import type { CommandId } from "./types";
 
+function requireProjectForPanelToggle(): boolean {
+  return Boolean(useProjectStore.getState().projectRoot);
+}
+
 export function executeCommand(commandId: CommandId): void {
   switch (commandId) {
     case "project.open":
@@ -35,18 +39,33 @@ export function executeCommand(commandId: CommandId): void {
       useUiStore.getState().openSettings();
       return;
     case "workbench.toggleExplorer":
+      if (!requireProjectForPanelToggle()) {
+        return;
+      }
       useUiStore.getState().togglePanel("explorer");
       return;
     case "workbench.showExplorer":
+      if (!requireProjectForPanelToggle()) {
+        return;
+      }
       useUiStore.getState().setPanel("explorer", true);
       return;
     case "panel.toggleEditor":
+      if (!requireProjectForPanelToggle()) {
+        return;
+      }
       useUiStore.getState().togglePanel("editor");
       return;
     case "panel.toggleDiagram":
+      if (!requireProjectForPanelToggle()) {
+        return;
+      }
       useUiStore.getState().togglePanel("diagram");
       return;
     case "panel.toggleInspector":
+      if (!requireProjectForPanelToggle()) {
+        return;
+      }
       useUiStore.getState().togglePanel("inspector");
       return;
     case "theme.toggle":
