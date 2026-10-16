@@ -1,4 +1,4 @@
-import { Database, Moon, Save, Settings, Sun } from "lucide-react";
+import { Moon, Save, Settings, Sun } from "lucide-react";
 import { ExportMenu } from "./ExportMenu";
 import { OpenProjectMenu } from "./OpenProjectMenu";
 import { useEditorStore } from "../../stores/editor-store";
@@ -23,17 +23,10 @@ export function Header() {
   return (
     <header className="header header-compact">
       <div className="header-brand">
-        <span className="header-mark" aria-hidden>
-          <Database size={13} strokeWidth={2.25} />
-        </span>
-        <span className="header-title">dbvolio</span>
         {projectName && (
-          <>
-            <span className="header-brand-sep" aria-hidden />
-            <span className="header-project" title={projectName}>
-              {projectName}
-            </span>
-          </>
+          <span className="header-project" title={projectName}>
+            {projectName}
+          </span>
         )}
       </div>
 

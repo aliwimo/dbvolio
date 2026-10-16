@@ -544,7 +544,7 @@ function DiagramOptionToggle({
 
 function AboutSection() {
   return (
-    <SettingsSectionBlock title="dbvolio">
+    <SettingsSectionBlock title="DB-Volio">
       <dl className="settings-about-list">
         <div>
           <dt>Version</dt>
