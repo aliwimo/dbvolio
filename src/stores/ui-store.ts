@@ -17,6 +17,7 @@ interface UiState {
   inspectorWidth: number;
   settingsOpen: boolean;
   tableEditOpen: boolean;
+  tableCreateOpen: boolean;
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
   togglePanel: (panel: PanelId) => void;
@@ -28,6 +29,8 @@ interface UiState {
   toggleSettings: () => void;
   openTableEdit: () => void;
   closeTableEdit: () => void;
+  openTableCreate: () => void;
+  closeTableCreate: () => void;
 }
 
 const storedTheme = localStorage.getItem("dbvolio-theme");
@@ -80,6 +83,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   inspectorWidth: loadInspectorWidth(),
   settingsOpen: false,
   tableEditOpen: false,
+  tableCreateOpen: false,
 
   setTheme: (theme) => {
     localStorage.setItem("dbvolio-theme", theme);
@@ -131,6 +135,8 @@ export const useUiStore = create<UiState>((set, get) => ({
 
   openTableEdit: () => set({ tableEditOpen: true }),
   closeTableEdit: () => set({ tableEditOpen: false }),
+  openTableCreate: () => set({ tableCreateOpen: true }),
+  closeTableCreate: () => set({ tableCreateOpen: false }),
 }));
 
 document.documentElement.dataset.theme = initialTheme;

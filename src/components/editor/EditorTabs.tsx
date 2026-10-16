@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { useEditorStore } from "../../stores/editor-store";
+import { useProjectStore } from "../../stores/project-store";
 
 export function EditorTabs() {
   const tabs = useEditorStore((s) => s.tabs);

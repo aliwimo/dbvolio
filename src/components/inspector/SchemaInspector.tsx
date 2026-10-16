@@ -7,6 +7,7 @@ import {
   Link2,
   ListChecks,
   Pencil,
+  Plus,
   Table2,
 } from "lucide-react";
 import { useMemo } from "react";
@@ -52,6 +53,7 @@ export function SchemaInspector() {
   const model = useDiagramStore((s) => s.lastValidModel);
   const selectTable = useDiagramStore((s) => s.selectTable);
   const openTableEdit = useUiStore((s) => s.openTableEdit);
+  const openTableCreate = useUiStore((s) => s.openTableCreate);
 
   return (
     <div className="panel panel-fill inspector-panel">
@@ -64,6 +66,15 @@ export function SchemaInspector() {
               Select a table in the diagram to inspect its fields, relationships,
               and indexes.
             </p>
+            <button
+              type="button"
+              className="btn btn-sm btn-primary"
+              style={{ marginTop: 8 }}
+              onClick={openTableCreate}
+            >
+              <Plus size={13} />
+              New table
+            </button>
           </div>
         </div>
       )}

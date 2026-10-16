@@ -515,3 +515,38 @@ export function rewriteTableReferencesInContent(
   }
   return next;
 }
+
+export function formatNewTableBlock(options: {
+  name: string;
+  schema?: string;
+  headerColor?: string;
+  columns?: SchemaColumn[];
+}): string {
+  const tableName =
+    options.schema && options.schema !== "public"
+      ? `${options.schema}.${options.name}`
+      : options.name;
+  const headerSettings: string[] = [];
+  if (options.headerColor) {
+    headerSettings.push(`headercolor: ${normalizeHeaderColor(options.headerColor)}`);
+  }
+  const settingsPart =
+    headerSettings.length > 0 ? ` [${headerSettings.join(", ")}]` : "";
+
+  const cols =
+    options.columns && options.columns.length > 0
+      ? options.columns
+      : [
+          {
+            name: "id",
+            type: "serial",
+            isPrimaryKey: true,
+            isNullable: false,
+            isUnique: false,
+          },
+        ];
+
+  const colLines = cols.map(formatColumnLine).join("\n");
+  return `Table ${tableName}${settingsPart} {\n${colLines}\n}\n`;
+}
+

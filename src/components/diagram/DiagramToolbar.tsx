@@ -2,6 +2,7 @@ import {
   Focus,
   Maximize2,
   MoreHorizontal,
+  Plus,
   Search,
   ZoomIn,
   ZoomOut,
@@ -10,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { useDiagramAutoLayout } from "../../features/diagram-layout/useDiagramAutoLayout";
 import { useDiagramStore } from "../../stores/diagram-store";
 import { useDiagramViewStore } from "../../stores/diagram-view-store";
+import { useUiStore } from "../../stores/ui-store";
 import { useReactFlow, useStore } from "@xyflow/react";
 import { LayoutMenu } from "./LayoutMenu";
 
@@ -25,6 +27,7 @@ export function DiagramToolbar({
 }) {
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const zoom = useStore(zoomSelector);
+  const openTableCreate = useUiStore((s) => s.openTableCreate);
 
   const nodes = useDiagramStore((s) => s.nodes);
   const edges = useDiagramStore((s) => s.edges);
@@ -142,6 +145,18 @@ export function DiagramToolbar({
         onRunLayout={runLayout}
         onFitView={() => fitView({ padding: 0.15, duration: 280 })}
       />
+
+      <div className="toolbar-divider" />
+
+      <button
+        type="button"
+        className="btn btn-sm btn-ghost"
+        title="Create new table visually"
+        onClick={openTableCreate}
+      >
+        <Plus size={14} />
+        <span>New table</span>
+      </button>
 
       <div className="diagram-toolbar-spacer" />
 

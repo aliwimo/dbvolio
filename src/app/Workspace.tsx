@@ -5,6 +5,7 @@ import { DbmlEditor } from "../components/editor/DbmlEditor";
 import { EditorTabs } from "../components/editor/EditorTabs";
 import { SchemaDiagram } from "../components/diagram/SchemaDiagram";
 import { SchemaInspector } from "../components/inspector/SchemaInspector";
+import { TableCreateModal } from "../components/inspector/TableCreateModal";
 import { TableEditModal } from "../components/inspector/TableEditModal";
 import { Header } from "../components/layout/Header";
 import { SplitPane } from "../components/layout/SplitPane";
@@ -211,6 +212,7 @@ export function Workspace() {
       <StatusBar />
       <AppSettings />
       <TableEditModal />
+      <TableCreateModal />
     </div>
   );
 }

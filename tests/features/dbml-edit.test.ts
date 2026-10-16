@@ -8,6 +8,7 @@ import {
   setTableHeaderColorInContent,
   rewriteTableReferencesInContent,
   updateTableHeaderInContent,
+  formatNewTableBlock,
 } from "../../src/features/schema/dbml-edit";
 import type { SchemaTable } from "../../src/types/schema";
 
@@ -174,5 +175,39 @@ Ref: posts.author_id > users.id
     const next = setTableHeaderColorInContent(colored, usersTable, null);
     expect(next).not.toMatch(/headerColor/);
     expect(next).toMatch(/^Table users \{/m);
+  });
+
+  it("formats a new table block with default id column", () => {
+    const block = formatNewTableBlock({ name: "orders" });
+    expect(block).toContain("Table orders {");
+    expect(block).toContain("  id serial [pk, not null]");
+    expect(block).toContain("}");
+  });
+
+  it("formats a new table block with schema and custom columns", () => {
+    const block = formatNewTableBlock({
+      name: "items",
+      schema: "sales",
+      headerColor: "#6366f1",
+      columns: [
+        {
+          name: "item_id",
+          type: "uuid",
+          isPrimaryKey: true,
+          isNullable: false,
+          isUnique: false,
+        },
+        {
+          name: "price",
+          type: "numeric",
+          isPrimaryKey: false,
+          isNullable: false,
+          isUnique: false,
+        },
+      ],
+    });
+    expect(block).toContain("Table sales.items [headercolor: #6366f1] {");
+    expect(block).toContain("  item_id uuid [pk, not null]");
+    expect(block).toContain("  price numeric [not null]");
   });
 });

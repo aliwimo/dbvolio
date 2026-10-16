@@ -104,7 +104,7 @@ function normalizeTable(table: {
     columns?: { value?: unknown }[];
     type?: string;
     unique?: boolean;
-    pk?: boolean;
+    pk?: boolean | string;
     note?: string;
   }[];
   note?: string;

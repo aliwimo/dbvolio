@@ -10,6 +10,7 @@ import {
   setTableHeaderColorInContent,
   rewriteTableReferencesInContent,
   updateTableHeaderInContent,
+  formatNewTableBlock,
 } from "./dbml-edit";
 import type { SchemaColumn, SchemaTable } from "../../types/schema";
 import { useEditorStore } from "../../stores/editor-store";
@@ -230,3 +231,27 @@ export async function revealTableInEditorIfOpen(
   editor.requestEditorReveal(path, block.headerLine + 1);
   return true;
 }
+
+export async function applyCreateTable(
+  targetFilePath: string,
+  tableData: {
+    name: string;
+    schema?: string;
+    headerColor?: string;
+    columns?: SchemaColumn[];
+  },
+  projectFiles: { relativePath: string }[],
+): Promise<boolean> {
+  const fileMap = await resolveFileMap(projectFiles);
+  const currentContent = fileMap[targetFilePath] ?? "";
+  const tableBlock = formatNewTableBlock(tableData);
+  const spacer = currentContent.length > 0 && !currentContent.endsWith("\n\n")
+    ? currentContent.endsWith("\n")
+      ? "\n"
+      : "\n\n"
+    : "";
+  const nextContent = `${currentContent}${spacer}${tableBlock}`;
+  await commitFileContent(targetFilePath, nextContent);
+  return true;
+}
+
