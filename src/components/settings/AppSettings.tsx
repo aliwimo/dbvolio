@@ -1,4 +1,5 @@
-import { X } from "lucide-react";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { ExternalLink, X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import {
@@ -561,24 +562,80 @@ function DiagramOptionToggle({
   );
 }
 
+const ABOUT_LINKS = [
+  {
+    label: "DBML",
+    url: "https://dbml.dbdiagram.io/home/",
+    hint: "Specification and language reference",
+  },
+  {
+    label: "GitHub",
+    url: "https://github.com/aliwimo/dbvolio",
+    hint: "Source code and issues",
+  },
+] as const;
+
+async function openExternalLink(url: string) {
+  try {
+    await openUrl(url);
+  } catch {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
+
 function AboutSection() {
   return (
-    <SettingsSectionBlock title="DB-Volio">
-      <dl className="settings-about-list">
-        <div>
-          <dt>Version</dt>
-          <dd>{__DBVOLIO_VERSION__}</dd>
+    <div className="settings-about">
+      <header className="settings-about-hero">
+        <img
+          className="settings-about-icon"
+          src="/dbvolio-icon.png"
+          alt=""
+          width={52}
+          height={52}
+        />
+        <div className="settings-about-hero-copy">
+          <p className="settings-about-name">DB-Volio</p>
+          <p className="settings-about-tagline">
+            Edit DBML, explore relationships on a live diagram, and export when
+            you are ready—without sending your schema to the cloud.
+          </p>
+          <p className="settings-about-version">Version {__DBVOLIO_VERSION__}</p>
         </div>
-        <div>
-          <dt>Runtime</dt>
-          <dd>Local-first desktop app (Tauri)</dd>
+      </header>
+
+      <ul className="settings-about-highlights">
+        <li>Multi-file projects with import resolution and inline diagnostics</li>
+        <li>Monaco editor, React Flow diagram, and a schema properties panel</li>
+        <li>Filesystem access stays on your machine (Tauri + path-scoped I/O)</li>
+      </ul>
+
+      <SettingsSectionBlock title="Your data">
+        <p className="settings-section-desc">
+          <code>.dbml</code> files in your project are the source of truth.
+          Diagram positions and layout presets are stored separately in{" "}
+          <code>.dbvolio/layout.json</code> so you can version schema and layout
+          independently.
+        </p>
+      </SettingsSectionBlock>
+
+      <SettingsSectionBlock title="Links">
+        <div className="settings-about-links">
+          {ABOUT_LINKS.map(({ label, url, hint }) => (
+            <button
+              key={url}
+              type="button"
+              className="settings-about-link btn btn-ghost btn-sm"
+              onClick={() => void openExternalLink(url)}
+              title={hint}
+            >
+              <span>{label}</span>
+              <ExternalLink size={14} aria-hidden />
+            </button>
+          ))}
         </div>
-      </dl>
-      <p className="settings-section-desc">
-        DBML source files remain authoritative. Diagram layout is stored
-        separately under <code>.dbvolio/layout.json</code> in your project.
-      </p>
-    </SettingsSectionBlock>
+      </SettingsSectionBlock>
+    </div>
   );
 }
 

@@ -24,6 +24,10 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "publisher": "Codevolio",
+    "copyright": "Copyright © 2026 Codevolio",
+    "shortDescription": "Local-first DBML editor with a live ER diagram.",
+    "longDescription": "DB-Volio is a desktop workspace for Database Markup Language (DBML). Open a folder or single .dbml file, edit with syntax highlighting, keep an interactive diagram in sync, and export SQL or images—all without cloud upload.",
     "fileAssociations": [
       {
         "ext": ["dbml"],

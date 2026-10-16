@@ -27,10 +27,16 @@ fn build_menu<R: Runtime>(handle: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let pkg = handle.package_info();
     let config = handle.config();
     let about_metadata = AboutMetadata {
-        name: Some(pkg.name.clone()),
+        name: Some("DB-Volio".into()),
         version: Some(pkg.version.to_string()),
         copyright: config.bundle.copyright.clone(),
         authors: config.bundle.publisher.clone().map(|p| vec![p]),
+        comments: config.bundle.short_description.clone(),
+        website: Some("https://github.com/aliwimo/dbvolio".into()),
+        website_label: Some("GitHub".into()),
+        credits: Some(
+            "Edit multi-file DBML with a live ER diagram. Your schema stays on disk.".into(),
+        ),
         ..Default::default()
     };
 
