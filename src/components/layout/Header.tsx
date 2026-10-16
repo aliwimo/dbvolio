@@ -1,4 +1,4 @@
-import { Moon, Save, Settings, Sun } from "lucide-react";
+import { Database, Moon, Save, Settings, Sun } from "lucide-react";
 import { ExportMenu } from "./ExportMenu";
 import { OpenProjectMenu } from "./OpenProjectMenu";
 import { useEditorStore } from "../../stores/editor-store";
@@ -24,10 +24,13 @@ export function Header() {
   return (
     <header className="header header-compact">
       <div className="header-brand">
+        <span className="header-mark" aria-hidden>
+          <Database size={13} strokeWidth={2.25} />
+        </span>
         <span className="header-title">dbvolio</span>
         {projectName && (
           <>
-            <span className="header-brand-sep">/</span>
+            <span className="header-brand-sep" aria-hidden />
             <span className="header-project" title={projectName}>
               {projectName}
             </span>
@@ -39,42 +42,46 @@ export function Header() {
       <PanelToggles />
 
       <div className="header-actions">
-        <OpenProjectMenu />
+        <div className="header-action-group">
+          <OpenProjectMenu />
+          {projectName && <ExportMenu />}
+        </div>
         {projectName && (
-          <>
-            <ExportMenu />
-            <button
-              type="button"
-              className={`btn btn-sm ${activeTab?.isDirty ? "btn-primary" : "btn-ghost"}`}
-              disabled={!activePath}
-              aria-label="Save"
-              onClick={() => void saveActive()}
-              title={saveShortcut ? `Save (${saveShortcut})` : "Save"}
-            >
-              <Save size={15} />
-              <span className="header-btn-label">Save</span>
-            </button>
-          </>
+          <button
+            type="button"
+            className={`btn btn-sm header-save ${activeTab?.isDirty ? "btn-primary" : "btn-ghost"}`}
+            disabled={!activePath}
+            aria-label="Save"
+            onClick={() => void saveActive()}
+            title={saveShortcut ? `Save (${saveShortcut})` : "Save"}
+          >
+            <Save size={14} />
+            <span className="header-btn-label">Save</span>
+          </button>
         )}
-        <button
-          type="button"
-          className="btn-icon"
-          onClick={openSettings}
-          title={
-            settingsShortcut ? `Settings (${settingsShortcut})` : "Settings"
-          }
-          aria-label="Settings"
-        >
-          <Settings size={15} />
-        </button>
-        <button
-          type="button"
-          className="btn-icon"
-          onClick={toggleTheme}
-          title="Toggle theme"
-        >
-          {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
-        </button>
+        <span className="header-actions-sep" aria-hidden />
+        <div className="header-utility">
+          <button
+            type="button"
+            className="btn-icon"
+            onClick={openSettings}
+            title={
+              settingsShortcut ? `Settings (${settingsShortcut})` : "Settings"
+            }
+            aria-label="Settings"
+          >
+            <Settings size={15} />
+          </button>
+          <button
+            type="button"
+            className="btn-icon"
+            onClick={toggleTheme}
+            title={theme === "dark" ? "Use light theme" : "Use dark theme"}
+            aria-label={theme === "dark" ? "Use light theme" : "Use dark theme"}
+          >
+            {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
+        </div>
       </div>
     </header>
   );

@@ -90,4 +90,35 @@ Table activities {
     expect(result.model!.tables.length).toBeGreaterThanOrEqual(3);
     expect(result.model!.references.length).toBeGreaterThanOrEqual(2);
   });
+
+  it("formats parameterized types without duplicating args and extracts column metadata", () => {
+    const result = parseProject(
+      projectRoot,
+      {
+        "main.dbml": `Table services {
+  id bigint [pk, increment]
+  title varchar(255) [not null, note: 'Service title']
+  price decimal(10,2) [not null, default: 0]
+}`,
+      },
+      "main.dbml",
+    );
+    expect(result.diagnostics).toHaveLength(0);
+    const services = result.model!.tables[0];
+    expect(services.columns.find((c) => c.name === "id")?.isAutoIncrement).toBe(
+      true,
+    );
+    expect(services.columns.find((c) => c.name === "title")?.type).toBe(
+      "varchar(255)",
+    );
+    expect(services.columns.find((c) => c.name === "title")?.note).toBe(
+      "Service title",
+    );
+    expect(services.columns.find((c) => c.name === "price")?.type).toBe(
+      "decimal(10,2)",
+    );
+    expect(services.columns.find((c) => c.name === "price")?.defaultValue).toBe(
+      "0",
+    );
+  });
 });

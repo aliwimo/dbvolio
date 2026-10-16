@@ -1,5 +1,5 @@
 import { FileText, FolderOpen } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ProjectExplorer } from "../components/explorer/ProjectExplorer";
 import { DbmlEditor } from "../components/editor/DbmlEditor";
 import { EditorTabs } from "../components/editor/EditorTabs";
@@ -17,7 +17,10 @@ import { useProjectStore } from "../stores/project-store";
 import { useExternalDbmlOpen } from "../features/open/useExternalDbmlOpen";
 import { useAppKeymap } from "../features/keymap/use-app-keymap";
 import { useNativeAppMenu } from "../features/keymap/use-native-app-menu";
-import { useUiStore } from "../stores/ui-store";
+import {
+  DEFAULT_INSPECTOR_WIDTH,
+  useUiStore,
+} from "../stores/ui-store";
 
 function EditorPanel() {
   return (
@@ -79,9 +82,41 @@ export function Workspace() {
   useNativeAppMenu();
 
   const panels = useUiStore((s) => s.panels);
+  const inspectorWidth = useUiStore((s) => s.inspectorWidth);
+  const setInspectorWidth = useUiStore((s) => s.setInspectorWidth);
   const projectRoot = useProjectStore((s) => s.projectRoot);
   const entryPoint = useProjectStore((s) => s.entryPoint);
   const openFile = useEditorStore((s) => s.openFile);
+
+  const rightRailRef = useRef<HTMLElement>(null);
+  const [resizingInspector, setResizingInspector] = useState(false);
+
+  const onInspectorResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setResizingInspector(true);
+  }, []);
+
+  useEffect(() => {
+    if (!resizingInspector) {
+      return;
+    }
+    const onMouseMove = (event: MouseEvent) => {
+      const rail = rightRailRef.current;
+      if (!rail) {
+        return;
+      }
+      const rect = rail.getBoundingClientRect();
+      const nextWidth = rect.right - event.clientX;
+      setInspectorWidth(nextWidth);
+    };
+    const onMouseUp = () => setResizingInspector(false);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [resizingInspector, setInspectorWidth]);
 
   useEffect(() => {
     if (projectRoot && entryPoint) {
@@ -155,7 +190,20 @@ export function Workspace() {
         )}
         <main className="workspace-main">{mainContent}</main>
         {projectRoot && panels.inspector && (
-          <aside className="workspace-rail workspace-rail-right">
+          <aside
+            ref={rightRailRef}
+            className="workspace-rail workspace-rail-right"
+            style={{ width: `${inspectorWidth}px` }}
+          >
+            <div
+              className={`workspace-rail-resizer ${resizingInspector ? "dragging" : ""}`}
+              onMouseDown={onInspectorResizeStart}
+              onDoubleClick={() => setInspectorWidth(DEFAULT_INSPECTOR_WIDTH)}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize inspector sidebar"
+              title="Drag to resize · Double-click to reset"
+            />
             <SchemaInspector />
           </aside>
         )}
@@ -166,3 +214,4 @@ export function Workspace() {
     </div>
   );
 }
+

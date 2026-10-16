@@ -1,3 +1,4 @@
+import { ChevronDown, FileCode } from "lucide-react";
 import { useMemo } from "react";
 import { useProjectStore } from "../../stores/project-store";
 
@@ -26,7 +27,7 @@ export function DiagramRootSelect() {
 
   return (
     <label className="header-diagram-root" title="DBML file used to build the diagram">
-      <span className="header-diagram-root-label">Diagram</span>
+      <FileCode size={13} strokeWidth={2} aria-hidden />
       <select
         className="select-compact header-entry-select"
         value={value}
@@ -39,6 +40,7 @@ export function DiagramRootSelect() {
           </option>
         ))}
       </select>
+      <ChevronDown size={13} className="header-diagram-chevron" aria-hidden />
     </label>
   );
 }

@@ -41,12 +41,33 @@ function formatFieldType(fieldType: unknown): string {
   if (fieldType && typeof fieldType === "object") {
     const named = fieldType as { type_name?: string; args?: string | null };
     if (named.type_name) {
-      return named.args
-        ? `${named.type_name}(${named.args})`
-        : named.type_name;
+      if (named.args && !named.type_name.endsWith(`(${named.args})`)) {
+        return `${named.type_name}(${named.args})`;
+      }
+      return named.type_name;
     }
   }
   return "unknown";
+}
+
+function formatDbDefault(dbdefault: unknown): string | undefined {
+  if (dbdefault === null || dbdefault === undefined) {
+    return undefined;
+  }
+  if (typeof dbdefault === "object") {
+    const def = dbdefault as { type?: string; value?: unknown };
+    if (def.value === undefined || def.value === null) {
+      return undefined;
+    }
+    if (def.type === "string") {
+      return `'${String(def.value)}'`;
+    }
+    if (def.type === "expression") {
+      return `\`${String(def.value)}\``;
+    }
+    return String(def.value);
+  }
+  return String(dbdefault);
 }
 
 function tableId(schemaName: string | null | undefined, name: string): string {
@@ -74,6 +95,8 @@ function normalizeTable(table: {
     pk?: boolean;
     not_null?: boolean;
     unique?: boolean;
+    increment?: boolean;
+    dbdefault?: unknown;
     note?: string;
   }[];
   indexes?: {
@@ -81,6 +104,7 @@ function normalizeTable(table: {
     columns?: { value?: unknown }[];
     type?: string;
     unique?: boolean;
+    pk?: boolean;
     note?: string;
   }[];
   note?: string;
@@ -93,6 +117,8 @@ function normalizeTable(table: {
     isPrimaryKey: Boolean(field.pk),
     isNullable: !field.not_null,
     isUnique: Boolean(field.unique),
+    isAutoIncrement: field.increment ? true : undefined,
+    defaultValue: formatDbDefault(field.dbdefault),
     note: field.note || undefined,
   }));
 
@@ -101,6 +127,7 @@ function normalizeTable(table: {
     columns: mapIndexColumns(index),
     type: index.type || undefined,
     unique: index.unique || undefined,
+    pk: index.pk ? true : undefined,
     note: index.note || undefined,
   }));
 

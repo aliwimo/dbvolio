@@ -4,6 +4,8 @@ export interface SchemaColumn {
   isPrimaryKey: boolean;
   isNullable: boolean;
   isUnique: boolean;
+  isAutoIncrement?: boolean;
+  defaultValue?: string;
   note?: string;
 }
 
@@ -12,6 +14,7 @@ export interface SchemaIndex {
   columns: string[];
   type?: string;
   unique?: boolean;
+  pk?: boolean;
   note?: string;
 }
 
