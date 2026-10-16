@@ -1,4 +1,4 @@
-import { Clock, FolderOpen, X } from "lucide-react";
+import { Clock, FileText, FolderOpen, X } from "lucide-react";
 import { useProjectStore } from "../../stores/project-store";
 
 export function recentProjectLabel(path: string): {
@@ -20,6 +20,7 @@ export function RecentProjectsList({
   const recentProjects = useProjectStore((s) => s.recentProjects);
   const openProjectPath = useProjectStore((s) => s.openProjectPath);
   const openProjectDialog = useProjectStore((s) => s.openProjectDialog);
+  const openDbmlFileDialog = useProjectStore((s) => s.openDbmlFileDialog);
   const removeRecentProject = useProjectStore((s) => s.removeRecentProject);
   const clearRecentProjects = useProjectStore((s) => s.clearRecentProjects);
 
@@ -28,16 +29,28 @@ export function RecentProjectsList({
       <div className={`recent-projects recent-projects-${variant} recent-projects-empty`}>
         <p className="recent-projects-empty-text">No recent projects yet.</p>
         {variant !== "compact" && (
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            onClick={() => {
-              void openProjectDialog().then(onOpened);
-            }}
-          >
-            <FolderOpen size={14} />
-            Open folder…
-          </button>
+          <div className="welcome-actions">
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => {
+                void openProjectDialog().then(onOpened);
+              }}
+            >
+              <FolderOpen size={14} />
+              Open folder…
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => {
+                void openDbmlFileDialog().then(onOpened);
+              }}
+            >
+              <FileText size={14} />
+              Open file…
+            </button>
+          </div>
         )}
       </div>
     );
@@ -94,7 +107,17 @@ export function RecentProjectsList({
           }}
         >
           <FolderOpen size={14} />
-          Open another…
+          Open folder…
+        </button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() => {
+            void openDbmlFileDialog().then(onOpened);
+          }}
+        >
+          <FileText size={14} />
+          Open file…
         </button>
         {variant !== "compact" && (
           <button

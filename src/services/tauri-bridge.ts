@@ -98,7 +98,8 @@ export async function writeLayoutMetadata(content: string): Promise<void> {
 
 export interface DbmlOpenPayload {
   projectRoot: string;
-  relativePath: string;
+  /** Omitted when opening a project folder (default entry is chosen). */
+  relativePath?: string;
 }
 
 export async function takePendingDbmlOpens(): Promise<DbmlOpenPayload[]> {

@@ -1,11 +1,12 @@
 mod commands;
+mod menu;
 mod models;
 mod services;
 
 // Rebuild when bundle icons change (see build.rs).
 const _: &str = include_str!(concat!(env!("OUT_DIR"), "/app-icon-stamp"));
 
-use commands::open::{enqueue_dbml_path, enqueue_startup_args, PendingDbmlOpens};
+use commands::open::{finish_startup_open_queue, ingest_opened_path, PendingDbmlOpens};
 use models::project::ProjectState;
 use std::sync::Mutex;
 use tauri::{Manager, RunEvent};
@@ -18,11 +19,13 @@ pub fn run() {
         .manage(Mutex::new(ProjectState::default()))
         .manage(PendingDbmlOpens::default())
         .setup(|app| {
+            menu::init(app)?;
             let handle = app.handle().clone();
             let pending = app.state::<PendingDbmlOpens>();
-            enqueue_startup_args(&handle, &pending);
+            finish_startup_open_queue(&handle, &pending);
             Ok(())
         })
+        .on_menu_event(menu::on_menu_event)
         .invoke_handler(tauri::generate_handler![
             commands::projects::set_project_root,
             commands::projects::get_project_root,
@@ -42,11 +45,10 @@ pub fn run() {
         .expect("error while building tauri application")
         .run(|app_handle, event| {
             if let RunEvent::Opened { urls } = event {
-                let pending = app_handle.state::<PendingDbmlOpens>();
                 for url in urls {
                     if url.scheme() == "file" {
                         if let Ok(path) = url.to_file_path() {
-                            enqueue_dbml_path(app_handle, &pending, path);
+                            ingest_opened_path(app_handle, path);
                         }
                     }
                 }

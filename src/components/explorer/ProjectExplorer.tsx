@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useEditorStore } from "../../stores/editor-store";
+import { filesForScope } from "../../features/open/project-scope-files";
 import { useProjectStore } from "../../stores/project-store";
 import { useUiStore } from "../../stores/ui-store";
 import { RecentProjectsList } from "../projects/RecentProjectsList";
@@ -141,6 +142,12 @@ function TreeItems({
 export function ProjectExplorer() {
   const files = useProjectStore((s) => s.files);
   const projectRoot = useProjectStore((s) => s.projectRoot);
+  const projectScope = useProjectStore((s) => s.projectScope);
+  const entryPoint = useProjectStore((s) => s.entryPoint);
+  const scopedFiles = useMemo(
+    () => filesForScope(files, projectScope, entryPoint),
+    [files, projectScope, entryPoint],
+  );
   const refreshFiles = useProjectStore((s) => s.refreshFiles);
   const createFile = useEditorStore((s) => s.createFile);
   const deleteFile = useEditorStore((s) => s.deleteFile);
@@ -154,8 +161,11 @@ export function ProjectExplorer() {
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
 
   const treeEntries = useMemo(
-    () => (showAllFiles ? files : filterDbmlEntries(files)),
-    [files, showAllFiles],
+    () =>
+      showAllFiles && projectScope === "folder"
+        ? scopedFiles
+        : filterDbmlEntries(scopedFiles),
+    [scopedFiles, showAllFiles, projectScope],
   );
   const tree = useMemo(() => buildTree(treeEntries), [treeEntries]);
   const visibleTree = useMemo(

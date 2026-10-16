@@ -1,4 +1,4 @@
-import { FolderOpen } from "lucide-react";
+import { FileText, FolderOpen } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { ProjectExplorer } from "../components/explorer/ProjectExplorer";
 import { DbmlEditor } from "../components/editor/DbmlEditor";
@@ -16,6 +16,7 @@ import { useEditorStore } from "../stores/editor-store";
 import { useProjectStore } from "../stores/project-store";
 import { useExternalDbmlOpen } from "../features/open/useExternalDbmlOpen";
 import { useAppKeymap } from "../features/keymap/use-app-keymap";
+import { useNativeAppMenu } from "../features/keymap/use-native-app-menu";
 import { useUiStore } from "../stores/ui-store";
 
 function EditorPanel() {
@@ -31,22 +32,40 @@ function EditorPanel() {
 
 function Welcome() {
   const openProjectDialog = useProjectStore((s) => s.openProjectDialog);
+  const openDbmlFileDialog = useProjectStore((s) => s.openDbmlFileDialog);
+
+  const openWithError = (action: () => Promise<void>) => {
+    void action().catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      window.alert(message);
+    });
+  };
 
   return (
     <div className="welcome">
       <p className="welcome-title">Open a project</p>
       <p className="empty-hint">
-        Open a folder, or double-click a <code>.dbml</code> file in Finder to
-        start here.
+        Open a folder or a single <code>.dbml</code> file, or double-click a
+        file in Finder to start here.
       </p>
-      <button
-        type="button"
-        className="btn btn-primary btn-sm"
-        onClick={() => void openProjectDialog()}
-      >
-        <FolderOpen size={15} />
-        Open folder
-      </button>
+      <div className="welcome-actions">
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          onClick={() => openWithError(openProjectDialog)}
+        >
+          <FolderOpen size={15} />
+          Open folder
+        </button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() => openWithError(openDbmlFileDialog)}
+        >
+          <FileText size={15} />
+          Open file
+        </button>
+      </div>
     </div>
   );
 }
@@ -57,6 +76,7 @@ export function Workspace() {
   useExternalDbmlOpen();
 
   useAppKeymap();
+  useNativeAppMenu();
 
   const panels = useUiStore((s) => s.panels);
   const projectRoot = useProjectStore((s) => s.projectRoot);

@@ -3,6 +3,8 @@ import type { CommandId, Keybinding, KeybindingString } from "./types";
 /** VS Code–style defaults (Mod = ⌘ on macOS, Ctrl elsewhere). */
 export const DEFAULT_KEYBINDINGS: Record<CommandId, KeybindingString> = {
   "project.open": "mod+o",
+  "project.openFile": "mod+shift+o",
+  "project.close": "mod+shift+w",
   "file.save": "mod+s",
   "file.closeEditor": "mod+w",
   "settings.open": "mod+,",

@@ -8,6 +8,7 @@ import {
 import { readProjectFile } from "../../services/tauri-bridge";
 import { useDiagramStore } from "../../stores/diagram-store";
 import { useEditorStore } from "../../stores/editor-store";
+import { filesForScope } from "../open/project-scope-files";
 import { useProjectStore } from "../../stores/project-store";
 import { useDiagramViewStore } from "../../stores/diagram-view-store";
 import { applyDagreLayoutAsync } from "../diagram-layout/dagre-layout-async";
@@ -17,6 +18,7 @@ import { schemaToFlow } from "../schema/schemaToFlow";
 export function useDebouncedParse() {
   const projectRoot = useProjectStore((s) => s.projectRoot);
   const entryPoint = useProjectStore((s) => s.entryPoint);
+  const projectScope = useProjectStore((s) => s.projectScope);
   const files = useProjectStore((s) => s.files);
   const contentRevision = useEditorStore((s) => s.contentRevision);
   const parseDebounceMs = useAppSettingsStore((s) => s.parseDebounceMs);
@@ -32,7 +34,8 @@ export function useDebouncedParse() {
       const openContents = useEditorStore.getState().getOpenFileContents();
       const fileMap: Record<string, string> = {};
 
-      for (const file of files) {
+      const scopedFiles = filesForScope(files, projectScope, entryPoint);
+      for (const file of scopedFiles) {
         if (file.isDirectory || !file.relativePath.endsWith(".dbml")) {
           continue;
         }
@@ -81,5 +84,5 @@ export function useDebouncedParse() {
     }, parseDebounceMs);
 
     return () => window.clearTimeout(handle);
-  }, [projectRoot, entryPoint, files, contentRevision, parseDebounceMs]);
+  }, [projectRoot, entryPoint, projectScope, files, contentRevision, parseDebounceMs]);
 }

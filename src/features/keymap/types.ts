@@ -1,5 +1,7 @@
 export type CommandId =
   | "project.open"
+  | "project.openFile"
+  | "project.close"
   | "file.save"
   | "file.closeEditor"
   | "settings.open"

@@ -1,9 +1,14 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { create } from "zustand";
+import type { ProjectScope } from "../features/open/project-scope-files";
+import { splitDbmlFilePath } from "../features/open/split-dbml-file-path";
 import {
+  clearProject,
+  getProjectRoot,
   listProjectFiles,
   setProjectRoot,
 } from "../services/tauri-bridge";
+import { useDiagramStore } from "./diagram-store";
 import { useEditorStore } from "./editor-store";
 import type { ProjectFileEntry } from "../types/project";
 
@@ -38,21 +43,39 @@ function removeRecentPath(path: string): string[] {
 interface ProjectState {
   projectRoot: string | null;
   projectName: string | null;
+  projectScope: ProjectScope;
   files: ProjectFileEntry[];
   entryPoint: string | null;
   recentProjects: string[];
   openProjectDialog: () => Promise<void>;
+  openDbmlFileDialog: () => Promise<void>;
   openProjectPath: (path: string) => Promise<void>;
   openProjectAtFile: (projectRoot: string, relativePath: string) => Promise<void>;
   removeRecentProject: (path: string) => void;
   clearRecentProjects: () => void;
   setEntryPoint: (relativePath: string) => void;
   refreshFiles: () => Promise<void>;
+  closeProject: () => Promise<void>;
+}
+
+function resetDiagramState(): void {
+  useDiagramStore.setState({
+    model: null,
+    lastValidModel: null,
+    isStale: false,
+    diagnostics: [],
+    nodes: [],
+    edges: [],
+    selectedTableId: null,
+    hoveredTableId: null,
+    searchQuery: "",
+  });
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
   projectRoot: null,
   projectName: null,
+  projectScope: "folder",
   files: [],
   entryPoint: null,
   recentProjects: loadRecent(),
@@ -68,12 +91,27 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
   },
 
+  openDbmlFileDialog: async () => {
+    const selected = await open({
+      directory: false,
+      multiple: false,
+      title: "Open DBML file",
+      filters: [{ name: "DBML", extensions: ["dbml"] }],
+    });
+    if (typeof selected === "string") {
+      const { projectRoot, relativePath } = splitDbmlFilePath(selected);
+      await get().openProjectAtFile(projectRoot, relativePath);
+    }
+  },
+
   openProjectPath: async (path) => {
     try {
-      if (get().projectRoot !== path) {
+      const priorRoot = get().projectRoot;
+      await setProjectRoot(path);
+      const resolvedRoot = (await getProjectRoot()) ?? path;
+      if (priorRoot !== resolvedRoot) {
         useEditorStore.getState().resetSession();
       }
-      await setProjectRoot(path);
       const files = await listProjectFiles();
       const dbmlFiles = files.filter(
         (f) => !f.isDirectory && f.relativePath.endsWith(".dbml"),
@@ -82,11 +120,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         dbmlFiles.find((f) => f.relativePath === "main.dbml")?.relativePath ??
         dbmlFiles[0]?.relativePath ??
         null;
-      const recentProjects = pushRecent(path);
-      const name = path.split(/[/\\]/).pop() ?? path;
+      const recentProjects = pushRecent(resolvedRoot);
+      const name = resolvedRoot.split(/[/\\]/).pop() ?? resolvedRoot;
       set({
-        projectRoot: path,
+        projectRoot: resolvedRoot,
         projectName: name,
+        projectScope: "folder",
         files,
         entryPoint: defaultEntry,
         recentProjects,
@@ -99,31 +138,43 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   openProjectAtFile: async (projectRoot, relativePath) => {
-    if (get().projectRoot !== projectRoot) {
-      useEditorStore.getState().resetSession();
-    }
     try {
+      const priorRoot = get().projectRoot;
+      const priorEntry = get().entryPoint;
       await setProjectRoot(projectRoot);
+      const resolvedRoot = (await getProjectRoot()) ?? projectRoot;
       const files = await listProjectFiles();
-      const hasFile = files.some(
-        (f) => !f.isDirectory && f.relativePath === relativePath,
-      );
-      if (!hasFile) {
+      const entry =
+        files.find(
+          (f) => !f.isDirectory && f.relativePath === relativePath,
+        )?.relativePath ??
+        files.find(
+          (f) =>
+            !f.isDirectory &&
+            f.relativePath.toLowerCase() === relativePath.toLowerCase(),
+        )?.relativePath;
+      if (!entry) {
         throw new Error(`File not found in project: ${relativePath}`);
       }
-      const recentProjects = pushRecent(projectRoot);
-      const name = projectRoot.split(/[/\\]/).pop() ?? projectRoot;
+      if (priorRoot !== resolvedRoot || priorEntry !== entry) {
+        useEditorStore.getState().resetSession();
+      }
+      const recentProjects = pushRecent(resolvedRoot);
       set({
-        projectRoot,
-        projectName: name,
+        projectRoot: resolvedRoot,
+        projectName: entry.split(/[/\\]/).pop() ?? entry,
+        projectScope: "file",
         files,
-        entryPoint: relativePath,
+        entryPoint: entry,
         recentProjects,
       });
-      await useEditorStore.getState().openFile(relativePath);
-    } catch {
+      await useEditorStore.getState().openFile(entry);
+    } catch (err) {
       const recentProjects = removeRecentPath(projectRoot);
       set({ recentProjects });
+      if (err instanceof Error) {
+        throw err;
+      }
       throw new Error(`Could not open ${relativePath}`);
     }
   },
@@ -142,5 +193,34 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   refreshFiles: async () => {
     const files = await listProjectFiles();
     set({ files });
+  },
+
+  closeProject: async () => {
+    if (!get().projectRoot) {
+      return;
+    }
+    const dirtyCount = useEditorStore
+      .getState()
+      .tabs.filter((tab) => tab.isDirty).length;
+    if (dirtyCount > 0) {
+      const message =
+        dirtyCount === 1
+          ? "You have unsaved changes. Close without saving?"
+          : `You have unsaved changes in ${dirtyCount} files. Close without saving?`;
+      const ok = window.confirm(message);
+      if (!ok) {
+        return;
+      }
+    }
+    await clearProject();
+    useEditorStore.getState().resetSession();
+    resetDiagramState();
+    set({
+      projectRoot: null,
+      projectName: null,
+      projectScope: "folder",
+      files: [],
+      entryPoint: null,
+    });
   },
 }));

@@ -30,7 +30,19 @@
         "name": "DBML Schema",
         "description": "Database Markup Language file",
         "role": "Editor",
-        "mimeType": "text/plain"
+        "rank": "Owner",
+        "mimeType": "text/plain",
+        "exportedType": {
+          "identifier": "com.codevolio.dbml",
+          "conformsTo": ["public.data", "public.plain-text", "public.text"]
+        }
+      },
+      {
+        "ext": ["dbml"],
+        "contentTypes": ["public.plain-text", "public.text", "public.data"],
+        "name": "DBML Text",
+        "role": "Editor",
+        "rank": "Alternate"
       }
     ],
     "icon": [

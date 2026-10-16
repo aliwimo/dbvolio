@@ -58,6 +58,14 @@
   letter-spacing: -0.02em;
 }
 
+.welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 4px;
+}
+
 .empty-hint {
   margin: 0;
   color: var(--text-muted);

@@ -7,6 +7,16 @@ export const COMMAND_DEFINITIONS: CommandDefinition[] = [
     category: "Project",
   },
   {
+    id: "project.openFile",
+    title: "Open DBML File",
+    category: "Project",
+  },
+  {
+    id: "project.close",
+    title: "Close Project",
+    category: "Project",
+  },
+  {
     id: "file.save",
     title: "Save",
     category: "File",

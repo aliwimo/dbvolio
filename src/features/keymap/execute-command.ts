@@ -8,6 +8,12 @@ export function executeCommand(commandId: CommandId): void {
     case "project.open":
       void useProjectStore.getState().openProjectDialog();
       return;
+    case "project.openFile":
+      void useProjectStore.getState().openDbmlFileDialog();
+      return;
+    case "project.close":
+      void useProjectStore.getState().closeProject();
+      return;
     case "file.save":
       void useEditorStore.getState().saveActive();
       return;

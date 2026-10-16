@@ -1,6 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 import { isTauri } from "@tauri-apps/api/core";
 import { useEffect } from "react";
+import { normalizePendingOpens } from "./normalize-pending-opens";
 import {
   takePendingDbmlOpens,
   type DbmlOpenPayload,
@@ -8,14 +9,15 @@ import {
 import { useProjectStore } from "../../stores/project-store";
 
 async function openPayload(payload: DbmlOpenPayload): Promise<void> {
-  await useProjectStore
-    .getState()
-    .openProjectAtFile(payload.projectRoot, payload.relativePath);
+  const store = useProjectStore.getState();
+  if (payload.relativePath) {
+    await store.openProjectAtFile(payload.projectRoot, payload.relativePath);
+  } else {
+    await store.openProjectPath(payload.projectRoot);
+  }
 }
 
 export function useExternalDbmlOpen(): void {
-  const openProjectAtFile = useProjectStore((s) => s.openProjectAtFile);
-
   useEffect(() => {
     if (!isTauri()) {
       return;
@@ -26,15 +28,12 @@ export function useExternalDbmlOpen(): void {
 
     void (async () => {
       unlisten = await listen<DbmlOpenPayload>("dbml-open", (event) => {
-        void openProjectAtFile(
-          event.payload.projectRoot,
-          event.payload.relativePath,
-        ).catch((err: unknown) => {
+        void openPayload(event.payload).catch((err: unknown) => {
           console.error(err);
         });
       });
 
-      const pending = await takePendingDbmlOpens();
+      const pending = normalizePendingOpens(await takePendingDbmlOpens());
       for (const payload of pending) {
         if (cancelled) {
           return;
@@ -51,5 +50,5 @@ export function useExternalDbmlOpen(): void {
       cancelled = true;
       unlisten?.();
     };
-  }, [openProjectAtFile]);
+  }, []);
 }

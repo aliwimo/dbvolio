@@ -11,6 +11,7 @@ import {
 } from "../../services/export-download";
 import { useDiagramStore } from "../../stores/diagram-store";
 import { useEditorStore } from "../../stores/editor-store";
+import { filesForScope } from "../open/project-scope-files";
 import { useProjectStore } from "../../stores/project-store";
 import { readProjectFile } from "../../services/tauri-bridge";
 
@@ -21,13 +22,14 @@ function projectAbsolutePath(projectRoot: string, relativePath: string): string 
 }
 
 async function collectProjectFiles(): Promise<Record<string, string>> {
-  const { projectRoot, files, entryPoint } = useProjectStore.getState();
+  const { projectRoot, files, entryPoint, projectScope } =
+    useProjectStore.getState();
   if (!projectRoot || !entryPoint) {
     throw new Error("Open a project with an entry point first.");
   }
   const openContents = useEditorStore.getState().getOpenFileContents();
   const map: Record<string, string> = {};
-  for (const file of files) {
+  for (const file of filesForScope(files, projectScope, entryPoint)) {
     if (file.isDirectory || !file.relativePath.endsWith(".dbml")) {
       continue;
     }
