@@ -214,36 +214,81 @@ export function ProjectExplorer() {
     });
   };
 
-  const onCreate = async () => {
-    const name = window.prompt("New file path (e.g. tables/orders.dbml)");
-    if (!name?.endsWith(".dbml")) {
-      return;
-    }
-    await createFile(name);
-    await refreshFiles();
+  const [modalState, setModalState] = useState<
+    | { type: "create" }
+    | { type: "rename"; path: string }
+    | { type: "delete"; path: string }
+    | null
+  >(null);
+  const [modalInput, setModalInput] = useState("");
+  const [modalError, setModalError] = useState<string | null>(null);
+
+  const openCreateModal = () => {
+    setModalInput("");
+    setModalError(null);
+    setModalState({ type: "create" });
   };
 
-  const onRename = async () => {
-    if (!activePath) {
-      return;
-    }
-    const next = window.prompt("Rename to (relative path):", activePath);
-    if (!next || next === activePath || !next.endsWith(".dbml")) {
-      return;
-    }
-    await renameFile(activePath, next);
-    await refreshFiles();
+  const openRenameModal = () => {
+    if (!activePath) return;
+    setModalInput(activePath);
+    setModalError(null);
+    setModalState({ type: "rename", path: activePath });
   };
 
-  const onDelete = async () => {
-    if (!activePath) {
+  const openDeleteModal = () => {
+    if (!activePath) return;
+    setModalError(null);
+    setModalState({ type: "delete", path: activePath });
+  };
+
+  const closeModal = () => {
+    setModalState(null);
+    setModalInput("");
+    setModalError(null);
+  };
+
+  const handleModalSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!modalState) return;
+
+    if (modalState.type === "delete") {
+      try {
+        await deleteFile(modalState.path);
+        await refreshFiles();
+        closeModal();
+      } catch (err) {
+        setModalError(err instanceof Error ? err.message : String(err));
+      }
       return;
     }
-    if (!window.confirm(`Delete ${activePath}? This cannot be undone.`)) {
+
+    let targetPath = modalInput.trim();
+    if (!targetPath) {
+      setModalError("Path cannot be empty.");
       return;
     }
-    await deleteFile(activePath);
-    await refreshFiles();
+    if (!targetPath.endsWith(".dbml")) {
+      targetPath += ".dbml";
+    }
+
+    try {
+      if (modalState.type === "create") {
+        await createFile(targetPath);
+        await refreshFiles();
+        closeModal();
+      } else if (modalState.type === "rename") {
+        if (targetPath === modalState.path) {
+          closeModal();
+          return;
+        }
+        await renameFile(modalState.path, targetPath);
+        await refreshFiles();
+        closeModal();
+      }
+    } catch (err) {
+      setModalError(err instanceof Error ? err.message : String(err));
+    }
   };
 
   return (
@@ -277,7 +322,7 @@ export function ProjectExplorer() {
                 type="button"
                 className="btn-icon btn-icon-xs"
                 title="New DBML file"
-                onClick={() => void onCreate()}
+                onClick={openCreateModal}
               >
                 <Plus size={15} />
               </button>
@@ -295,8 +340,8 @@ export function ProjectExplorer() {
                 onClearFilter={() => setQuery("")}
                 onRefresh={() => void refreshFiles()}
                 onToggleShowAllFiles={() => setShowAllFiles(!showAllFiles)}
-                onRename={() => void onRename()}
-                onDelete={() => void onDelete()}
+                onRename={openRenameModal}
+                onDelete={openDeleteModal}
                 onUseForDiagram={() => {
                   if (activePath && isDbmlPath(activePath)) {
                     setEntryPoint(activePath);
@@ -349,6 +394,73 @@ export function ProjectExplorer() {
           {query.trim()
             ? ` · ${countLeafFiles(visibleTree)} shown`
             : ""}
+        </div>
+      )}
+
+      {modalState && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div
+            className="prompt-modal-dialog"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="modal-header">
+              <h3 className="modal-title">
+                {modalState.type === "create" && "New DBML File"}
+                {modalState.type === "rename" && "Rename File"}
+                {modalState.type === "delete" && "Delete File"}
+              </h3>
+              <button
+                type="button"
+                className="btn-icon btn-icon-xs"
+                onClick={closeModal}
+                aria-label="Close"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <form onSubmit={handleModalSubmit}>
+              <div className="prompt-modal-body">
+                {modalState.type === "delete" ? (
+                  <p className="prompt-modal-message">
+                    Are you sure you want to delete <strong>{modalState.path}</strong>? This cannot be undone.
+                  </p>
+                ) : (
+                  <>
+                    <p className="prompt-modal-message">
+                      {modalState.type === "create"
+                        ? "Enter file path (e.g. schema.dbml or tables/users.dbml):"
+                        : "Enter new relative path:"}
+                    </p>
+                    <input
+                      type="text"
+                      className="prompt-modal-input"
+                      value={modalInput}
+                      onChange={(e) => setModalInput(e.target.value)}
+                      placeholder={modalState.type === "create" ? "tables/orders.dbml" : modalState.path}
+                      autoFocus
+                    />
+                  </>
+                )}
+                {modalError && <p className="prompt-modal-error">{modalError}</p>}
+              </div>
+              <div className="prompt-modal-footer">
+                <button type="button" className="btn btn-sm btn-ghost" onClick={closeModal}>
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className={`btn btn-sm ${modalState.type === "delete" ? "btn-danger" : "btn-primary"}`}
+                  style={modalState.type === "delete" ? { background: "var(--danger)", color: "#fff", borderColor: "var(--danger)" } : undefined}
+                >
+                  {modalState.type === "create" && "Create File"}
+                  {modalState.type === "rename" && "Rename"}
+                  {modalState.type === "delete" && "Delete"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

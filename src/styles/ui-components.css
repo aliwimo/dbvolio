@@ -1159,3 +1159,60 @@
   width: 100%;
   justify-content: center;
 }
+
+.prompt-modal-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(440px, 100%);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.prompt-modal-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prompt-modal-message {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.prompt-modal-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--bg-app);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.12s ease;
+}
+
+.prompt-modal-input:focus {
+  border-color: var(--accent);
+}
+
+.prompt-modal-error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--danger);
+}
+
+.prompt-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
