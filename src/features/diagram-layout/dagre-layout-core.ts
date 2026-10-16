@@ -28,9 +28,9 @@ export function spacingForRankdir(
 ): { nodesep: number; ranksep: number } {
   const vertical = rankdir === "TB" || rankdir === "BT";
   const presets = {
-    compact: vertical ? { nodesep: 36, ranksep: 48 } : { nodesep: 44, ranksep: 56 },
-    default: vertical ? { nodesep: 50, ranksep: 70 } : { nodesep: 60, ranksep: 80 },
-    relaxed: vertical ? { nodesep: 72, ranksep: 96 } : { nodesep: 84, ranksep: 110 },
+    compact: vertical ? { nodesep: 44, ranksep: 56 } : { nodesep: 52, ranksep: 72 },
+    default: vertical ? { nodesep: 56, ranksep: 84 } : { nodesep: 68, ranksep: 96 },
+    relaxed: vertical ? { nodesep: 80, ranksep: 112 } : { nodesep: 96, ranksep: 128 },
   } as const;
   return presets[spacing];
 }

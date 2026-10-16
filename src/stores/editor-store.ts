@@ -52,6 +52,9 @@ function markDirty(tab: EditorTab, content: string): EditorTab {
   };
 }
 
+/** Coalesces concurrent openFile calls (e.g. Strict Mode + entry-point effect). */
+const openFileInFlight = new Map<string, Promise<void>>();
+
 export const useEditorStore = create<EditorState>((set, get) => ({
   tabs: [],
   activePath: null,
@@ -71,18 +74,40 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       set({ activePath: relativePath });
       return;
     }
-    const file = await readProjectFile(relativePath);
-    const tab: EditorTab = {
-      relativePath,
-      content: file.content,
-      savedContent: file.content,
-      modifiedMs: file.modifiedMs,
-      isDirty: false,
-    };
-    set((state) => ({
-      tabs: [...state.tabs, tab],
-      activePath: relativePath,
-    }));
+
+    const inFlight = openFileInFlight.get(relativePath);
+    if (inFlight) {
+      await inFlight;
+      set({ activePath: relativePath });
+      return;
+    }
+
+    const task = (async () => {
+      const file = await readProjectFile(relativePath);
+      const tab: EditorTab = {
+        relativePath,
+        content: file.content,
+        savedContent: file.content,
+        modifiedMs: file.modifiedMs,
+        isDirty: false,
+      };
+      set((state) => {
+        if (state.tabs.some((t) => t.relativePath === relativePath)) {
+          return { activePath: relativePath };
+        }
+        return {
+          tabs: [...state.tabs, tab],
+          activePath: relativePath,
+        };
+      });
+    })();
+
+    openFileInFlight.set(relativePath, task);
+    try {
+      await task;
+    } finally {
+      openFileInFlight.delete(relativePath);
+    }
   },
 
   closeTab: (relativePath) => {
@@ -198,11 +223,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     return map;
   },
 
-  resetSession: () =>
+  resetSession: () => {
+    openFileInFlight.clear();
     set({
       tabs: [],
       activePath: null,
       externalConflict: null,
       pendingEditorReveal: null,
-    }),
+    });
+  },
 }));

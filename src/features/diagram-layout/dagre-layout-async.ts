@@ -65,6 +65,7 @@ function resolveLayoutOptions(
 ): AutoLayoutOptions {
   if (typeof options === "string") {
     return {
+      algorithm: "left-right",
       rankdir: options,
       spacing: "default",
       scope: "all",

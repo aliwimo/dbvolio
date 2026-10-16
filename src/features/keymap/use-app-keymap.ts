@@ -1,11 +1,16 @@
 import { useEffect } from "react";
 import { useKeymapStore } from "../../stores/keymap-store";
+import { useQuickPickStore } from "../../stores/quick-pick-store";
 import { useUiStore } from "../../stores/ui-store";
 import { executeCommand } from "./execute-command";
 import { findCommandForKeyboardEvent } from "./resolve-keybindings";
 
 function shouldIgnoreGlobalKeymap(event: KeyboardEvent): boolean {
   if (useKeymapStore.getState().recordingCommandId) {
+    return true;
+  }
+
+  if (useQuickPickStore.getState().kind) {
     return true;
   }
 

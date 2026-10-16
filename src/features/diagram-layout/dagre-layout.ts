@@ -13,6 +13,7 @@ import {
   filterNodesByIds,
 } from "./layout-graph";
 import type { AutoLayoutOptions } from "./layout-options";
+import { resolveNodeOverlaps, spacingMetrics } from "./layout-spacing";
 
 const NODE_WIDTH = 260;
 const HEADER_HEIGHT = 36;
@@ -23,7 +24,7 @@ export function estimateTableNodeHeight(columnCount: number): number {
   return HEADER_HEIGHT + columnCount * ROW_HEIGHT + NODE_PADDING;
 }
 
-function nodeHeight(node: Node): number {
+export function tableNodeHeight(node: Node): number {
   const data = node.data as TableNodeData | undefined;
   const columns = data?.table?.columns?.length ?? 3;
   return estimateTableNodeHeight(columns);
@@ -59,7 +60,7 @@ export function buildDagreLayoutInput(
     nodes: nodes.map((node) => ({
       id: node.id,
       width: NODE_WIDTH,
-      height: nodeHeight(node),
+      height: tableNodeHeight(node),
     })),
     edges: uniqueLayoutEdges(edges),
   };
@@ -76,7 +77,7 @@ function layoutNodeBounds(nodes: Node[]): {
   let maxX = -Infinity;
   let maxY = -Infinity;
   for (const node of nodes) {
-    const height = nodeHeight(node);
+    const height = tableNodeHeight(node);
     minX = Math.min(minX, node.position.x);
     minY = Math.min(minY, node.position.y);
     maxX = Math.max(maxX, node.position.x + NODE_WIDTH);
@@ -112,11 +113,16 @@ function layoutNodeSubset(
 function packComponentLayouts(
   laidOutGroups: Node[][],
   rankdir: LayoutDirection,
+  spacing: LayoutSpacing = "default",
 ): Node[] {
   if (laidOutGroups.length === 0) {
     return [];
   }
-  const gap = rankdir === "TB" || rankdir === "BT" ? 96 : 120;
+  const { componentGap } = spacingMetrics(spacing);
+  const gap =
+    rankdir === "TB" || rankdir === "BT"
+      ? componentGap * 0.75
+      : componentGap;
   const verticalPack = rankdir === "TB" || rankdir === "BT";
   let offset = 0;
   const packed: Node[] = [];
@@ -175,7 +181,7 @@ export function applyDagreLayoutWithOptions(
       const subsetEdges = filterEdgesForNodes(targetEdges, idSet);
       return layoutNodeSubset(subset, subsetEdges, rankdir, spacing);
     });
-    laidOutTargets = packComponentLayouts(groups, rankdir);
+    laidOutTargets = packComponentLayouts(groups, rankdir, spacing);
   } else if (separateComponents && scope === "selection") {
     laidOutTargets = layoutNodeSubset(
       targetNodes,
@@ -204,6 +210,9 @@ export function applyDagreLayoutWithOptions(
     }
   }
 
+  const { margin } = spacingMetrics(spacing);
+  laidOutTargets = resolveNodeOverlaps(laidOutTargets, margin);
+
   return mergeLayoutIntoNodes(nodes, [...fixedNodes, ...laidOutTargets]);
 }
 
@@ -216,7 +225,7 @@ export function positionsToNodes(
     if (!center) {
       return node;
     }
-    const height = nodeHeight(node);
+    const height = tableNodeHeight(node);
     return {
       ...node,
       position: {
@@ -234,6 +243,7 @@ export function applyDagreLayout(
   spacing: LayoutSpacing = "default",
 ): Node[] {
   return applyDagreLayoutWithOptions(nodes, edges, {
+    algorithm: "left-right",
     rankdir,
     spacing,
     scope: "all",

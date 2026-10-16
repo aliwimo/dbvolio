@@ -12,6 +12,11 @@ export const COMMAND_DEFINITIONS: CommandDefinition[] = [
     category: "Project",
   },
   {
+    id: "project.openRecent",
+    title: "Open Recent Project",
+    category: "Project",
+  },
+  {
     id: "project.close",
     title: "Close Project",
     category: "Project",
@@ -24,6 +29,11 @@ export const COMMAND_DEFINITIONS: CommandDefinition[] = [
   {
     id: "file.closeEditor",
     title: "Close Editor",
+    category: "File",
+  },
+  {
+    id: "workbench.quickOpen",
+    title: "Go to File",
     category: "File",
   },
   {

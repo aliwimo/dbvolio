@@ -11,7 +11,7 @@ import { useEditorStore } from "../../stores/editor-store";
 import { filesForScope } from "../open/project-scope-files";
 import { useProjectStore } from "../../stores/project-store";
 import { useDiagramViewStore } from "../../stores/diagram-view-store";
-import { applyDagreLayoutAsync } from "../diagram-layout/dagre-layout-async";
+import { applyAutoLayoutAsync } from "../diagram-layout/apply-auto-layout";
 import { useAppSettingsStore } from "../../stores/app-settings-store";
 import { schemaToFlow } from "../schema/schemaToFlow";
 
@@ -71,8 +71,15 @@ export function useDebouncedParse() {
         (n) => n.position.x === 0 && n.position.y === 0,
       );
       if (needsLayout) {
-        const rankdir = useDiagramViewStore.getState().layoutDirection;
-        positioned = await applyDagreLayoutAsync(positioned, edges, rankdir);
+        const view = useDiagramViewStore.getState();
+        positioned = await applyAutoLayoutAsync(positioned, edges, {
+          algorithm: view.layoutAlgorithm,
+          rankdir: view.layoutDirection,
+          spacing: view.layoutSpacing,
+          scope: "all",
+          selectedNodeId: null,
+          separateComponents: view.layoutSeparateComponents,
+        });
       }
       if (generation === useDiagramStore.getState().parseGeneration) {
         startTransition(() => {
