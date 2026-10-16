@@ -236,13 +236,36 @@
   flex-shrink: 0;
 }
 
+.header-project-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  max-width: min(240px, 32vw);
+  padding: 2px 2px 2px 8px;
+  border-radius: 8px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+}
+
 .header-project {
   font-size: 11px;
   color: var(--text-muted);
-  max-width: 180px;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.header-project-close {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  opacity: 0.72;
+}
+
+.header-project-close:hover {
+  opacity: 1;
 }
 
 .header-actions {

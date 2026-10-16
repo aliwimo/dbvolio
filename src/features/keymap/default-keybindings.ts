@@ -4,9 +4,11 @@ import type { CommandId, Keybinding, KeybindingString } from "./types";
 export const DEFAULT_KEYBINDINGS: Record<CommandId, KeybindingString> = {
   "project.open": "mod+o",
   "project.openFile": "mod+shift+o",
+  "project.openRecent": "ctrl+r",
   "project.close": "mod+shift+w",
   "file.save": "mod+s",
   "file.closeEditor": "mod+w",
+  "workbench.quickOpen": "mod+p",
   "settings.open": "mod+,",
   "workbench.toggleExplorer": "mod+b",
   "workbench.showExplorer": "mod+shift+e",
@@ -34,12 +36,17 @@ export function parseKeybindingString(raw: KeybindingString): Keybinding | null 
   }
 
   let mod = false;
+  let control = false;
   let shift = false;
   let alt = false;
   let key: string | null = null;
 
   for (const part of parts) {
-    if (part === "mod" || part === "cmd" || part === "meta" || part === "ctrl") {
+    if (part === "ctrl" || part === "control") {
+      control = true;
+      continue;
+    }
+    if (part === "mod" || part === "cmd" || part === "meta") {
       mod = true;
       continue;
     }
@@ -58,12 +65,14 @@ export function parseKeybindingString(raw: KeybindingString): Keybinding | null 
     return null;
   }
 
-  return { mod, shift, alt, key };
+  return { mod, control, shift, alt, key };
 }
 
 export function keybindingToString(binding: Keybinding): KeybindingString {
   const parts: string[] = [];
-  if (binding.mod) {
+  if (binding.control) {
+    parts.push("ctrl");
+  } else if (binding.mod) {
     parts.push("mod");
   }
   if (binding.shift) {
@@ -123,8 +132,10 @@ export function keybindingFromKeyboardEvent(
     return null;
   }
 
+  const mac = isMacPlatform();
   return {
-    mod: event.metaKey || event.ctrlKey,
+    mod: mac ? event.metaKey : event.metaKey || event.ctrlKey,
+    control: event.ctrlKey,
     shift: event.shiftKey,
     alt: event.altKey,
     key,
@@ -137,6 +148,7 @@ export function keybindingsMatch(
 ): boolean {
   return (
     a.mod === b.mod &&
+    a.control === b.control &&
     a.shift === b.shift &&
     a.alt === b.alt &&
     a.key === b.key
@@ -151,6 +163,33 @@ export function keyboardEventMatchesKeybinding(
   if (!fromEvent) {
     return false;
   }
+
+  const mac = isMacPlatform();
+  if (binding.control) {
+    if (!event.ctrlKey || (mac && event.metaKey)) {
+      return false;
+    }
+    return (
+      !binding.mod &&
+      fromEvent.shift === binding.shift &&
+      fromEvent.alt === binding.alt &&
+      fromEvent.key === binding.key
+    );
+  }
+
+  if (binding.mod) {
+    const modOk = mac ? event.metaKey : event.ctrlKey;
+    if (!modOk || (mac && event.ctrlKey && !event.metaKey)) {
+      return false;
+    }
+    return (
+      !binding.control &&
+      fromEvent.shift === binding.shift &&
+      fromEvent.alt === binding.alt &&
+      fromEvent.key === binding.key
+    );
+  }
+
   return keybindingsMatch(fromEvent, binding);
 }
 
@@ -165,7 +204,9 @@ export function formatKeybinding(binding: Keybinding): string {
   const mac = isMacPlatform();
   const parts: string[] = [];
 
-  if (binding.mod) {
+  if (binding.control) {
+    parts.push(mac ? "⌃" : "Ctrl");
+  } else if (binding.mod) {
     parts.push(mac ? "⌘" : "Ctrl");
   }
   if (binding.shift) {

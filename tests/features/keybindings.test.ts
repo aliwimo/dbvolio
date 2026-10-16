@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatKeybinding,
+  isMacPlatform,
   keybindingToString,
   keyboardEventMatchesKeybinding,
   parseKeybindingString,
@@ -14,6 +15,7 @@ describe("keybinding parse and format", () => {
   it("parses mod+shift+e", () => {
     expect(parseKeybindingString("mod+shift+e")).toEqual({
       mod: true,
+      control: false,
       shift: true,
       alt: false,
       key: "e",
@@ -23,10 +25,22 @@ describe("keybinding parse and format", () => {
   it("parses mod+comma", () => {
     expect(parseKeybindingString("mod+,")).toEqual({
       mod: true,
+      control: false,
       shift: false,
       alt: false,
       key: ",",
     });
+  });
+
+  it("parses ctrl+r as control modifier", () => {
+    expect(parseKeybindingString("ctrl+r")).toEqual({
+      mod: false,
+      control: true,
+      shift: false,
+      alt: false,
+      key: "r",
+    });
+    expect(keybindingToString(parseKeybindingString("ctrl+r")!)).toBe("ctrl+r");
   });
 
   it("round-trips through keybindingToString", () => {
@@ -53,10 +67,11 @@ describe("resolve keybindings", () => {
   });
 
   it("finds command from keyboard event", () => {
+    const mac = isMacPlatform();
     const event = {
       key: "s",
-      metaKey: true,
-      ctrlKey: false,
+      metaKey: mac,
+      ctrlKey: !mac,
       shiftKey: false,
       altKey: false,
     } as KeyboardEvent;

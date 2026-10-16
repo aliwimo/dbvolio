@@ -121,13 +121,16 @@
   flex-shrink: 0;
 }
 
+.header-compact .header-project-wrap {
+  max-width: min(260px, 36vw);
+}
+
 .header-compact .header-project {
   font-size: 12px;
   font-weight: 500;
   color: var(--text);
-  max-width: 180px;
   min-width: 0;
-  flex-shrink: 1;
+  flex: 1;
 }
 
 .header-entry-select {
@@ -178,7 +181,7 @@
 }
 
 @media (max-width: 760px) {
-  .header-project,
+  .header-project-wrap,
   .header-brand-sep {
     display: none;
   }

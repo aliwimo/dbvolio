@@ -10,6 +10,7 @@ import { TableEditModal } from "../components/inspector/TableEditModal";
 import { Header } from "../components/layout/Header";
 import { SplitPane } from "../components/layout/SplitPane";
 import { StatusBar } from "../components/layout/StatusBar";
+import { QuickPickModal } from "../components/quick-pick/QuickPickModal";
 import { AppSettings } from "../components/settings/AppSettings";
 import { useRevealTableInEditor } from "../features/editor/useRevealTableInEditor";
 import { useDebouncedParse } from "../features/parsing/useDebouncedParse";
@@ -211,6 +212,7 @@ export function Workspace() {
       </div>
       <StatusBar />
       <AppSettings />
+      <QuickPickModal />
       <TableEditModal />
       <TableCreateModal />
     </div>

@@ -1,4 +1,4 @@
-import { Moon, Save, Settings, Sun } from "lucide-react";
+import { Moon, Save, Settings, Sun, X } from "lucide-react";
 import { ExportMenu } from "./ExportMenu";
 import { OpenProjectMenu } from "./OpenProjectMenu";
 import { useEditorStore } from "../../stores/editor-store";
@@ -12,6 +12,9 @@ export function Header() {
   const toggleTheme = useUiStore((s) => s.toggleTheme);
   const openSettings = useUiStore((s) => s.openSettings);
   const projectName = useProjectStore((s) => s.projectName);
+  const projectScope = useProjectStore((s) => s.projectScope);
+  const closeProject = useProjectStore((s) => s.closeProject);
+  const closeShortcut = useCommandKeybindingLabel("project.close");
   const saveActive = useEditorStore((s) => s.saveActive);
   const activePath = useEditorStore((s) => s.activePath);
   const activeTab = useEditorStore((s) =>
@@ -20,13 +23,36 @@ export function Header() {
   const saveShortcut = useCommandKeybindingLabel("file.save");
   const settingsShortcut = useCommandKeybindingLabel("settings.open");
 
+  const closeLabel =
+    projectScope === "file" ? "Close file" : "Close folder";
+  const closeTitle = closeShortcut
+    ? `${closeLabel} (${closeShortcut})`
+    : closeLabel;
+
   return (
     <header className="header header-compact">
       <div className="header-brand">
         {projectName && (
-          <span className="header-project" title={projectName}>
-            {projectName}
-          </span>
+          <div className="header-project-wrap">
+            <span className="header-project" title={projectName}>
+              {projectName}
+            </span>
+            <button
+              type="button"
+              className="btn-icon header-project-close"
+              aria-label={closeLabel}
+              title={closeTitle}
+              onClick={() =>
+                void closeProject().catch((err: unknown) => {
+                  const message =
+                    err instanceof Error ? err.message : String(err);
+                  window.alert(message);
+                })
+              }
+            >
+              <X size={14} />
+            </button>
+          </div>
         )}
       </div>
 

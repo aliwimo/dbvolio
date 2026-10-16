@@ -1,5 +1,6 @@
 import { useEditorStore } from "../../stores/editor-store";
 import { useProjectStore } from "../../stores/project-store";
+import { useQuickPickStore } from "../../stores/quick-pick-store";
 import { useUiStore } from "../../stores/ui-store";
 import type { CommandId } from "./types";
 
@@ -10,6 +11,9 @@ export function executeCommand(commandId: CommandId): void {
       return;
     case "project.openFile":
       void useProjectStore.getState().openDbmlFileDialog();
+      return;
+    case "project.openRecent":
+      useQuickPickStore.getState().open("recent");
       return;
     case "project.close":
       void useProjectStore.getState().closeProject();
@@ -24,6 +28,9 @@ export function executeCommand(commandId: CommandId): void {
       }
       return;
     }
+    case "workbench.quickOpen":
+      useQuickPickStore.getState().open("files");
+      return;
     case "settings.open":
       useUiStore.getState().openSettings();
       return;
