@@ -2,7 +2,8 @@
 name = "dbvolio"
 version = "0.1.0"
 description = "A Tauri App"
-authors = ["you"]
+authors = ["Mohamed Aliwi"]
+license = "Apache-2.0"
 edition = "2024"
 rust-version = "1.85"
 

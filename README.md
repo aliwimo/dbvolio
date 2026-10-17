@@ -177,6 +177,10 @@ Copy examples from [`tests/fixtures/`](tests/fixtures/)—including multi-file l
 | ⌘/Ctrl+Shift+I | Toggle properties panel |
 | ⌘/Ctrl+Shift+T | Toggle color theme |
 
+## License
+
+Licensed under the [Apache License, Version 2.0](LICENSE).
+
 ## Status
 
 Early preview (**0.1.0**). APIs, settings, and packaging may change. Feedback and issues welcome as the workspace evolves.
