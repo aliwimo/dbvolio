@@ -79,9 +79,59 @@ npm run tauri dev
 npm run build          # frontend production build
 npm run test:run       # Vitest (parser, diagram adapters, stores)
 cd src-tauri && cargo test   # Rust path validation
-npm run tauri build    # packaged desktop app
 npm run icons          # sync app icons from src/assets
 ```
+
+## Building
+
+### Local build
+
+Use the same [Tauri prerequisites](https://tauri.app/start/prerequisites/) as development, then produce installable bundles on your machine:
+
+```bash
+npm install
+npm run tauri build
+```
+
+Tauri runs `npm run build` for the frontend automatically (`beforeBuildCommand` in `src-tauri/tauri.conf.json`). Bundles are written under `src-tauri/target/release/bundle/`, for example:
+
+| Platform | Typical outputs |
+|----------|-------------------|
+| macOS | `.app` in `bundle/macos/`, `.dmg` in `bundle/dmg/` |
+| Windows | `.msi` and NSIS `.exe` in `bundle/msi/` and `bundle/nsis/` |
+| Linux | `.deb` and `.AppImage` in `bundle/deb/` and `bundle/appimage/` |
+
+To build only specific bundle types (optional):
+
+```bash
+npm run tauri build -- --bundles dmg          # macOS
+npm run tauri build -- --bundles msi,nsis     # Windows
+npm run tauri build -- --bundles deb,appimage # Linux
+```
+
+### GitHub Releases
+
+Tagged releases (`v*`) are built in CI and attached to [GitHub Releases](https://github.com/aliwimo/dbvolio/releases): macOS Apple Silicon `.dmg`, Windows `.msi`/`.exe`, and Linux `.deb`/AppImage.
+
+### macOS: unsigned, not notarized downloads
+
+Release **`.dmg` files are not code-signed or notarized**. This project is not enrolled in the [Apple Developer Program](https://developer.apple.com/programs/), so Gatekeeper treats downloaded builds as untrusted. You may see “DB-Volio cannot be opened” or a quarantine warning after downloading the release.
+
+You can either:
+
+1. **Build locally** (recommended if you want a binary that never left your machine)—follow [Local build](#local-build) above and run the `.app` from `src-tauri/target/release/bundle/macos/`, or install from your own `.dmg`.
+
+2. **Use a release DMG** and clear Apple’s download quarantine (adjust paths to match your download and install location):
+
+   ```bash
+   # After downloading the .dmg
+   xattr -d com.apple.quarantine ~/Downloads/DB-Volio_*.dmg
+
+   # After copying DB-Volio.app to Applications (if macOS still blocks launch)
+   xattr -dr com.apple.quarantine /Applications/DB-Volio.app
+   ```
+
+   You may still need to **right-click → Open** the app once, or use **System Settings → Privacy & Security → Open Anyway** for the first launch. CI release DMGs target **Apple Silicon (M1+)**; Intel Macs should build from source locally.
 
 ## Project layout convention
 
