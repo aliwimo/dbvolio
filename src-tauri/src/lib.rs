@@ -9,7 +9,9 @@ const _: &str = include_str!(concat!(env!("OUT_DIR"), "/app-icon-stamp"));
 use commands::open::{finish_startup_open_queue, ingest_opened_path, PendingDbmlOpens};
 use models::project::ProjectState;
 use std::sync::Mutex;
-use tauri::{Manager, RunEvent};
+use tauri::Manager;
+#[cfg(target_os = "macos")]
+use tauri::RunEvent;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -44,6 +46,7 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
+            #[cfg(target_os = "macos")]
             if let RunEvent::Opened { urls } = event {
                 for url in urls {
                     if url.scheme() == "file" {
