@@ -1,9 +1,5 @@
-# macOS Apple Silicon (M1+) .dmg release only.
-#
-# Triggers:
-#   - Actions → release → Run workflow
-#   - Push tag v* (after bumping version in package.json, tauri.conf.json, Cargo.toml)
-name: release
+# macOS Apple Silicon (M1+) .dmg → GitHub Release (tag v__VERSION__).
+name: release-macos
 
 on:
   workflow_dispatch:
@@ -12,11 +8,11 @@ on:
       - 'v*'
 
 concurrency:
-  group: release-${{ github.workflow }}-${{ github.ref }}
+  group: release-macos-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  publish-macos-dmg:
+  publish:
     name: macOS DMG (Apple Silicon)
     runs-on: macos-latest
     permissions:
@@ -48,12 +44,9 @@ jobs:
           tagName: v__VERSION__
           releaseName: 'DB-Volio v__VERSION__'
           releaseBody: |
-            macOS **Apple Silicon (M1+)** `.dmg` for DB-Volio — local-first DBML editor with a live ER diagram.
+            **macOS (Apple Silicon, M1+):** `.dmg` installer.
 
-            See [README](https://github.com/aliwimo/dbvolio#readme) for features and keyboard shortcuts.
-
-            **Early preview** — APIs and packaging may change.
+            Local-first DBML editor — see [README](https://github.com/aliwimo/dbvolio#readme).
           generateReleaseNotes: true
           prerelease: true
-          # Native arm64 on macos-latest; DMG only (no Intel / Linux / Windows).
           args: '--bundles dmg'
