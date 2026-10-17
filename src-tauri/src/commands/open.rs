@@ -6,7 +6,9 @@ use std::sync::{LazyLock, Mutex};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 /// macOS can deliver `RunEvent::Opened` before `setup()` runs; buffer paths until then.
+#[cfg(target_os = "macos")]
 static STARTUP_HOOKS_COMPLETE: AtomicBool = AtomicBool::new(false);
+#[cfg(target_os = "macos")]
 static PRE_SETUP_OPEN_PATHS: LazyLock<Mutex<Vec<PathBuf>>> = LazyLock::new(|| Mutex::new(Vec::new()));
 
 #[derive(Default)]
@@ -44,6 +46,7 @@ impl PendingDbmlOpens {
         Ok(())
     }
 
+    #[cfg(target_os = "macos")]
     fn drain_pre_setup_paths(&self, app: &AppHandle) {
         let paths = match PRE_SETUP_OPEN_PATHS.lock() {
             Ok(mut guard) => std::mem::take(&mut *guard),
@@ -71,6 +74,7 @@ fn path_from_startup_arg(arg: &std::ffi::OsStr) -> Option<PathBuf> {
     Some(PathBuf::from(text))
 }
 
+#[cfg(target_os = "macos")]
 pub fn ingest_opened_path(app: &AppHandle, path: PathBuf) {
     if STARTUP_HOOKS_COMPLETE.load(Ordering::SeqCst) {
         if let Some(pending) = app.try_state::<PendingDbmlOpens>() {
@@ -86,6 +90,7 @@ pub fn ingest_opened_path(app: &AppHandle, path: PathBuf) {
 }
 
 pub fn finish_startup_open_queue(app: &AppHandle, pending: &PendingDbmlOpens) {
+    #[cfg(target_os = "macos")]
     pending.drain_pre_setup_paths(app);
     for arg in std::env::args_os().skip(1) {
         if let Some(path) = path_from_startup_arg(&arg) {
@@ -94,10 +99,13 @@ pub fn finish_startup_open_queue(app: &AppHandle, pending: &PendingDbmlOpens) {
             }
         }
     }
-    // macOS may still deliver `Opened` while startup args are processed.
-    pending.drain_pre_setup_paths(app);
-    STARTUP_HOOKS_COMPLETE.store(true, Ordering::SeqCst);
-    pending.drain_pre_setup_paths(app);
+    #[cfg(target_os = "macos")]
+    {
+        // macOS may still deliver `Opened` while startup args are processed.
+        pending.drain_pre_setup_paths(app);
+        STARTUP_HOOKS_COMPLETE.store(true, Ordering::SeqCst);
+        pending.drain_pre_setup_paths(app);
+    }
 }
 
 #[tauri::command]

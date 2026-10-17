@@ -6,7 +6,9 @@ mod services;
 // Rebuild when bundle icons change (see build.rs).
 const _: &str = include_str!(concat!(env!("OUT_DIR"), "/app-icon-stamp"));
 
-use commands::open::{finish_startup_open_queue, ingest_opened_path, PendingDbmlOpens};
+use commands::open::{finish_startup_open_queue, PendingDbmlOpens};
+#[cfg(target_os = "macos")]
+use commands::open::ingest_opened_path;
 use models::project::ProjectState;
 use std::sync::Mutex;
 use tauri::Manager;
