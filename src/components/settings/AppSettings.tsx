@@ -97,20 +97,11 @@ export function AppSettings() {
   }
 
   return (
-    <div
-      className="settings-overlay"
-      role="presentation"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) {
-          closeSettings();
-        }
-      }}
-    >
+    <div className="settings-overlay">
       <div
         ref={dialogRef}
         className={`settings-dialog ${section === "keyboard" ? "settings-dialog-wide" : ""}`}
         role="dialog"
-        aria-modal="true"
         aria-labelledby="settings-title"
       >
         <header className="settings-header">
