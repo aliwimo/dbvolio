@@ -470,7 +470,7 @@
   flex-shrink: 0;
   height: var(--panel-topbar-height);
   background: var(--bg-panel);
-  padding: 0 8px;
+  padding: 0 10px;
   display: flex;
   align-items: center;
   box-sizing: border-box;
@@ -483,7 +483,8 @@
 .explorer-header-row {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  width: 100%;
 }
 
 .explorer-header-top {
@@ -502,7 +503,21 @@
 
 .explorer-actions {
   display: flex;
+  align-items: center;
   gap: 2px;
+  flex-shrink: 0;
+}
+
+.explorer-actions .btn-icon-xs {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: var(--text-muted);
+}
+
+.explorer-actions .btn-icon-xs:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
 }
 
 .explorer-project-name {
@@ -522,16 +537,21 @@
   flex: 1;
   min-width: 0;
   padding: 0 8px;
-  height: 28px;
-  border: 1px solid transparent;
+  height: 26px;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--bg-subtle);
+  background: var(--bg-panel);
+  transition: border-color 0.12s ease, background-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.explorer-search:hover {
+  border-color: var(--border-strong);
 }
 
 .explorer-search:focus-within {
-  border-color: var(--border-strong);
+  border-color: var(--accent);
   background: var(--bg-panel);
-  box-shadow: none;
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .explorer-search-icon {
@@ -547,10 +567,12 @@
   font-size: 12px;
   color: var(--text);
   outline: none;
+  line-height: 1;
 }
 
 .explorer-search input::placeholder {
   color: var(--text-muted);
+  opacity: 0.8;
 }
 
 .explorer-search-clear {
@@ -562,6 +584,8 @@
   color: var(--text-muted);
   cursor: pointer;
   padding: 0;
+  width: 16px;
+  height: 16px;
   border-radius: 4px;
 }
 

@@ -468,17 +468,24 @@
   flex: 1;
   min-width: 0;
   height: 26px;
-  padding: 0 28px;
+  padding: 0 26px;
   font-size: 12px;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--bg-subtle);
+  background: var(--bg-panel);
+  color: var(--text);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.diagram-search.diagram-search-compact input:hover {
+  border-color: var(--border-strong);
 }
 
 .diagram-search.diagram-search-compact input:focus {
-  border-color: var(--border-strong);
+  border-color: var(--accent);
   background: var(--bg-panel);
   outline: none;
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .diagram-search-focus {
