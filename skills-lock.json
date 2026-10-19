@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "clean-design": {
+      "source": "anubhavg-icpl/vibe",
+      "sourceType": "github",
+      "skillPath": "skills/clean-design/SKILL.md",
+      "computedHash": "b31e30752d7a0cbf09db38782e74e9b0726e6dbff7bcf8e3f7b1fc268daa354f"
+    },
+    "solid-js-best-practices": {
+      "source": "richardcarls/solid-js-best-practices",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "6a17298016b4fac628544a25a1d1bb2e93d4667516385ecc372fe471a64e117d"
+    }
+  }
+}
