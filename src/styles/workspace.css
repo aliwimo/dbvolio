@@ -468,11 +468,12 @@
 
 .explorer-header {
   flex-shrink: 0;
+  height: var(--panel-topbar-height);
   background: var(--bg-panel);
-  padding: 8px;
+  padding: 0 8px;
   display: flex;
-  flex-direction: column;
-  gap: 0;
+  align-items: center;
+  box-sizing: border-box;
 }
 
 .explorer-header:not(:empty) {
@@ -770,6 +771,9 @@
 
 .editor-tabs {
   display: flex;
+  align-items: stretch;
+  height: var(--panel-topbar-height);
+  box-sizing: border-box;
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
   flex-shrink: 0;
@@ -779,13 +783,15 @@
 
 .editor-tab {
   position: relative;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 22px 7px 8px;
+  height: 100%;
+  padding: 0 22px 0 10px;
   border: none;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
+  box-sizing: border-box;
   cursor: pointer;
   white-space: nowrap;
   font-size: 12px;

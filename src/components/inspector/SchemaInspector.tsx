@@ -57,29 +57,39 @@ export function SchemaInspector() {
 
   return (
     <div className="panel panel-fill inspector-panel">
-      {!table && (
-        <div className="inspector-body inspector-empty">
-          <div className="inspector-empty-state">
-            <Table2 size={24} className="inspector-empty-icon" aria-hidden />
-            <p className="inspector-empty-title">No table selected</p>
-            <p className="empty-hint">
-              Select a table in the diagram to inspect its fields, relationships,
-              and indexes.
-            </p>
-            <button
-              type="button"
-              className="btn btn-sm btn-primary"
-              style={{ marginTop: 8 }}
-              onClick={openTableCreate}
-            >
-              <Plus size={13} />
-              New table
-            </button>
+      {!table ? (
+        <>
+          <div className="inspector-header">
+            <div className="inspector-header-top">
+              <div className="inspector-title-group">
+                <Table2 size={14} className="inspector-panel-icon" aria-hidden />
+                <span className="inspector-panel-title">Properties</span>
+              </div>
+              <div className="inspector-header-actions">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost inspector-new-btn"
+                  onClick={openTableCreate}
+                  title="Create new table"
+                >
+                  <Plus size={13} aria-hidden />
+                  New table
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
-
-      {table && (
+          <div className="inspector-body inspector-empty">
+            <div className="inspector-empty-state">
+              <Table2 size={24} className="inspector-empty-icon" aria-hidden />
+              <p className="inspector-empty-title">No table selected</p>
+              <p className="empty-hint">
+                Select a table in the diagram to inspect its fields, relationships,
+                and indexes.
+              </p>
+            </div>
+          </div>
+        </>
+      ) : (
         <TableInspectorView
           table={table}
           model={model}
@@ -166,27 +176,27 @@ function TableInspectorView({
             </button>
           </div>
         </div>
-
-        <div className="inspector-meta-pills">
-          <span className="inspector-meta-pill">
-            {table.columns.length} {table.columns.length === 1 ? "field" : "fields"}
-          </span>
-          {totalRelations > 0 && (
-            <span className="inspector-meta-pill">
-              {totalRelations} {totalRelations === 1 ? "relation" : "relations"}
-            </span>
-          )}
-          {table.indexes.length > 0 && (
-            <span className="inspector-meta-pill">
-              {table.indexes.length} {table.indexes.length === 1 ? "index" : "indexes"}
-            </span>
-          )}
-        </div>
-
-        {table.note && <p className="inspector-table-note">{table.note}</p>}
       </div>
 
       <div className="inspector-body inspector-body-scroll">
+        <div className="inspector-overview-section">
+          <div className="inspector-meta-pills">
+            <span className="inspector-meta-pill">
+              {table.columns.length} {table.columns.length === 1 ? "field" : "fields"}
+            </span>
+            {totalRelations > 0 && (
+              <span className="inspector-meta-pill">
+                {totalRelations} {totalRelations === 1 ? "relation" : "relations"}
+              </span>
+            )}
+            {table.indexes.length > 0 && (
+              <span className="inspector-meta-pill">
+                {table.indexes.length} {table.indexes.length === 1 ? "index" : "indexes"}
+              </span>
+            )}
+          </div>
+          {table.note && <p className="inspector-table-note">{table.note}</p>}
+        </div>
         <div className="inspector-section">
           <div className="inspector-section-header">
             <h4 className="inspector-section-title">
