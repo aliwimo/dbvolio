@@ -1,3 +1,4 @@
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { listen } from "@tauri-apps/api/event";
 import { isTauri } from "@tauri-apps/api/core";
 import { useEffect } from "react";
@@ -20,8 +21,14 @@ export function useNativeAppMenu(): void {
     }
 
     let unlisten: (() => void) | undefined;
+    const currentWindow = getCurrentWebviewWindow();
 
-    void listen<string>("app-command", (event) => {
+    void listen<string>("app-command", async (event) => {
+      // Only execute menu command in the focused window
+      const isFocused = await currentWindow.isFocused().catch(() => false);
+      if (!isFocused) {
+        return;
+      }
       const commandId = event.payload;
       if (MENU_COMMANDS.has(commandId as CommandId)) {
         executeCommand(commandId as CommandId);
