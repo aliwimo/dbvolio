@@ -1,4 +1,4 @@
-import { listen } from "@tauri-apps/api/event";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { isTauri } from "@tauri-apps/api/core";
 import { useEffect } from "react";
 import { normalizePendingOpens } from "./normalize-pending-opens";
@@ -27,7 +27,8 @@ export function useExternalDbmlOpen(): void {
     let unlisten: (() => void) | undefined;
 
     void (async () => {
-      unlisten = await listen<DbmlOpenPayload>("dbml-open", (event) => {
+      const currentWindow = getCurrentWebviewWindow();
+      unlisten = await currentWindow.listen<DbmlOpenPayload>("dbml-open", (event) => {
         void openPayload(event.payload).catch((err: unknown) => {
           console.error(err);
         });

@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "DB-Volio",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "identifier": "com.codevolio.dbvolio",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -30,7 +30,9 @@
     "longDescription": "DB-Volio is a desktop workspace for Database Markup Language (DBML). Open a folder or single .dbml file, edit with syntax highlighting, keep an interactive diagram in sync, and export SQL or images—all without cloud upload.",
     "fileAssociations": [
       {
-        "ext": ["dbml"],
+        "ext": [
+          "dbml"
+        ],
         "name": "DBML Schema",
         "description": "Database Markup Language file",
         "role": "Editor",

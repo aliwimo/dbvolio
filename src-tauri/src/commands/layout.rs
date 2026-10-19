@@ -26,17 +26,19 @@ fn read_layout_file(root: &std::path::Path) -> Result<Option<String>, String> {
 
 #[tauri::command]
 pub fn read_layout_metadata(
+    window: tauri::Window,
     state: State<'_, Mutex<ProjectState>>,
 ) -> Result<Option<String>, String> {
-    with_root(&state, |root| read_layout_file(root))
+    with_root(&window, &state, |root| read_layout_file(root))
 }
 
 #[tauri::command]
 pub fn write_layout_metadata(
     content: String,
+    window: tauri::Window,
     state: State<'_, Mutex<ProjectState>>,
 ) -> Result<(), String> {
-    with_root(&state, |root| {
+    with_root(&window, &state, |root| {
         let path = resolve_path(root, LAYOUT_RELATIVE).map_err(|e| e.message())?;
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)

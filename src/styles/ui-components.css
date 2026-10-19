@@ -434,7 +434,9 @@
   align-items: center;
   flex-wrap: nowrap;
   gap: 4px;
-  padding: 6px 8px;
+  height: var(--panel-topbar-height);
+  padding: 0 8px;
+  box-sizing: border-box;
   background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
@@ -465,18 +467,25 @@
   width: 100%;
   flex: 1;
   min-width: 0;
-  height: 28px;
-  padding: 0 28px;
+  height: 26px;
+  padding: 0 26px;
   font-size: 12px;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--bg-subtle);
+  background: var(--bg-panel);
+  color: var(--text);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.diagram-search.diagram-search-compact input:hover {
+  border-color: var(--border-strong);
 }
 
 .diagram-search.diagram-search-compact input:focus {
-  border-color: var(--border-strong);
+  border-color: var(--accent);
   background: var(--bg-panel);
   outline: none;
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .diagram-search-focus {
@@ -779,33 +788,47 @@
 
 .inspector-header {
   flex-shrink: 0;
-  padding: 12px 14px;
+  height: var(--panel-topbar-height);
+  padding: 0 10px;
+  box-sizing: border-box;
   border-bottom: 1px solid var(--border);
   background: var(--bg-panel);
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
 }
 
 .inspector-header-top {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
   min-width: 0;
+  width: 100%;
 }
 
 .inspector-title-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
   flex: 1;
 }
 
+.inspector-panel-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.inspector-panel-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+}
+
 .inspector-header-color-dot {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   border-radius: 3px;
   flex-shrink: 0;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
@@ -813,26 +836,26 @@
 
 .inspector-title-text {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 5px;
   min-width: 0;
-  flex-wrap: wrap;
 }
 
 .inspector-schema-badge {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   color: var(--text-muted);
   background: var(--bg-subtle);
-  padding: 1px 5px;
+  padding: 1px 4px;
   border-radius: 4px;
+  flex-shrink: 0;
 }
 
 .inspector-header .inspector-table-name {
   margin: 0;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -846,10 +869,21 @@
   flex-shrink: 0;
 }
 
-.inspector-edit-btn {
-  height: 26px;
-  padding: 0 9px;
-  gap: 5px;
+.inspector-edit-btn,
+.inspector-new-btn {
+  height: 24px;
+  padding: 0 8px;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.inspector-overview-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
 }
 
 .inspector-meta-pills {

@@ -1,12 +1,13 @@
 use crate::models::project::ProjectState;
-use crate::services::path_guard::{require_root, PathGuardError};
+use crate::services::path_guard::{PathGuardError, require_root_opt};
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::State;
+use tauri::{State, Window};
 
 #[tauri::command]
 pub fn set_project_root(
     path: String,
+    window: Window,
     state: State<'_, Mutex<ProjectState>>,
 ) -> Result<(), String> {
     let path_buf = PathBuf::from(&path);
@@ -19,24 +20,30 @@ pub fn set_project_root(
     state
         .lock()
         .map_err(|_| "Project state lock poisoned".to_string())?
-        .set_root(canonical);
+        .set_root(window.label().to_string(), canonical);
     Ok(())
 }
 
 #[tauri::command]
-pub fn get_project_root(state: State<'_, Mutex<ProjectState>>) -> Result<Option<String>, String> {
+pub fn get_project_root(
+    window: Window,
+    state: State<'_, Mutex<ProjectState>>,
+) -> Result<Option<String>, String> {
     let state = state
         .lock()
         .map_err(|_| "Project state lock poisoned".to_string())?;
-    Ok(state.root().map(|p| p.to_string_lossy().into_owned()))
+    Ok(state.root(window.label()).map(|p| p.to_string_lossy().into_owned()))
 }
 
 #[tauri::command]
-pub fn clear_project(state: State<'_, Mutex<ProjectState>>) -> Result<(), String> {
+pub fn clear_project(
+    window: Window,
+    state: State<'_, Mutex<ProjectState>>,
+) -> Result<(), String> {
     state
         .lock()
         .map_err(|_| "Project state lock poisoned".to_string())?
-        .clear();
+        .clear(window.label());
     Ok(())
 }
 
@@ -45,6 +52,7 @@ pub fn map_guard_err(err: PathGuardError) -> String {
 }
 
 pub fn with_root<F, T>(
+    window: &Window,
     state: &State<'_, Mutex<ProjectState>>,
     f: F,
 ) -> Result<T, String>
@@ -54,6 +62,8 @@ where
     let guard = state
         .lock()
         .map_err(|_| "Project state lock poisoned".to_string())?;
-    let root = require_root(&guard).map_err(map_guard_err)?;
+    let root_opt = guard.root(window.label());
+    let root = require_root_opt(root_opt).map_err(map_guard_err)?;
     f(root)
 }
+

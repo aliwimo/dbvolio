@@ -65,11 +65,14 @@ fn collect_files(root: &Path, dir: &Path, entries: &mut Vec<ProjectFileEntry>) -
     Ok(())
 }
 
+use tauri::Window;
+
 #[tauri::command]
 pub fn list_project_files(
+    window: Window,
     state: State<'_, Mutex<ProjectState>>,
 ) -> Result<Vec<ProjectFileEntry>, String> {
-    with_root(&state, |root| {
+    with_root(&window, &state, |root| {
         let mut entries = Vec::new();
         collect_files(root, root, &mut entries)?;
         entries.sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
@@ -80,9 +83,10 @@ pub fn list_project_files(
 #[tauri::command]
 pub fn read_project_file(
     relative_path: String,
+    window: Window,
     state: State<'_, Mutex<ProjectState>>,
 ) -> Result<FileContent, String> {
-    with_root(&state, |root| {
+    with_root(&window, &state, |root| {
         let path = resolve_path(root, &relative_path).map_err(|e| e.message())?;
         if !path.is_file() {
             return Err("Path is not a file".into());
@@ -100,9 +104,10 @@ pub fn write_project_file(
     relative_path: String,
     content: String,
     expected_modified_ms: Option<u64>,
+    window: Window,
     state: State<'_, Mutex<ProjectState>>,
 ) -> Result<FileContent, String> {
-    with_root(&state, |root| {
+    with_root(&window, &state, |root| {
         let path = resolve_path(root, &relative_path).map_err(|e| e.message())?;
         if path.exists() {
             if let Some(expected) = expected_modified_ms {
@@ -134,9 +139,10 @@ pub fn write_project_file(
 pub fn create_project_file(
     relative_path: String,
     content: Option<String>,
+    window: Window,
     state: State<'_, Mutex<ProjectState>>,
 ) -> Result<FileContent, String> {
-    with_root(&state, |root| {
+    with_root(&window, &state, |root| {
         let path = resolve_path(root, &relative_path).map_err(|e| e.message())?;
         if path.exists() {
             return Err("File already exists".into());
@@ -161,9 +167,10 @@ pub fn create_project_file(
 pub fn rename_project_file(
     from_relative: String,
     to_relative: String,
+    window: Window,
     state: State<'_, Mutex<ProjectState>>,
 ) -> Result<(), String> {
-    with_root(&state, |root| {
+    with_root(&window, &state, |root| {
         let from = resolve_path(root, &from_relative).map_err(|e| e.message())?;
         let to = resolve_path(root, &to_relative).map_err(|e| e.message())?;
         if !from.is_file() {
@@ -184,9 +191,10 @@ pub fn rename_project_file(
 #[tauri::command]
 pub fn delete_project_file(
     relative_path: String,
+    window: Window,
     state: State<'_, Mutex<ProjectState>>,
 ) -> Result<(), String> {
-    with_root(&state, |root| {
+    with_root(&window, &state, |root| {
         let path = resolve_path(root, &relative_path).map_err(|e| e.message())?;
         if !path.is_file() {
             return Err("Path is not a file".into());
@@ -195,3 +203,4 @@ pub fn delete_project_file(
         Ok(())
     })
 }
+

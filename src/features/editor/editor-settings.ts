@@ -1,3 +1,5 @@
+import { editor } from "monaco-editor";
+
 export type EditorWordWrap = "on" | "off" | "bounded";
 
 export type EditorLineNumbers = "on" | "off" | "relative";
@@ -36,9 +38,23 @@ export interface EditorSettings {
   insertSpaces: boolean;
   renderWhitespace: EditorRenderWhitespace;
   folding: boolean;
+  foldingHighlight: boolean;
   renderLineHighlight: EditorRenderLineHighlight;
+  renderLineHighlightOnlyWhenFocus: boolean;
   cursorBlinking: EditorCursorBlinking;
+  cursorSmoothCaretAnimation: boolean;
   bracketPairColorization: boolean;
+  fontLigatures: boolean;
+  smoothScrolling: boolean;
+  overviewRulerBorder: boolean;
+  hideCursorInOverviewRuler: boolean;
+  contextmenu: boolean;
+  glyphMargin: boolean;
+  lightbulb: boolean;
+  occurrencesHighlight: boolean;
+  selectionHighlight: boolean;
+  stickyScroll: boolean;
+  indentationGuides: boolean;
 }
 
 export const EDITOR_FONT_FAMILY_OPTIONS: {
@@ -69,7 +85,7 @@ export function resolveEditorFontFamily(
 export const editorSettingsDefaults: EditorSettings = {
   fontSize: 13,
   fontFamily: "system",
-  lineHeight: 0,
+  lineHeight: 22,
   wordWrap: "on",
   minimap: false,
   lineNumbers: "on",
@@ -77,9 +93,23 @@ export const editorSettingsDefaults: EditorSettings = {
   insertSpaces: true,
   renderWhitespace: "selection",
   folding: true,
+  foldingHighlight: false,
   renderLineHighlight: "line",
+  renderLineHighlightOnlyWhenFocus: true,
   cursorBlinking: "blink",
+  cursorSmoothCaretAnimation: true,
   bracketPairColorization: true,
+  fontLigatures: true,
+  smoothScrolling: true,
+  overviewRulerBorder: false,
+  hideCursorInOverviewRuler: true,
+  contextmenu: false,
+  glyphMargin: false,
+  lightbulb: false,
+  occurrencesHighlight: false,
+  selectionHighlight: true,
+  stickyScroll: false,
+  indentationGuides: false,
 };
 
 function isOneOf<T extends string>(
@@ -168,6 +198,52 @@ export function sanitizeEditorSettings(
   if (partial.bracketPairColorization !== undefined) {
     next.bracketPairColorization = Boolean(partial.bracketPairColorization);
   }
+  if (partial.foldingHighlight !== undefined) {
+    next.foldingHighlight = Boolean(partial.foldingHighlight);
+  }
+  if (partial.renderLineHighlightOnlyWhenFocus !== undefined) {
+    next.renderLineHighlightOnlyWhenFocus = Boolean(
+      partial.renderLineHighlightOnlyWhenFocus,
+    );
+  }
+  if (partial.cursorSmoothCaretAnimation !== undefined) {
+    next.cursorSmoothCaretAnimation = Boolean(
+      partial.cursorSmoothCaretAnimation,
+    );
+  }
+  if (partial.fontLigatures !== undefined) {
+    next.fontLigatures = Boolean(partial.fontLigatures);
+  }
+  if (partial.smoothScrolling !== undefined) {
+    next.smoothScrolling = Boolean(partial.smoothScrolling);
+  }
+  if (partial.overviewRulerBorder !== undefined) {
+    next.overviewRulerBorder = Boolean(partial.overviewRulerBorder);
+  }
+  if (partial.hideCursorInOverviewRuler !== undefined) {
+    next.hideCursorInOverviewRuler = Boolean(partial.hideCursorInOverviewRuler);
+  }
+  if (partial.contextmenu !== undefined) {
+    next.contextmenu = Boolean(partial.contextmenu);
+  }
+  if (partial.glyphMargin !== undefined) {
+    next.glyphMargin = Boolean(partial.glyphMargin);
+  }
+  if (partial.lightbulb !== undefined) {
+    next.lightbulb = Boolean(partial.lightbulb);
+  }
+  if (partial.occurrencesHighlight !== undefined) {
+    next.occurrencesHighlight = Boolean(partial.occurrencesHighlight);
+  }
+  if (partial.selectionHighlight !== undefined) {
+    next.selectionHighlight = Boolean(partial.selectionHighlight);
+  }
+  if (partial.stickyScroll !== undefined) {
+    next.stickyScroll = Boolean(partial.stickyScroll);
+  }
+  if (partial.indentationGuides !== undefined) {
+    next.indentationGuides = Boolean(partial.indentationGuides);
+  }
 
   return next;
 }
@@ -179,26 +255,70 @@ export function mergeEditorSettings(
   return { ...base, ...sanitizeEditorSettings(partial) };
 }
 
-export function buildMonacoEditorOptions(settings: EditorSettings) {
+export function buildMonacoEditorOptions(
+  settings: EditorSettings,
+): editor.IStandaloneEditorConstructionOptions {
   const fontFamily = resolveEditorFontFamily(settings.fontFamily);
 
   return {
     minimap: { enabled: settings.minimap },
     fontSize: settings.fontSize,
     ...(fontFamily ? { fontFamily } : {}),
-    lineHeight: settings.lineHeight,
+    lineHeight: settings.lineHeight || 22,
     wordWrap: settings.wordWrap,
     lineNumbers: settings.lineNumbers,
     tabSize: settings.tabSize,
     insertSpaces: settings.insertSpaces,
     renderWhitespace: settings.renderWhitespace,
     folding: settings.folding,
+    foldingHighlight: settings.foldingHighlight,
     renderLineHighlight: settings.renderLineHighlight,
+    renderLineHighlightOnlyWhenFocus: settings.renderLineHighlightOnlyWhenFocus,
     cursorBlinking: settings.cursorBlinking,
+    cursorSmoothCaretAnimation: settings.cursorSmoothCaretAnimation
+      ? ("on" as const)
+      : ("off" as const),
     bracketPairColorization: {
       enabled: settings.bracketPairColorization,
     },
     scrollBeyondLastLine: false,
     automaticLayout: true,
+    padding: { top: 14, bottom: 14 },
+    smoothScrolling: settings.smoothScrolling,
+    fontLigatures: settings.fontLigatures,
+    overviewRulerBorder: settings.overviewRulerBorder,
+    hideCursorInOverviewRuler: settings.hideCursorInOverviewRuler,
+    matchBrackets: "near" as const,
+    contextmenu: settings.contextmenu,
+    glyphMargin: settings.glyphMargin,
+    lineNumbersMinChars: 3,
+    scrollbar: {
+      verticalScrollbarSize: 8,
+      horizontalScrollbarSize: 8,
+      useShadows: false,
+      alwaysConsumeMouseWheel: false,
+    },
+    guides: {
+      indentation: settings.indentationGuides,
+      bracketPairs: false,
+      highlightActiveBracketPair: false,
+    },
+    lightbulb: {
+      enabled: settings.lightbulb
+        ? editor.ShowLightbulbIconMode.OnCode
+        : editor.ShowLightbulbIconMode.Off,
+    },
+    quickSuggestions: {
+      other: true,
+      comments: false,
+      strings: false,
+    },
+    selectionHighlight: settings.selectionHighlight,
+    occurrencesHighlight: settings.occurrencesHighlight
+      ? ("singleFile" as const)
+      : ("off" as const),
+    stickyScroll: {
+      enabled: settings.stickyScroll,
+    },
   };
 }

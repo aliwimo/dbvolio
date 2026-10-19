@@ -97,20 +97,11 @@ export function AppSettings() {
   }
 
   return (
-    <div
-      className="settings-overlay"
-      role="presentation"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) {
-          closeSettings();
-        }
-      }}
-    >
+    <div className="settings-overlay">
       <div
         ref={dialogRef}
         className={`settings-dialog ${section === "keyboard" ? "settings-dialog-wide" : ""}`}
         role="dialog"
-        aria-modal="true"
         aria-labelledby="settings-title"
       >
         <header className="settings-header">
@@ -257,9 +248,23 @@ function EditorSection() {
       insertSpaces: s.insertSpaces,
       renderWhitespace: s.renderWhitespace,
       folding: s.folding,
+      foldingHighlight: s.foldingHighlight,
       renderLineHighlight: s.renderLineHighlight,
+      renderLineHighlightOnlyWhenFocus: s.renderLineHighlightOnlyWhenFocus,
       cursorBlinking: s.cursorBlinking,
+      cursorSmoothCaretAnimation: s.cursorSmoothCaretAnimation,
       bracketPairColorization: s.bracketPairColorization,
+      fontLigatures: s.fontLigatures,
+      smoothScrolling: s.smoothScrolling,
+      overviewRulerBorder: s.overviewRulerBorder,
+      hideCursorInOverviewRuler: s.hideCursorInOverviewRuler,
+      contextmenu: s.contextmenu,
+      glyphMargin: s.glyphMargin,
+      lightbulb: s.lightbulb,
+      occurrencesHighlight: s.occurrencesHighlight,
+      selectionHighlight: s.selectionHighlight,
+      stickyScroll: s.stickyScroll,
+      indentationGuides: s.indentationGuides,
     })),
   );
   const parseDebounceMs = useAppSettingsStore((s) => s.parseDebounceMs);
@@ -304,7 +309,7 @@ function EditorSection() {
         </SettingsField>
         <SettingsField
           label="Line height"
-          hint="0 uses Monaco's automatic line height."
+          hint="Recommended 22 for comfortable spacing, or 0 for Monaco auto."
         >
           <input
             type="number"
@@ -317,6 +322,12 @@ function EditorSection() {
             }
           />
         </SettingsField>
+        <SettingsToggle
+          label="Font ligatures"
+          hint="Enable programming font ligatures if supported by the typeface."
+          checked={editor.fontLigatures}
+          onChange={(fontLigatures) => patchEditorSettings({ fontLigatures })}
+        />
       </SettingsSectionBlock>
 
       <SettingsSectionBlock title="Layout & display">
@@ -401,6 +412,30 @@ function EditorSection() {
           </select>
         </SettingsField>
         <SettingsToggle
+          label="Smooth cursor animation"
+          hint="Smoothly animates caret movement between positions."
+          checked={editor.cursorSmoothCaretAnimation}
+          onChange={(cursorSmoothCaretAnimation) =>
+            patchEditorSettings({ cursorSmoothCaretAnimation })
+          }
+        />
+        <SettingsToggle
+          label="Smooth scrolling"
+          hint="Smooth animations when scrolling code."
+          checked={editor.smoothScrolling}
+          onChange={(smoothScrolling) =>
+            patchEditorSettings({ smoothScrolling })
+          }
+        />
+        <SettingsToggle
+          label="Highlight line only when focused"
+          hint="Hides the current line highlight when switching panels."
+          checked={editor.renderLineHighlightOnlyWhenFocus}
+          onChange={(renderLineHighlightOnlyWhenFocus) =>
+            patchEditorSettings({ renderLineHighlightOnlyWhenFocus })
+          }
+        />
+        <SettingsToggle
           label="Minimap"
           checked={editor.minimap}
           onChange={(minimap) => patchEditorSettings({ minimap })}
@@ -411,11 +446,75 @@ function EditorSection() {
           onChange={(folding) => patchEditorSettings({ folding })}
         />
         <SettingsToggle
+          label="Code folding hover highlight"
+          hint="Highlights the folded range background on hover."
+          checked={editor.foldingHighlight}
+          onChange={(foldingHighlight) =>
+            patchEditorSettings({ foldingHighlight })
+          }
+        />
+        <SettingsToggle
           label="Bracket pair colorization"
           checked={editor.bracketPairColorization}
           onChange={(bracketPairColorization) =>
             patchEditorSettings({ bracketPairColorization })
           }
+        />
+        <SettingsToggle
+          label="Selection highlight"
+          hint="Highlight other matches when text is selected."
+          checked={editor.selectionHighlight}
+          onChange={(selectionHighlight) =>
+            patchEditorSettings({ selectionHighlight })
+          }
+        />
+        <SettingsToggle
+          label="Occurrences highlight"
+          hint="Automatically highlight symbols matching the current cursor symbol."
+          checked={editor.occurrencesHighlight}
+          onChange={(occurrencesHighlight) =>
+            patchEditorSettings({ occurrencesHighlight })
+          }
+        />
+        <SettingsToggle
+          label="Code action lightbulb"
+          hint="Show quick fix lightbulb icons inline."
+          checked={editor.lightbulb}
+          onChange={(lightbulb) => patchEditorSettings({ lightbulb })}
+        />
+        <SettingsToggle
+          label="Overview ruler border"
+          hint="Renders a border along the right-hand scroll ruler."
+          checked={editor.overviewRulerBorder}
+          onChange={(overviewRulerBorder) =>
+            patchEditorSettings({ overviewRulerBorder })
+          }
+        />
+        <SettingsToggle
+          label="Hide cursor in overview ruler"
+          hint="Prevents cursor marker clutter on the scroll overview ruler."
+          checked={editor.hideCursorInOverviewRuler}
+          onChange={(hideCursorInOverviewRuler) =>
+            patchEditorSettings({ hideCursorInOverviewRuler })
+          }
+        />
+        <SettingsToggle
+          label="Glyph margin"
+          hint="Reserve space on the left gutter for breakpoints and markers."
+          checked={editor.glyphMargin}
+          onChange={(glyphMargin) => patchEditorSettings({ glyphMargin })}
+        />
+        <SettingsToggle
+          label="Sticky code headers"
+          hint="Pins enclosing table/schema headers to the top while scrolling."
+          checked={editor.stickyScroll}
+          onChange={(stickyScroll) => patchEditorSettings({ stickyScroll })}
+        />
+        <SettingsToggle
+          label="Monaco context menu"
+          hint="Enable Monaco's built-in right-click context menu."
+          checked={editor.contextmenu}
+          onChange={(contextmenu) => patchEditorSettings({ contextmenu })}
         />
         <div className="settings-actions-row">
           <button
@@ -445,6 +544,14 @@ function EditorSection() {
           label="Insert spaces instead of tabs"
           checked={editor.insertSpaces}
           onChange={(insertSpaces) => patchEditorSettings({ insertSpaces })}
+        />
+        <SettingsToggle
+          label="Indentation guide lines"
+          hint="Renders vertical guide lines inside indented code blocks."
+          checked={editor.indentationGuides}
+          onChange={(indentationGuides) =>
+            patchEditorSettings({ indentationGuides })
+          }
         />
       </SettingsSectionBlock>
 

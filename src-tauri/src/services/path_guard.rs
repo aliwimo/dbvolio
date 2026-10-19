@@ -93,9 +93,10 @@ pub fn resolve_path(root: &Path, relative: &str) -> Result<PathBuf, PathGuardErr
     ))
 }
 
-pub fn require_root(state: &crate::models::project::ProjectState) -> Result<&PathBuf, PathGuardError> {
-    state.root().ok_or(PathGuardError::RootNotSet)
+pub fn require_root_opt(root: Option<&PathBuf>) -> Result<&PathBuf, PathGuardError> {
+    root.ok_or(PathGuardError::RootNotSet)
 }
+
 
 #[cfg(test)]
 mod tests {
