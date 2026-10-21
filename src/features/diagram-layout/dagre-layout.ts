@@ -14,6 +14,11 @@ import {
 } from "./layout-graph";
 import type { AutoLayoutOptions } from "./layout-options";
 import { resolveNodeOverlaps, spacingMetrics } from "./layout-spacing";
+import {
+  buildGroupLayoutEdges,
+  isGroupNode,
+  syncTableGroupBounds,
+} from "./table-group-bounds";
 
 const NODE_WIDTH = 260;
 const HEADER_HEIGHT = 36;
@@ -155,18 +160,25 @@ export function applyDagreLayoutWithOptions(
     return nodes;
   }
 
+  const groupNodes = nodes.filter(isGroupNode);
+  const tableNodes = nodes.filter((n) => !isGroupNode(n));
+  if (tableNodes.length === 0) {
+    return nodes;
+  }
+  const layoutEdges = buildGroupLayoutEdges(tableNodes, edges);
+
   const { rankdir, spacing, scope, selectedNodeId, separateComponents } =
     options;
 
-  let targetIds = nodes.map((node) => node.id);
+  let targetIds = tableNodes.map((node) => node.id);
   if (scope === "selection" && selectedNodeId) {
-    targetIds = componentForNode(selectedNodeId, targetIds, edges);
+    targetIds = componentForNode(selectedNodeId, targetIds, layoutEdges);
   }
 
   const targetIdSet = new Set(targetIds);
-  const targetNodes = filterNodesByIds(nodes, targetIdSet);
-  const targetEdges = filterEdgesForNodes(edges, targetIdSet);
-  const fixedNodes = nodes.filter((node) => !targetIdSet.has(node.id));
+  const targetNodes = filterNodesByIds(tableNodes, targetIdSet);
+  const targetEdges = filterEdgesForNodes(layoutEdges, targetIdSet);
+  const fixedNodes = tableNodes.filter((node) => !targetIdSet.has(node.id));
 
   let laidOutTargets: Node[];
 
@@ -199,7 +211,7 @@ export function applyDagreLayoutWithOptions(
   }
 
   if (scope === "selection" && selectedNodeId && fixedNodes.length > 0) {
-    const anchor = nodes.find((node) => node.id === selectedNodeId);
+    const anchor = tableNodes.find((node) => node.id === selectedNodeId);
     const laidAnchor = laidOutTargets.find(
       (node) => node.id === selectedNodeId,
     );
@@ -213,7 +225,11 @@ export function applyDagreLayoutWithOptions(
   const { margin } = spacingMetrics(spacing);
   laidOutTargets = resolveNodeOverlaps(laidOutTargets, margin);
 
-  return mergeLayoutIntoNodes(nodes, [...fixedNodes, ...laidOutTargets]);
+  const mergedTables = mergeLayoutIntoNodes(tableNodes, [
+    ...fixedNodes,
+    ...laidOutTargets,
+  ]);
+  return syncTableGroupBounds([...groupNodes, ...mergedTables]);
 }
 
 export function positionsToNodes(

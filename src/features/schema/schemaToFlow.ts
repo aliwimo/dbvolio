@@ -1,15 +1,26 @@
 import type { Edge, Node } from "@xyflow/react";
 import type { SchemaModel } from "../../types/schema";
 import type { TableNodeData } from "../../components/diagram/TableNode";
+import {
+  resolveGroupColor,
+  type TableGroupNodeData,
+} from "../../components/diagram/TableGroupNode";
+import {
+  GROUP_NODE_TYPE,
+  groupNodeId,
+} from "../diagram-layout/table-group-bounds";
 import { sourceHandleId, targetHandleId } from "./column-handles";
 
 export function schemaToFlow(model: SchemaModel): {
-  nodes: Node<TableNodeData>[];
+  nodes: Node<TableNodeData | TableGroupNodeData>[];
   edges: Edge[];
 } {
   const fkColumns = new Map<string, Set<string>>();
   const refSourceColumns = new Map<string, Set<string>>();
   const refTargetColumns = new Map<string, Set<string>>();
+  const groupsById = new Map(
+    (model.tableGroups ?? []).map((g) => [g.id, g]),
+  );
 
   for (const ref of model.references) {
     const fkSet = fkColumns.get(ref.sourceTableId) ?? new Set<string>();
@@ -31,18 +42,43 @@ export function schemaToFlow(model: SchemaModel): {
     refTargetColumns.set(ref.targetTableId, tgtSet);
   }
 
-  const nodes: Node<TableNodeData>[] = model.tables.map((table) => ({
-    id: table.id,
-    type: "tableNode",
+  const groupNodes: Node<TableGroupNodeData>[] = (
+    model.tableGroups ?? []
+  ).map((group) => ({
+    id: groupNodeId(group.id),
+    type: GROUP_NODE_TYPE,
     position: { x: 0, y: 0 },
+    zIndex: -1,
+    selectable: true,
+    draggable: true,
     data: {
-      table,
-      foreignKeys: fkColumns.get(table.id) ?? new Set<string>(),
-      refSourceColumns: refSourceColumns.get(table.id) ?? new Set<string>(),
-      refTargetColumns: refTargetColumns.get(table.id) ?? new Set<string>(),
-      headerColor: table.headerColor,
+      group,
+      width: 320,
+      height: 200,
     },
   }));
+
+  const tableNodes: Node<TableNodeData>[] = model.tables.map((table) => {
+    const group = table.groupId ? groupsById.get(table.groupId) : undefined;
+    const groupColor = group ? resolveGroupColor(group) : undefined;
+    return {
+      id: table.id,
+      type: "tableNode",
+      position: { x: 0, y: 0 },
+      data: {
+        table,
+        foreignKeys: fkColumns.get(table.id) ?? new Set<string>(),
+        refSourceColumns: refSourceColumns.get(table.id) ?? new Set<string>(),
+        refTargetColumns: refTargetColumns.get(table.id) ?? new Set<string>(),
+        headerColor: table.headerColor ?? groupColor,
+      },
+    };
+  });
+
+  const nodes: Node<TableNodeData | TableGroupNodeData>[] = [
+    ...groupNodes,
+    ...tableNodes,
+  ];
 
   const edges: Edge[] = [];
   for (const ref of model.references) {

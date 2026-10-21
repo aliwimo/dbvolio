@@ -17,6 +17,11 @@ import {
   tableNodeHeight,
   uniqueLayoutEdges,
 } from "./dagre-layout";
+import {
+  buildGroupLayoutEdges,
+  isGroupNode,
+  syncTableGroupBounds,
+} from "./table-group-bounds";
 
 function mergeLayoutIntoNodes(allNodes: Node[], laidOut: Node[]): Node[] {
   const byId = new Map(laidOut.map((node) => [node.id, node]));
@@ -377,11 +382,18 @@ export function applyAlgorithmLayout(
     return nodes;
   }
 
+  const groupNodes = nodes.filter(isGroupNode);
+  const tableNodes = nodes.filter((n) => !isGroupNode(n));
+  if (tableNodes.length === 0) {
+    return nodes;
+  }
+  const layoutEdges = buildGroupLayoutEdges(tableNodes, edges);
+
   const metrics = spacingMetrics(options.spacing);
 
   const { targetNodes, targetEdges, fixedNodes } = resolveTargetNodes(
-    nodes,
-    edges,
+    tableNodes,
+    layoutEdges,
     options,
   );
 
@@ -421,11 +433,15 @@ export function applyAlgorithmLayout(
   laidOutTargets = resolveNodeOverlaps(laidOutTargets, metrics.margin);
 
   laidOutTargets = anchorSelectionLayout(
-    nodes,
+    tableNodes,
     laidOutTargets,
     options.selectedNodeId,
     options.scope,
   );
 
-  return mergeLayoutIntoNodes(nodes, [...fixedNodes, ...laidOutTargets]);
+  const mergedTables = mergeLayoutIntoNodes(tableNodes, [
+    ...fixedNodes,
+    ...laidOutTargets,
+  ]);
+  return syncTableGroupBounds([...groupNodes, ...mergedTables]);
 }

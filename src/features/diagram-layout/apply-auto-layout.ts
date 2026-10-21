@@ -2,6 +2,11 @@ import type { Edge, Node } from "@xyflow/react";
 import { applyAlgorithmLayout } from "./layout-algorithms";
 import { applyDagreLayoutAsync } from "./dagre-layout-async";
 import type { AutoLayoutOptions } from "./layout-options";
+import {
+  buildGroupLayoutEdges,
+  isGroupNode,
+  syncTableGroupBounds,
+} from "./table-group-bounds";
 
 export async function applyAutoLayoutAsync(
   nodes: Node[],
@@ -12,12 +17,21 @@ export async function applyAutoLayoutAsync(
     return nodes;
   }
 
-  if (options.algorithm === "left-right") {
-    return applyDagreLayoutAsync(nodes, edges, {
-      ...options,
-      rankdir: "LR",
-    });
+  const groupNodes = nodes.filter(isGroupNode);
+  const tableNodes = nodes.filter((n) => !isGroupNode(n));
+  if (tableNodes.length === 0) {
+    return nodes;
   }
 
-  return applyAlgorithmLayout(nodes, edges, options);
+  const layoutEdges = buildGroupLayoutEdges(tableNodes, edges);
+
+  const laidOutTables =
+    options.algorithm === "left-right"
+      ? await applyDagreLayoutAsync(tableNodes, layoutEdges, {
+          ...options,
+          rankdir: "LR",
+        })
+      : applyAlgorithmLayout(tableNodes, layoutEdges, options);
+
+  return syncTableGroupBounds([...groupNodes, ...laidOutTables]);
 }

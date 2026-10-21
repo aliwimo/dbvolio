@@ -10,6 +10,7 @@ import {
   useReactFlow,
   type Edge,
   type Node,
+  type NodeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -23,6 +24,10 @@ import { useDiagramViewStore } from "../../stores/diagram-view-store";
 import { useProjectStore } from "../../stores/project-store";
 import { useUiStore } from "../../stores/ui-store";
 import { isLargeDiagram } from "../../features/diagram/diagram-performance";
+import {
+  isGroupNode,
+  syncTableGroupBounds,
+} from "../../features/diagram-layout/table-group-bounds";
 import { useDiagramAutoLayout } from "../../features/diagram-layout/useDiagramAutoLayout";
 import {
   DiagramContextMenu,
@@ -30,15 +35,28 @@ import {
 } from "./DiagramContextMenu";
 import { DiagramToolbar } from "./DiagramToolbar";
 import { RelationshipEdge, RelationshipEdgeMarkers } from "./RelationshipEdge";
+import { TableGroupNode, type TableGroupNodeData } from "./TableGroupNode";
 import { TableNode } from "./TableNode";
 
-const nodeTypes = { tableNode: TableNode };
+const nodeTypes = { tableNode: TableNode, tableGroupNode: TableGroupNode };
 const edgeTypes = { relationshipEdge: RelationshipEdge };
 
 function nodeMatchesSearch(node: Node, query: string): boolean {
-  const data = node.data as { table?: { name?: string } };
+  if (isGroupNode(node)) {
+    const groupData = node.data as TableGroupNodeData;
+    const groupName = groupData.group?.name?.toLowerCase() ?? "";
+    return groupName.includes(query);
+  }
+  const data = node.data as {
+    table?: { name?: string; groupId?: string };
+  };
   const name = data.table?.name?.toLowerCase() ?? "";
-  return name.includes(query) || node.id.toLowerCase().includes(query);
+  const groupId = data.table?.groupId?.toLowerCase() ?? "";
+  return (
+    name.includes(query) ||
+    node.id.toLowerCase().includes(query) ||
+    groupId.includes(query)
+  );
 }
 
 function buildRelatedTableIds(
@@ -102,6 +120,54 @@ function DiagramFlow() {
   const viewportTimer = useRef<number | null>(null);
   const [contextMenu, setContextMenu] =
     useState<DiagramContextMenuState | null>(null);
+
+  const handleNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      onNodesChange(changes);
+      const hasPositionOrDimensionChange = changes.some(
+        (c) => c.type === "position" || c.type === "dimensions",
+      );
+      if (!hasPositionOrDimensionChange) {
+        return;
+      }
+      setNodes((current) => {
+        if (!current.some(isGroupNode)) {
+          return current;
+        }
+        for (const change of changes) {
+          if (
+            change.type === "position" &&
+            change.position &&
+            isGroupNode({ id: change.id } as Node)
+          ) {
+            const prevGroup = nodesRef.current.find((n) => n.id === change.id);
+            const groupData = prevGroup?.data as TableGroupNodeData | undefined;
+            const memberIds = new Set(groupData?.group?.tableIds ?? []);
+            if (prevGroup && memberIds.size > 0) {
+              const dx = change.position.x - prevGroup.position.x;
+              const dy = change.position.y - prevGroup.position.y;
+              if (dx !== 0 || dy !== 0) {
+                const shifted = current.map((n) =>
+                  memberIds.has(n.id)
+                    ? {
+                        ...n,
+                        position: {
+                          x: n.position.x + dx,
+                          y: n.position.y + dy,
+                        },
+                      }
+                    : n,
+                );
+                return syncTableGroupBounds(shifted);
+              }
+            }
+          }
+        }
+        return syncTableGroupBounds(current);
+      });
+    },
+    [onNodesChange, setNodes],
+  );
 
   const layout = useDiagramAutoLayout({
     nodes: storeNodes,
@@ -201,14 +267,29 @@ function DiagramFlow() {
     let visibleNodes: Node[] = nodes;
 
     if (query) {
+      const matchedTableIds = new Set(
+        nodes
+          .filter((n) => !isGroupNode(n) && nodeMatchesSearch(n, query))
+          .map((n) => n.id),
+      );
+      const nodeMatchesOrHasMember = (node: Node) => {
+        if (!isGroupNode(node)) {
+          return matchedTableIds.has(node.id);
+        }
+        const group = (node.data as TableGroupNodeData).group;
+        return (
+          nodeMatchesSearch(node, query) ||
+          (group?.tableIds ?? []).some((id) => matchedTableIds.has(id))
+        );
+      };
       if (hideUnmatchedSearch) {
-        visibleNodes = nodes.filter((node) => nodeMatchesSearch(node, query));
+        visibleNodes = nodes.filter(nodeMatchesOrHasMember);
       } else {
         visibleNodes = nodes.map((node) => ({
           ...node,
           data: {
             ...node.data,
-            dimmed: !nodeMatchesSearch(node, query),
+            dimmed: !nodeMatchesOrHasMember(node),
           },
         }));
       }
@@ -224,7 +305,11 @@ function DiagramFlow() {
 
     if (needsRelationDimming) {
       visibleNodes = visibleNodes.map((node) => {
-        const inRelated = relatedIds.has(node.id);
+        const inRelated = isGroupNode(node)
+          ? ((node.data as TableGroupNodeData).group?.tableIds ?? []).some(
+              (id) => relatedIds.has(id),
+            )
+          : relatedIds.has(node.id);
         const prevDimmed = (node.data as { dimmed?: boolean }).dimmed ?? false;
         return {
           ...node,
@@ -298,13 +383,24 @@ function DiagramFlow() {
 
   const onNodeClick = useCallback(
     (_: unknown, node: Node) => {
+      if (isGroupNode(node)) {
+        const group = (node.data as TableGroupNodeData).group;
+        if (group && group.tableIds.length > 0) {
+          void fitView({
+            nodes: group.tableIds.map((id) => ({ id })),
+            padding: 0.3,
+            duration: 280,
+          });
+        }
+        return;
+      }
       if (selectedTableId === node.id) {
         selectTable(null);
         return;
       }
       selectTable(node.id);
     },
-    [selectTable, selectedTableId],
+    [selectTable, selectedTableId, fitView],
   );
 
   const onPaneClick = useCallback(() => {
@@ -325,6 +421,10 @@ function DiagramFlow() {
   const onNodeContextMenu = useCallback(
     (event: React.MouseEvent, node: Node) => {
       event.preventDefault();
+      if (isGroupNode(node)) {
+        setContextMenu({ x: event.clientX, y: event.clientY, tableId: null });
+        return;
+      }
       selectTable(node.id);
       setContextMenu({ x: event.clientX, y: event.clientY, tableId: node.id });
     },
@@ -357,7 +457,7 @@ function DiagramFlow() {
 
   const onNodeMouseEnter = useCallback(
     (_: unknown, node: Node) => {
-      if (largeDiagram) {
+      if (largeDiagram || isGroupNode(node)) {
         return;
       }
       if (hoveredRef.current === node.id) {
@@ -486,7 +586,7 @@ function DiagramFlow() {
         <ReactFlow
           nodes={displayNodes}
           edges={displayEdges}
-          onNodesChange={onNodesChange}
+          onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
