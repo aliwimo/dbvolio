@@ -12,7 +12,7 @@ import {
   type Node,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { registerDiagramExportApi } from "../../services/diagram-export";
 import {
   layoutFromNodes,
@@ -21,7 +21,13 @@ import {
 import { useDiagramStore } from "../../stores/diagram-store";
 import { useDiagramViewStore } from "../../stores/diagram-view-store";
 import { useProjectStore } from "../../stores/project-store";
+import { useUiStore } from "../../stores/ui-store";
 import { isLargeDiagram } from "../../features/diagram/diagram-performance";
+import { useDiagramAutoLayout } from "../../features/diagram-layout/useDiagramAutoLayout";
+import {
+  DiagramContextMenu,
+  type DiagramContextMenuState,
+} from "./DiagramContextMenu";
 import { DiagramToolbar } from "./DiagramToolbar";
 import { RelationshipEdge, RelationshipEdgeMarkers } from "./RelationshipEdge";
 import { TableNode } from "./TableNode";
@@ -63,6 +69,8 @@ function DiagramFlow() {
   const hoveredTableId = useDiagramStore((s) => s.hoveredTableId);
   const projectRoot = useProjectStore((s) => s.projectRoot);
   const entryPoint = useProjectStore((s) => s.entryPoint);
+  const openTableEdit = useUiStore((s) => s.openTableEdit);
+  const openTableCreate = useUiStore((s) => s.openTableCreate);
   const setFlow = useDiagramStore((s) => s.setFlow);
   const initialFitDone = useRef(false);
   const layoutEntryRef = useRef<string | null>(null);
@@ -92,6 +100,15 @@ function DiagramFlow() {
   const [edges, setEdges, onEdgesChange] = useEdgesState(storeEdges);
   const saveTimer = useRef<number | null>(null);
   const viewportTimer = useRef<number | null>(null);
+  const [contextMenu, setContextMenu] =
+    useState<DiagramContextMenuState | null>(null);
+
+  const layout = useDiagramAutoLayout({
+    nodes: storeNodes,
+    edges: storeEdges,
+    fitView,
+  });
+  const { runLayout, isRunning, canRun, canRunSelection } = layout;
 
   const largeDiagram = isLargeDiagram(storeNodes.length, storeEdges.length);
 
@@ -295,6 +312,46 @@ function DiagramFlow() {
     setHoveredTable(null);
   }, [selectTable, setHoveredTable]);
 
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+
+  const onPaneContextMenu = useCallback(
+    (event: MouseEvent | React.MouseEvent) => {
+      event.preventDefault();
+      setContextMenu({ x: event.clientX, y: event.clientY, tableId: null });
+    },
+    [],
+  );
+
+  const onNodeContextMenu = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      event.preventDefault();
+      selectTable(node.id);
+      setContextMenu({ x: event.clientX, y: event.clientY, tableId: node.id });
+    },
+    [selectTable],
+  );
+
+  const focusTable = useCallback(
+    (tableId: string) => {
+      void fitView({
+        nodes: [{ id: tableId }],
+        padding: 0.5,
+        duration: 300,
+      });
+    },
+    [fitView],
+  );
+
+  const editTable = useCallback(
+    (tableId: string) => {
+      selectTable(tableId);
+      openTableEdit();
+    },
+    [selectTable, openTableEdit],
+  );
+
+  const newTable = useCallback(() => openTableCreate(), [openTableCreate]);
+
   const hoverFrame = useRef<number | null>(null);
   const hoveredRef = useRef<string | null>(null);
 
@@ -423,6 +480,7 @@ function DiagramFlow() {
       <DiagramToolbar
         onFocusSearch={focusSearch}
         onFocusSelection={focusSelection}
+        layout={layout}
       />
       <div className="diagram-canvas">
         <ReactFlow
@@ -433,7 +491,9 @@ function DiagramFlow() {
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           onPaneClick={onPaneClick}
+          onPaneContextMenu={onPaneContextMenu}
           onNodeClick={onNodeClick}
+          onNodeContextMenu={onNodeContextMenu}
           onNodeMouseEnter={onNodeMouseEnter}
           onNodeMouseLeave={onNodeMouseLeave}
           onNodeDragStop={onNodeDragStop}
@@ -463,6 +523,20 @@ function DiagramFlow() {
           {showControls && <Controls showInteractive={false} />}
         </ReactFlow>
       </div>
+      {contextMenu && (
+        <DiagramContextMenu
+          state={contextMenu}
+          isRunning={isRunning}
+          canRun={canRun}
+          canRunSelection={canRunSelection}
+          onRunLayout={runLayout}
+          onFitView={() => fitView({ padding: 0.15, duration: 280 })}
+          onFocusTable={focusTable}
+          onEditTable={editTable}
+          onNewTable={newTable}
+          onClose={closeContextMenu}
+        />
+      )}
     </>
   );
 }
