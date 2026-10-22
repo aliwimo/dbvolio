@@ -51,6 +51,28 @@ export function tableMatchesId(
   return header.name === table.name && headerSchema === schema;
 }
 
+function findBraceBlockEnd(
+  lines: string[],
+  startLine: number,
+): number | null {
+  let depth = 0;
+  let started = false;
+  for (let j = startLine; j < lines.length; j += 1) {
+    for (const char of lines[j]) {
+      if (char === "{") {
+        depth += 1;
+        started = true;
+      } else if (char === "}") {
+        depth -= 1;
+      }
+    }
+    if (started && depth <= 0) {
+      return j;
+    }
+  }
+  return null;
+}
+
 export function findTableBlock(
   content: string,
   table: Pick<SchemaTable, "id" | "name" | "schema">,
@@ -61,22 +83,10 @@ export function findTableBlock(
     if (!header || !tableMatchesId(header, table)) {
       continue;
     }
-    let depth = 0;
-    let started = false;
-    for (let j = i; j < lines.length; j += 1) {
-      for (const char of lines[j]) {
-        if (char === "{") {
-          depth += 1;
-          started = true;
-        } else if (char === "}") {
-          depth -= 1;
-        }
-      }
-      if (started && depth <= 0) {
-        return { startLine: i, endLine: j, headerLine: i };
-      }
-    }
-    return null;
+    const endLine = findBraceBlockEnd(lines, i);
+    return endLine === null
+      ? null
+      : { startLine: i, endLine, headerLine: i };
   }
   return null;
 }
@@ -91,6 +101,265 @@ export function locateTableFile(
     }
   }
   return null;
+}
+
+const TABLE_GROUP_HEADER_LINE =
+  /^TableGroup\s+("([^"]+)"|([^\s\[]+))(?:\s*\[[^\]]*\])?\s*\{?\s*$/i;
+
+const GROUP_MEMBER_LINE =
+  /^(?:"([^"]+)"|([A-Za-z_][\w$]*))(?:\.(?:"([^"]+)"|([A-Za-z_][\w$]*)))?\s*$/;
+
+export function parseTableGroupHeaderLine(
+  line: string,
+): ParsedTableHeader | null {
+  const trimmed = line.trim();
+  const inlineBlock = trimmed.indexOf("{");
+  const header =
+    inlineBlock >= 0 ? trimmed.slice(0, inlineBlock).trim() : trimmed;
+  const match = header.match(TABLE_GROUP_HEADER_LINE);
+  if (!match) {
+    return null;
+  }
+  const unquoted = (match[2] ?? match[3]).replace(/^"|"$/g, "");
+  if (unquoted.includes(".")) {
+    const dot = unquoted.indexOf(".");
+    return {
+      schema: unquoted.slice(0, dot),
+      name: unquoted.slice(dot + 1),
+      rawRef: unquoted,
+    };
+  }
+  return { name: unquoted, rawRef: unquoted };
+}
+
+export function findTableGroupBlock(
+  content: string,
+  group: { name: string; schema?: string },
+): TableBlockLocation | null {
+  const lines = splitLines(content);
+  const groupSchema = group.schema ?? "public";
+  let fallback: TableBlockLocation | null = null;
+  for (let i = 0; i < lines.length; i += 1) {
+    const header = parseTableGroupHeaderLine(lines[i]);
+    if (!header || header.name !== group.name) {
+      continue;
+    }
+    const endLine = findBraceBlockEnd(lines, i);
+    if (endLine === null) {
+      continue;
+    }
+    const location = { startLine: i, endLine, headerLine: i };
+    if ((header.schema ?? "public") === groupSchema) {
+      return location;
+    }
+    fallback ??= location;
+  }
+  return fallback;
+}
+
+const GROUP_MEMBER_TOKEN =
+  /(?:"[^"]+"|[A-Za-z_][\w$]*)(?:\.(?:"[^"]+"|[A-Za-z_][\w$]*))?/g;
+
+function tokenizeGroupMembers(inner: string): string[] {
+  return inner.trim().match(GROUP_MEMBER_TOKEN) ?? [];
+}
+
+interface ParsedGroupMember {
+  schema?: string;
+  name: string;
+}
+
+function parseGroupMemberLine(line: string): ParsedGroupMember | null {
+  const match = line.trim().match(GROUP_MEMBER_LINE);
+  if (!match) {
+    return null;
+  }
+  const first = match[1] ?? match[2];
+  const second = match[3] ?? match[4];
+  if (second) {
+    return { schema: first, name: second };
+  }
+  return { name: first };
+}
+
+function groupMemberMatchesTable(
+  member: ParsedGroupMember,
+  groupSchema: string | undefined,
+  table: Pick<SchemaTable, "name" | "schema">,
+): boolean {
+  const memberSchema = member.schema ?? groupSchema ?? "public";
+  return (
+    member.name === table.name &&
+    memberSchema === (table.schema ?? "public")
+  );
+}
+
+function quoteDbmlIdent(name: string): string {
+  return /^[A-Za-z_][\w$]*$/.test(name)
+    ? name
+    : `"${name.replace(/"/g, '\\"')}"`;
+}
+
+export function formatGroupMemberRef(
+  groupSchema: string | undefined,
+  table: Pick<SchemaTable, "name" | "schema">,
+): string {
+  const tableSchema = table.schema ?? "public";
+  if ((groupSchema ?? "public") !== tableSchema) {
+    return `${quoteDbmlIdent(tableSchema)}.${quoteDbmlIdent(table.name)}`;
+  }
+  return quoteDbmlIdent(table.name);
+}
+
+function groupBlockHasMember(
+  lines: string[],
+  block: TableBlockLocation,
+  groupSchema: string | undefined,
+  table: Pick<SchemaTable, "name" | "schema">,
+): boolean {
+  if (block.startLine === block.endLine) {
+    const line = lines[block.startLine];
+    const inner = line.slice(line.indexOf("{") + 1, line.lastIndexOf("}"));
+    return tokenizeGroupMembers(inner).some((token) => {
+      const member = parseGroupMemberLine(token);
+      return member
+        ? groupMemberMatchesTable(member, groupSchema, table)
+        : false;
+    });
+  }
+  for (let i = block.startLine + 1; i < block.endLine; i += 1) {
+    const member = parseGroupMemberLine(lines[i]);
+    if (member && groupMemberMatchesTable(member, groupSchema, table)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function addTableToGroupInContent(
+  content: string,
+  group: { name: string; schema?: string },
+  table: Pick<SchemaTable, "name" | "schema">,
+): string {
+  const block = findTableGroupBlock(content, group);
+  if (!block) {
+    return content;
+  }
+  const lines = splitLines(content);
+  if (groupBlockHasMember(lines, block, group.schema, table)) {
+    return content;
+  }
+  const memberLine = `  ${formatGroupMemberRef(group.schema, table)}`;
+
+  if (block.startLine === block.endLine) {
+    const line = lines[block.startLine];
+    const open = line.indexOf("{");
+    const close = line.lastIndexOf("}");
+    if (open === -1 || close < open) {
+      return content;
+    }
+    const indent = line.match(/^\s*/)?.[0] ?? "";
+    const head = line.slice(0, open + 1).replace(/\s+$/, "");
+    const inner = line.slice(open + 1, close).trim();
+    lines.splice(
+      block.startLine,
+      1,
+      head,
+      ...(inner ? [`${indent}  ${inner}`] : []),
+      `${indent}  ${memberLine.trim()}`,
+      `${indent}}`,
+    );
+    return joinLines(lines);
+  }
+
+  let insertAt = block.startLine + 1;
+  for (let i = block.startLine + 1; i < block.endLine; i += 1) {
+    if (parseGroupMemberLine(lines[i])) {
+      insertAt = i + 1;
+    }
+  }
+  lines.splice(insertAt, 0, memberLine);
+  return joinLines(lines);
+}
+
+function removeTableFromGroupBlockLines(
+  lines: string[],
+  block: TableBlockLocation,
+  groupSchema: string | undefined,
+  table: Pick<SchemaTable, "name" | "schema">,
+): boolean {
+  if (block.startLine === block.endLine) {
+    const line = lines[block.startLine];
+    const open = line.indexOf("{");
+    const close = line.lastIndexOf("}");
+    if (open === -1 || close < open) {
+      return false;
+    }
+    const inner = line.slice(open + 1, close).trim();
+    const tokens = tokenizeGroupMembers(inner);
+    const kept = tokens.filter((token) => {
+      const member = parseGroupMemberLine(token);
+      return member
+        ? !groupMemberMatchesTable(member, groupSchema, table)
+        : true;
+    });
+    if (kept.length === tokens.length) {
+      return false;
+    }
+    const head = line.slice(0, open + 1).replace(/\s+$/, "");
+    lines[block.startLine] = kept.length
+      ? `${head} ${kept.join(" ")} }`
+      : `${head} }`;
+    return true;
+  }
+
+  let changed = false;
+  for (let i = block.endLine - 1; i > block.startLine; i -= 1) {
+    const member = parseGroupMemberLine(lines[i]);
+    if (member && groupMemberMatchesTable(member, groupSchema, table)) {
+      lines.splice(i, 1);
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+export function removeTableFromAllTableGroupsInContent(
+  content: string,
+  table: Pick<SchemaTable, "name" | "schema">,
+): string {
+  const lines = splitLines(content);
+  let changed = false;
+  for (let i = 0; i < lines.length; i += 1) {
+    const header = parseTableGroupHeaderLine(lines[i]);
+    if (!header) {
+      continue;
+    }
+    const endLine = findBraceBlockEnd(lines, i);
+    if (endLine === null) {
+      continue;
+    }
+    changed =
+      removeTableFromGroupBlockLines(
+        lines,
+        { startLine: i, endLine, headerLine: i },
+        header.schema,
+        table,
+      ) || changed;
+  }
+  return changed ? joinLines(lines) : content;
+}
+
+export function formatNewTableGroupBlock(
+  group: { name: string; schema?: string },
+  table: Pick<SchemaTable, "name" | "schema">,
+): string {
+  const groupName =
+    group.schema && group.schema !== "public"
+      ? `${quoteDbmlIdent(group.schema)}.${quoteDbmlIdent(group.name)}`
+      : quoteDbmlIdent(group.name);
+  const member = formatGroupMemberRef(group.schema, table);
+  return `TableGroup ${groupName} {\n  ${member}\n}\n`;
 }
 
 function escapeDbmlSingleQuoted(value: string): string {

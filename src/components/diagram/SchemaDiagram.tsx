@@ -14,6 +14,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { applyAssignTableToGroup } from "../../features/schema/apply-schema-edits";
 import { registerDiagramExportApi } from "../../services/diagram-export";
 import {
   layoutFromNodes,
@@ -31,6 +32,7 @@ import {
 import { useDiagramAutoLayout } from "../../features/diagram-layout/useDiagramAutoLayout";
 import {
   DiagramContextMenu,
+  type AddToGroupTarget,
   type DiagramContextMenuState,
 } from "./DiagramContextMenu";
 import { DiagramToolbar } from "./DiagramToolbar";
@@ -87,6 +89,7 @@ function DiagramFlow() {
   const hoveredTableId = useDiagramStore((s) => s.hoveredTableId);
   const projectRoot = useProjectStore((s) => s.projectRoot);
   const entryPoint = useProjectStore((s) => s.entryPoint);
+  const projectFiles = useProjectStore((s) => s.files);
   const openTableEdit = useUiStore((s) => s.openTableEdit);
   const openTableCreate = useUiStore((s) => s.openTableCreate);
   const setFlow = useDiagramStore((s) => s.setFlow);
@@ -452,6 +455,43 @@ function DiagramFlow() {
 
   const newTable = useCallback(() => openTableCreate(), [openTableCreate]);
 
+  const addTableToGroup = useCallback(
+    (tableId: string, target: AddToGroupTarget) => {
+      const { model } = useDiagramStore.getState();
+      const table = model?.tables.find((t) => t.id === tableId);
+      if (!table) {
+        return;
+      }
+      if (target.kind === "existing") {
+        const group = model?.tableGroups?.find((g) => g.id === target.groupId);
+        if (!group) {
+          return;
+        }
+        void applyAssignTableToGroup(table, group, projectFiles);
+        return;
+      }
+      void applyAssignTableToGroup(
+        table,
+        { name: target.name, schema: table.schema },
+        projectFiles,
+      );
+    },
+    [projectFiles],
+  );
+
+  const removeTableFromGroup = useCallback(
+    (tableId: string) => {
+      const table = useDiagramStore
+        .getState()
+        .model?.tables.find((t) => t.id === tableId);
+      if (!table) {
+        return;
+      }
+      void applyAssignTableToGroup(table, null, projectFiles);
+    },
+    [projectFiles],
+  );
+
   const hoverFrame = useRef<number | null>(null);
   const hoveredRef = useRef<string | null>(null);
 
@@ -634,6 +674,8 @@ function DiagramFlow() {
           onFocusTable={focusTable}
           onEditTable={editTable}
           onNewTable={newTable}
+          onAddToGroup={addTableToGroup}
+          onRemoveFromGroup={removeTableFromGroup}
           onClose={closeContextMenu}
         />
       )}

@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   addColumnToContent,
+  addTableToGroupInContent,
   findTableBlock,
+  findTableGroupBlock,
+  formatNewTableGroupBlock,
   moveColumnInContent,
   removeColumnFromContent,
+  removeTableFromAllTableGroupsInContent,
   updateColumnInContent,
   setTableHeaderColorInContent,
   rewriteTableReferencesInContent,
@@ -175,6 +179,108 @@ Ref: posts.author_id > users.id
     const next = setTableHeaderColorInContent(colored, usersTable, null);
     expect(next).not.toMatch(/headerColor/);
     expect(next).toMatch(/^Table users \{/m);
+  });
+
+  it("finds a table group block by schema and name", () => {
+    const dbml = `TableGroup sales.core {
+  users
+}
+`;
+    const block = findTableGroupBlock(dbml, { schema: "sales", name: "core" });
+    expect(block).not.toBeNull();
+    expect(block?.startLine).toBe(0);
+    expect(findTableGroupBlock(dbml, { name: "missing" })).toBeNull();
+  });
+
+  it("adds a table to an existing group without duplicating it", () => {
+    const dbml = `Table users {
+  id int
+}
+Table posts {
+  id int
+}
+TableGroup core {
+  users
+}
+`;
+    const next = addTableToGroupInContent(
+      dbml,
+      { name: "core" },
+      { name: "posts" },
+    );
+    expect(next).toMatch(/TableGroup core \{\n  users\n  posts\n\}/);
+    expect(
+      addTableToGroupInContent(next, { name: "core" }, { name: "posts" }),
+    ).toBe(next);
+  });
+
+  it("expands an inline group block when adding a table", () => {
+    const dbml = `Table users {
+  id int
+}
+Table posts {
+  id int
+}
+TableGroup core { users }
+`;
+    const next = addTableToGroupInContent(
+      dbml,
+      { name: "core" },
+      { name: "posts" },
+    );
+    expect(next).toContain("TableGroup core {\n  users\n  posts\n}");
+  });
+
+  it("qualifies cross-schema tables when adding to a group", () => {
+    const dbml = `TableGroup sales.core {
+  orders
+}
+`;
+    const next = addTableToGroupInContent(
+      dbml,
+      { schema: "sales", name: "core" },
+      { name: "users" },
+    );
+    expect(next).toContain("public.users");
+  });
+
+  it("removes a table from every group it belongs to", () => {
+    const dbml = `Table users {
+  id int
+}
+TableGroup core {
+  users
+  posts
+}
+TableGroup other {
+  users
+}
+`;
+    const next = removeTableFromAllTableGroupsInContent(dbml, {
+      name: "users",
+    });
+    expect(next).toMatch(/TableGroup core \{\n  posts\n\}/);
+    expect(next).toMatch(/TableGroup other \{\n\}/);
+    expect(
+      removeTableFromAllTableGroupsInContent(next, { name: "users" }),
+    ).toBe(next);
+  });
+
+  it("removes a table from an inline group block", () => {
+    const dbml = `TableGroup core { users posts }
+`;
+    const next = removeTableFromAllTableGroupsInContent(dbml, {
+      name: "users",
+    });
+    expect(next.trim()).toBe("TableGroup core { posts }");
+  });
+
+  it("formats a new table group block", () => {
+    const block = formatNewTableGroupBlock(
+      { schema: "sales", name: "core" },
+      { schema: "sales", name: "orders" },
+    );
+    expect(block).toBe("TableGroup sales.core {\n  orders\n}\n");
   });
 
   it("formats a new table block with default id column", () => {
