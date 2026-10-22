@@ -12,6 +12,7 @@ import { filesForScope } from "../open/project-scope-files";
 import { useProjectStore } from "../../stores/project-store";
 import { useDiagramViewStore } from "../../stores/diagram-view-store";
 import { applyAutoLayoutAsync } from "../diagram-layout/apply-auto-layout";
+import { isGroupNode } from "../diagram-layout/table-group-bounds";
 import { useAppSettingsStore } from "../../stores/app-settings-store";
 import { schemaToFlow } from "../schema/schemaToFlow";
 
@@ -67,9 +68,10 @@ export function useDebouncedParse() {
         useDiagramViewStore.getState().setPendingViewport(diagramLayout.viewport);
       }
       let positioned = mergeLayoutWithNodes(nodes, diagramLayout.nodes);
-      const needsLayout = positioned.every(
-        (n) => n.position.x === 0 && n.position.y === 0,
-      );
+      const tableNodes = positioned.filter((n) => !isGroupNode(n));
+      const needsLayout =
+        tableNodes.length > 0 &&
+        tableNodes.every((n) => n.position.x === 0 && n.position.y === 0);
       if (needsLayout) {
         const view = useDiagramViewStore.getState();
         positioned = await applyAutoLayoutAsync(positioned, edges, {

@@ -21,6 +21,7 @@ import { useExternalDbmlOpen } from "../features/open/useExternalDbmlOpen";
 import { useAppKeymap } from "../features/keymap/use-app-keymap";
 import { useNativeAppMenu } from "../features/keymap/use-native-app-menu";
 import {
+  DEFAULT_EXPLORER_WIDTH,
   DEFAULT_INSPECTOR_WIDTH,
   useUiStore,
 } from "../stores/ui-store";
@@ -102,19 +103,49 @@ export function Workspace() {
   useNativeAppMenu();
 
   const panels = useUiStore((s) => s.panels);
+  const explorerWidth = useUiStore((s) => s.explorerWidth);
+  const setExplorerWidth = useUiStore((s) => s.setExplorerWidth);
   const inspectorWidth = useUiStore((s) => s.inspectorWidth);
   const setInspectorWidth = useUiStore((s) => s.setInspectorWidth);
   const projectRoot = useProjectStore((s) => s.projectRoot);
   const entryPoint = useProjectStore((s) => s.entryPoint);
   const openFile = useEditorStore((s) => s.openFile);
 
+  const leftRailRef = useRef<HTMLElement>(null);
   const rightRailRef = useRef<HTMLElement>(null);
+  const [resizingExplorer, setResizingExplorer] = useState(false);
   const [resizingInspector, setResizingInspector] = useState(false);
+
+  const onExplorerResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setResizingExplorer(true);
+  }, []);
 
   const onInspectorResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setResizingInspector(true);
   }, []);
+
+  useEffect(() => {
+    if (!resizingExplorer) {
+      return;
+    }
+    const onMouseMove = (event: MouseEvent) => {
+      const rail = leftRailRef.current;
+      if (!rail) {
+        return;
+      }
+      const rect = rail.getBoundingClientRect();
+      setExplorerWidth(event.clientX - rect.left);
+    };
+    const onMouseUp = () => setResizingExplorer(false);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [resizingExplorer, setExplorerWidth]);
 
   useEffect(() => {
     if (!resizingInspector) {
@@ -126,8 +157,7 @@ export function Workspace() {
         return;
       }
       const rect = rail.getBoundingClientRect();
-      const nextWidth = rect.right - event.clientX;
-      setInspectorWidth(nextWidth);
+      setInspectorWidth(rect.right - event.clientX);
     };
     const onMouseUp = () => setResizingInspector(false);
     window.addEventListener("mousemove", onMouseMove);
@@ -204,8 +234,21 @@ export function Workspace() {
       )}
       <div className="workspace-body">
         {projectRoot && panels.explorer && (
-          <aside className="workspace-rail workspace-rail-left">
+          <aside
+            ref={leftRailRef}
+            className="workspace-rail workspace-rail-left"
+            style={{ width: `${explorerWidth}px` }}
+          >
             <ProjectExplorer />
+            <div
+              className={`workspace-rail-resizer workspace-rail-resizer-trailing ${resizingExplorer ? "dragging" : ""}`}
+              onMouseDown={onExplorerResizeStart}
+              onDoubleClick={() => setExplorerWidth(DEFAULT_EXPLORER_WIDTH)}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize explorer sidebar"
+              title="Drag to resize · Double-click to reset"
+            />
           </aside>
         )}
         <main className="workspace-main">{mainContent}</main>

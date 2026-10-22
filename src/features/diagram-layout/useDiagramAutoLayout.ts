@@ -29,14 +29,6 @@ export function useDiagramAutoLayout({
   const setFlow = useDiagramStore((s) => s.setFlow);
   const selectedTableId = useDiagramStore((s) => s.selectedTableId);
 
-  const layoutAlgorithm = useDiagramViewStore((s) => s.layoutAlgorithm);
-  const layoutDirection = useDiagramViewStore((s) => s.layoutDirection);
-  const layoutSpacing = useDiagramViewStore((s) => s.layoutSpacing);
-  const layoutFitView = useDiagramViewStore((s) => s.layoutFitView);
-  const layoutSeparateComponents = useDiagramViewStore(
-    (s) => s.layoutSeparateComponents,
-  );
-
   const runLayout = useCallback(
     (scope: LayoutScope = "all", algorithmOverride?: LayoutAlgorithm) => {
       if (runningRef.current || nodes.length === 0) {
@@ -46,6 +38,13 @@ export function useDiagramAutoLayout({
         return;
       }
 
+      const {
+        layoutAlgorithm,
+        layoutDirection,
+        layoutSpacing,
+        layoutFitView,
+        layoutSeparateComponents,
+      } = useDiagramViewStore.getState();
       const algorithm = algorithmOverride ?? layoutAlgorithm;
 
       const generation = ++generationRef.current;
@@ -89,11 +88,6 @@ export function useDiagramAutoLayout({
       nodes,
       edges,
       selectedTableId,
-      layoutAlgorithm,
-      layoutDirection,
-      layoutSpacing,
-      layoutSeparateComponents,
-      layoutFitView,
       setFlow,
       projectRoot,
       entryPoint,

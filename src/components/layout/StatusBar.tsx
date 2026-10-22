@@ -33,7 +33,11 @@ export function StatusBar() {
       </span>
       {model && (
         <span className="status-muted">
-          {model.tables.length} tables · {model.references.length} refs
+          {model.tables.length} tables
+          {model.tableGroups && model.tableGroups.length > 0
+            ? ` · ${model.tableGroups.length} ${model.tableGroups.length === 1 ? "group" : "groups"}`
+            : ""}{" "}
+          · {model.references.length} refs
         </span>
       )}
       {selectedTableId && (

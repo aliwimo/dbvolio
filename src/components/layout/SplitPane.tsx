@@ -73,7 +73,7 @@ export function SplitPane({
   return (
     <div
       ref={containerRef}
-      className={`split-pane ${isHorizontal ? "" : "split-pane-vertical"}`}
+      className={`split-pane ${isHorizontal ? "split-pane-horizontal" : "split-pane-vertical"}`}
     >
       <div className="split-pane-pane" style={firstStyle}>
         {first}

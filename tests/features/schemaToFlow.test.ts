@@ -55,4 +55,32 @@ describe("schemaToFlow", () => {
     expect(edges[0].sourceHandle).toBe("source:user_id");
     expect(edges[0].targetHandle).toBe("target:id");
   });
+
+  it("creates tableGroupNode and inherits group color on member tables without headerColor", () => {
+    const withGroup: SchemaModel = {
+      ...sample,
+      tables: sample.tables.map((t) => ({
+        ...t,
+        groupId: "public.Core",
+      })),
+      tableGroups: [
+        {
+          id: "public.Core",
+          name: "Core",
+          color: "#E74C3C",
+          note: "Core entities",
+          tableIds: ["users", "posts"],
+        },
+      ],
+    };
+    const { nodes } = schemaToFlow(withGroup);
+    expect(nodes).toHaveLength(3);
+    const groupNode = nodes.find((n) => n.type === "tableGroupNode");
+    expect(groupNode).toBeDefined();
+    expect(groupNode?.id).toBe("group:public.Core");
+    const userNode = nodes.find((n) => n.id === "users");
+    expect((userNode?.data as { headerColor?: string }).headerColor).toBe(
+      "#E74C3C",
+    );
+  });
 });

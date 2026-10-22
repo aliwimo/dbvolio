@@ -1,10 +1,14 @@
 import {
   addColumnToContent,
   type AddColumnPlacement,
+  addTableToGroupInContent,
   findTableBlock,
+  findTableGroupBlock,
+  formatNewTableGroupBlock,
   locateTableFile,
   moveColumnInContent,
   removeColumnFromContent,
+  removeTableFromAllTableGroupsInContent,
   reorderColumnsInContent,
   updateColumnInContent,
   setTableHeaderColorInContent,
@@ -229,6 +233,68 @@ export async function revealTableInEditorIfOpen(
     editor.setActivePath(path);
   }
   editor.requestEditorReveal(path, block.headerLine + 1);
+  return true;
+}
+
+function appendBlock(content: string, block: string): string {
+  if (!content) {
+    return block;
+  }
+  const spacer = content.endsWith("\n\n")
+    ? ""
+    : content.endsWith("\n")
+      ? "\n"
+      : "\n\n";
+  return `${content}${spacer}${block}`;
+}
+
+export async function applyAssignTableToGroup(
+  table: SchemaTable,
+  group: { name: string; schema?: string } | null,
+  projectFiles: { relativePath: string }[],
+): Promise<boolean> {
+  const fileMap = await resolveFileMap(projectFiles);
+  const tablePath = locateTableFile(table, fileMap);
+  if (!tablePath) {
+    return false;
+  }
+
+  const working = { ...fileMap };
+  for (const [path, content] of Object.entries(working)) {
+    working[path] = removeTableFromAllTableGroupsInContent(content, table);
+  }
+
+  if (group) {
+    const target = { ...group, name: group.name.trim() };
+    if (!target.name) {
+      return false;
+    }
+    let groupPath: string | null = null;
+    for (const [path, content] of Object.entries(working)) {
+      if (findTableGroupBlock(content, target)) {
+        groupPath = path;
+        break;
+      }
+    }
+    if (groupPath) {
+      working[groupPath] = addTableToGroupInContent(
+        working[groupPath],
+        target,
+        table,
+      );
+    } else {
+      working[tablePath] = appendBlock(
+        working[tablePath] ?? "",
+        formatNewTableGroupBlock(target, table),
+      );
+    }
+  }
+
+  for (const [path, content] of Object.entries(working)) {
+    if (content !== fileMap[path]) {
+      await commitFileContent(path, content);
+    }
+  }
   return true;
 }
 

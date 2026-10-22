@@ -5,6 +5,11 @@ import {
   type Node,
 } from "@xyflow/react";
 import type { TableNodeData } from "../components/diagram/TableNode";
+import {
+  resolveGroupColor,
+  type TableGroupNodeData,
+} from "../components/diagram/TableGroupNode";
+import { isGroupNode } from "../features/diagram-layout/table-group-bounds";
 
 const TABLE_MIN_WIDTH = 220;
 const HEADER_HEIGHT = 34;
@@ -87,6 +92,22 @@ function nodeDimensions(
   node: Node,
   internal?: InternalNodeLike,
 ): { width: number; height: number } {
+  if (isGroupNode(node)) {
+    const groupData = node.data as TableGroupNodeData;
+    const width =
+      internal?.measured?.width ??
+      node.measured?.width ??
+      node.width ??
+      groupData.width ??
+      320;
+    const height =
+      internal?.measured?.height ??
+      node.measured?.height ??
+      node.height ??
+      groupData.height ??
+      200;
+    return { width: Number(width), height: Number(height) };
+  }
   const data = node.data as TableNodeData;
   const columnCount = data.table?.columns?.length ?? 0;
   const fallbackHeight =
@@ -186,12 +207,40 @@ function handlePoint(
   return { x: origin.x, y: rowCenterY, position: Position.Left };
 }
 
+function renderTableGroupNode(
+  node: Node,
+  internal: InternalNodeLike | undefined,
+): string {
+  const data = node.data as TableGroupNodeData;
+  const group = data.group;
+  if (!group || node.hidden) {
+    return "";
+  }
+  const origin = nodeOrigin(node, internal);
+  const { width, height } = nodeDimensions(node, internal);
+  const color = resolveGroupColor(group);
+  const title = group.schema ? `${group.schema}.${group.name}` : group.name;
+  const x = origin.x;
+  const y = origin.y;
+  const noteLine = group.note
+    ? `<text x="${x + 14}" y="${y + 42}" font-size="11" fill="${COLORS.muted}">${escapeXml(group.note.split("\n")[0])}</text>`
+    : "";
+
+  return `<g>
+<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="12" fill="${color}" fill-opacity="0.07" stroke="${color}" stroke-opacity="0.45" stroke-width="1.5" stroke-dasharray="5 4"/>
+<circle cx="${x + 18}" cy="${y + 20}" r="4.5" fill="${color}"/>
+<text x="${x + 28}" y="${y + 24}" font-size="12" font-weight="600" fill="${COLORS.text}">${escapeXml(title)}</text>
+${noteLine}
+</g>`;
+}
+
 function renderTableNode(
   node: Node,
   internal: InternalNodeLike | undefined,
 ): string {
   const data = node.data as TableNodeData;
   const { table, foreignKeys, refSourceColumns } = data;
+  const headerColor = data.headerColor ?? table.headerColor;
   const origin = nodeOrigin(node, internal);
   const { width, height } = nodeDimensions(node, internal);
   const title = `${table.schema ? `${table.schema}.` : ""}${table.name}`;
@@ -227,11 +276,14 @@ function renderTableNode(
     })
     .join("\n");
 
+  const headerFill = headerColor || COLORS.elevated;
+  const headerTextColor = headerColor ? "#ffffff" : COLORS.text;
+
   return `<g>
 <rect x="${x}" y="${y}" width="${width}" height="${height}" rx="8" fill="${COLORS.panel}" stroke="${COLORS.border}" stroke-width="1"/>
-<rect x="${x}" y="${y}" width="${width}" height="${HEADER_HEIGHT}" rx="8" fill="${COLORS.elevated}" stroke="none"/>
+<rect x="${x}" y="${y}" width="${width}" height="${HEADER_HEIGHT}" rx="8" fill="${headerFill}" stroke="none"/>
 <line x1="${x}" y1="${y + HEADER_HEIGHT}" x2="${x + width}" y2="${y + HEADER_HEIGHT}" stroke="${COLORS.border}" stroke-width="1"/>
-<text x="${x + 12}" y="${y + 22}" font-size="12" font-weight="600" fill="${COLORS.text}">${escapeXml(title)}</text>
+<text x="${x + 12}" y="${y + 22}" font-size="12" font-weight="600" fill="${headerTextColor}">${escapeXml(title)}</text>
 ${rowStripes}
 ${rows}
 </g>`;
@@ -312,12 +364,19 @@ export function buildDiagramSvg(input: DiagramVectorInput): string {
   const offsetX = -bounds.minX + CANVAS_PADDING;
   const offsetY = -bounds.minY + CANVAS_PADDING;
 
+  const groupShapes = nodes
+    .filter(isGroupNode)
+    .map((node) => renderTableGroupNode(node, getInternalNode?.(node.id)))
+    .filter(Boolean)
+    .join("\n");
+
   const edgePaths = edges
     .map((edge) => renderRelationshipEdge(edge, nodeById, getInternalNode))
     .filter((path): path is string => Boolean(path))
     .join("\n");
 
   const tables = nodes
+    .filter((node) => !isGroupNode(node))
     .map((node) => renderTableNode(node, getInternalNode?.(node.id)))
     .join("\n");
 
@@ -337,6 +396,7 @@ export function buildDiagramSvg(input: DiagramVectorInput): string {
   </defs>
   <rect width="100%" height="100%" fill="${COLORS.background}"/>
   <g transform="translate(${offsetX} ${offsetY})">
+    ${groupShapes}
     ${edgePaths}
     ${tables}
   </g>

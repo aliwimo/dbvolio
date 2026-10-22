@@ -7,6 +7,7 @@ import type {
   SchemaModel,
   SchemaReference,
   SchemaTable,
+  SchemaTableGroup,
 } from "../types/schema";
 
 export interface ParseResult {
@@ -109,8 +110,10 @@ function normalizeTable(table: {
   }[];
   note?: string;
   headerColor?: string;
+  group?: { name: string; schema?: { name?: string } };
 }): SchemaTable {
   const schemaName = table.schema?.name || "public";
+  const groupSchema = table.group?.schema?.name || schemaName;
   const columns: SchemaColumn[] = (table.fields ?? []).map((field) => ({
     name: field.name,
     type: formatFieldType(field.type),
@@ -139,7 +142,42 @@ function normalizeTable(table: {
     indexes,
     note: table.note || undefined,
     headerColor: table.headerColor || undefined,
+    groupId: table.group ? tableId(groupSchema, table.group.name) : undefined,
   };
+}
+
+function normalizeTableGroups(database: {
+  schemas?: {
+    name?: string;
+    tableGroups?: {
+      name: string;
+      color?: string;
+      note?: string | { value?: string };
+      tables?: { name: string; schema?: { name?: string } }[];
+    }[];
+  }[];
+}): SchemaTableGroup[] {
+  const groups: SchemaTableGroup[] = [];
+  for (const schema of database.schemas ?? []) {
+    const schemaName = schema.name || "public";
+    for (const group of schema.tableGroups ?? []) {
+      const noteValue =
+        typeof group.note === "object" && group.note !== null
+          ? group.note.value
+          : group.note;
+      groups.push({
+        id: tableId(schemaName, group.name),
+        schema: schemaName === "public" ? undefined : schemaName,
+        name: group.name,
+        tableIds: (group.tables ?? []).map((t) =>
+          tableId(t.schema?.name || schemaName, t.name),
+        ),
+        color: group.color || undefined,
+        note: noteValue || undefined,
+      });
+    }
+  }
+  return groups;
 }
 
 function normalizeEnums(database: {
@@ -274,6 +312,12 @@ export function normalizeDatabase(database: {
     name?: string;
     tables?: Parameters<typeof normalizeTable>[0][];
     enums?: { name: string; values?: { name: string }[] }[];
+    tableGroups?: {
+      name: string;
+      color?: string;
+      note?: string | { value?: string };
+      tables?: { name: string; schema?: { name?: string } }[];
+    }[];
     refs?: {
       name?: string;
       endpoints?: {
@@ -291,10 +335,20 @@ export function normalizeDatabase(database: {
     }
   }
   const tablesById = new Map(tables.map((t) => [t.id, t]));
+  const tableGroups = normalizeTableGroups(database);
+  for (const group of tableGroups) {
+    for (const memberId of group.tableIds) {
+      const table = tablesById.get(memberId);
+      if (table && !table.groupId) {
+        table.groupId = group.id;
+      }
+    }
+  }
   return {
     tables,
     references: normalizeReferences(database, tablesById),
     enums: normalizeEnums(database),
+    tableGroups,
   };
 }
 

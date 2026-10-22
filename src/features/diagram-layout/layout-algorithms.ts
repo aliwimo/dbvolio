@@ -12,11 +12,20 @@ import {
   resolveNodeOverlaps,
   spacingMetrics,
 } from "./layout-spacing";
+import { layoutCompactTables } from "./layout-compact";
 import {
-  NODE_WIDTH,
-  tableNodeHeight,
-  uniqueLayoutEdges,
-} from "./dagre-layout";
+  groupLayoutHintsFromNodes,
+  hasGroupedTables,
+  layoutNodeSize,
+  layoutTableNodesWithGroups,
+} from "./group-layout";
+import { layoutNodeBounds as sharedLayoutNodeBounds } from "./layout-node-bounds";
+import { uniqueLayoutEdges } from "./dagre-layout";
+import {
+  buildGroupLayoutEdges,
+  isGroupNode,
+  syncTableGroupBounds,
+} from "./table-group-bounds";
 
 function mergeLayoutIntoNodes(allNodes: Node[], laidOut: Node[]): Node[] {
   const byId = new Map(laidOut.map((node) => [node.id, node]));
@@ -36,21 +45,7 @@ function layoutNodeBounds(nodes: Node[]): {
   maxX: number;
   maxY: number;
 } {
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  for (const node of nodes) {
-    const height = tableNodeHeight(node);
-    minX = Math.min(minX, node.position.x);
-    minY = Math.min(minY, node.position.y);
-    maxX = Math.max(maxX, node.position.x + NODE_WIDTH);
-    maxY = Math.max(maxY, node.position.y + height);
-  }
-  if (nodes.length === 0) {
-    return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
-  }
-  return { minX, minY, maxX, maxY };
+  return sharedLayoutNodeBounds(nodes, layoutNodeSize);
 }
 
 function packGroups(
@@ -183,19 +178,23 @@ function layoutPipelineSubset(
   const sortedLayers = [...byLayer.keys()].sort((a, b) => a - b);
   const positioned: Node[] = [];
 
+  let x = 0;
   for (const rank of sortedLayers) {
     const group = [...(byLayer.get(rank) ?? [])].sort((a, b) =>
       a.id.localeCompare(b.id),
     );
     let y = 0;
-    const x = rank * (NODE_WIDTH + metrics.rankGap);
+    let layerWidth = 0;
     for (const node of group) {
+      const size = layoutNodeSize(node);
       positioned.push({
         ...node,
         position: { x, y },
       });
-      y += tableNodeHeight(node) + metrics.stackGap;
+      y += size.height + metrics.stackGap;
+      layerWidth = Math.max(layerWidth, size.width);
     }
+    x += layerWidth + metrics.rankGap;
   }
 
   return positioned;
@@ -270,16 +269,18 @@ function layoutSnowflakeSubset(
   }
 
   const hub = nodes.find((node) => node.id === hubId)!;
-  const hubHeight = tableNodeHeight(hub);
+  const hubSize = layoutNodeSize(hub);
   const positioned = new Map<string, { x: number; y: number }>();
   positioned.set(hubId, {
-    x: -NODE_WIDTH / 2,
-    y: -hubHeight / 2,
+    x: -hubSize.width / 2,
+    y: -hubSize.height / 2,
   });
 
   const rings = [...byRing.keys()].filter((r) => r > 0).sort((a, b) => a - b);
   let outerRadius =
-    Math.max(NODE_WIDTH, hubHeight) / 2 + metrics.margin + metrics.ringPadding;
+    Math.max(hubSize.width, hubSize.height) / 2 +
+    metrics.margin +
+    metrics.ringPadding;
 
   for (const ring of rings) {
     const group = [...(byRing.get(ring) ?? [])].sort((a, b) =>
@@ -299,10 +300,10 @@ function layoutSnowflakeSubset(
       const angle = (2 * Math.PI * i) / count - Math.PI / 2;
       const cx = ringRadius * Math.cos(angle);
       const cy = ringRadius * Math.sin(angle);
-      const height = tableNodeHeight(node);
+      const size = layoutNodeSize(node);
       positioned.set(node.id, {
-        x: cx - NODE_WIDTH / 2,
-        y: cy - height / 2,
+        x: cx - size.width / 2,
+        y: cy - size.height / 2,
       });
     }
 
@@ -313,41 +314,6 @@ function layoutSnowflakeSubset(
     ...node,
     position: positioned.get(node.id) ?? { x: 0, y: 0 },
   }));
-}
-
-function layoutCompactSubset(
-  nodes: Node[],
-  spacing: AutoLayoutOptions["spacing"],
-): Node[] {
-  if (nodes.length === 0) {
-    return nodes;
-  }
-  const metrics = spacingMetrics(spacing);
-  const sorted = [...nodes].sort((a, b) => a.id.localeCompare(b.id));
-  const cols = Math.max(1, Math.ceil(Math.sqrt(sorted.length)));
-  const positioned: Node[] = [];
-
-  let y = 0;
-  for (let row = 0; row * cols < sorted.length; row++) {
-    const rowNodes = sorted.slice(row * cols, row * cols + cols);
-    let rowMaxHeight = 0;
-    for (const node of rowNodes) {
-      rowMaxHeight = Math.max(rowMaxHeight, tableNodeHeight(node));
-    }
-    for (let col = 0; col < rowNodes.length; col++) {
-      const node = rowNodes[col];
-      positioned.push({
-        ...node,
-        position: {
-          x: col * (NODE_WIDTH + metrics.colGap),
-          y,
-        },
-      });
-    }
-    y += rowMaxHeight + metrics.rowGap;
-  }
-
-  return positioned;
 }
 
 function layoutSubsetByAlgorithm(
@@ -362,28 +328,29 @@ function layoutSubsetByAlgorithm(
     case "snowflake":
       return layoutSnowflakeSubset(nodes, edges, spacing);
     case "compact":
-      return layoutCompactSubset(nodes, spacing);
+      return layoutCompactTables(nodes, spacing);
     case "left-right":
       return nodes;
   }
 }
 
-export function applyAlgorithmLayout(
-  nodes: Node[],
+function applyAlgorithmLayoutFlatTables(
+  tableNodes: Node[],
   edges: Edge[],
   options: AutoLayoutOptions,
 ): Node[] {
-  if (nodes.length === 0) {
-    return nodes;
+  if (tableNodes.length === 0) {
+    return tableNodes;
   }
-
+  const layoutEdges = buildGroupLayoutEdges(tableNodes, edges);
   const metrics = spacingMetrics(options.spacing);
 
   const { targetNodes, targetEdges, fixedNodes } = resolveTargetNodes(
-    nodes,
-    edges,
+    tableNodes,
+    layoutEdges,
     options,
   );
+  const targetIdSet = new Set(targetNodes.map((node) => node.id));
 
   let laidOutTargets: Node[];
 
@@ -418,14 +385,61 @@ export function applyAlgorithmLayout(
     );
   }
 
-  laidOutTargets = resolveNodeOverlaps(laidOutTargets, metrics.margin);
-
   laidOutTargets = anchorSelectionLayout(
-    nodes,
+    tableNodes,
     laidOutTargets,
     options.selectedNodeId,
     options.scope,
   );
 
-  return mergeLayoutIntoNodes(nodes, [...fixedNodes, ...laidOutTargets]);
+  const resolved = resolveNodeOverlaps(
+    [...fixedNodes, ...laidOutTargets],
+    metrics.margin,
+    options.scope === "selection" ? targetIdSet : undefined,
+    options.scope === "selection" ? options.selectedNodeId : null,
+  );
+  return mergeLayoutIntoNodes(tableNodes, resolved);
+}
+
+export function applyAlgorithmLayout(
+  nodes: Node[],
+  edges: Edge[],
+  options: AutoLayoutOptions,
+): Node[] {
+  if (nodes.length === 0) {
+    return nodes;
+  }
+
+  const groupNodes = nodes.filter(isGroupNode);
+  const tableNodes = nodes.filter((n) => !isGroupNode(n));
+  if (tableNodes.length === 0) {
+    return nodes;
+  }
+
+  const groupHints = groupLayoutHintsFromNodes(groupNodes);
+  const laidOutTables = hasGroupedTables(tableNodes)
+    ? layoutTableNodesWithGroups(
+        tableNodes,
+        edges,
+        options,
+        applyAlgorithmLayoutFlatTables,
+        (members, memberEdges, memberOptions) => {
+          if (members.length <= 1) {
+            return members;
+          }
+          if (memberEdges.length === 0) {
+            return layoutCompactTables(members, memberOptions.spacing);
+          }
+          return layoutSubsetByAlgorithm(
+            memberOptions.algorithm,
+            members,
+            memberEdges,
+            memberOptions.spacing,
+          );
+        },
+        groupHints,
+      )
+    : applyAlgorithmLayoutFlatTables(tableNodes, edges, options);
+
+  return syncTableGroupBounds([...groupNodes, ...laidOutTables]);
 }

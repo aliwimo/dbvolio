@@ -27,6 +27,17 @@ export interface SchemaTable {
   note?: string;
   /** DBML table setting: `Table … [headerColor: #hex]` */
   headerColor?: string;
+  /** Group id if table belongs to a `TableGroup` */
+  groupId?: string;
+}
+
+export interface SchemaTableGroup {
+  id: string;
+  schema?: string;
+  name: string;
+  tableIds: string[];
+  color?: string;
+  note?: string;
 }
 
 export interface SchemaReference {
@@ -48,4 +59,5 @@ export interface SchemaModel {
   tables: SchemaTable[];
   references: SchemaReference[];
   enums: SchemaEnum[];
+  tableGroups?: SchemaTableGroup[];
 }

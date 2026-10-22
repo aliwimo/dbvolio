@@ -9,6 +9,10 @@ import {
 } from "../types/layout";
 import { readLayoutMetadata, writeLayoutMetadata } from "./tauri-bridge";
 import { applyDagreLayout } from "../features/diagram-layout/dagre-layout";
+import {
+  isGroupNode,
+  syncTableGroupBounds,
+} from "../features/diagram-layout/table-group-bounds";
 import { useDiagramViewStore } from "../stores/diagram-view-store";
 
 type ParsedLayoutFile = {
@@ -100,6 +104,9 @@ export function mergeLayoutWithNodes(
   savedNodes: Record<string, LayoutNodePosition>,
 ): Node[] {
   const positioned = nodes.map((node) => {
+    if (isGroupNode(node)) {
+      return node;
+    }
     const saved = savedNodes[node.id];
     if (saved) {
       return {
@@ -110,15 +117,19 @@ export function mergeLayoutWithNodes(
     return node;
   });
 
-  const missing = positioned.filter((n) => !savedNodes[n.id]);
+  const missing = positioned.filter(
+    (n) => !isGroupNode(n) && !savedNodes[n.id],
+  );
   if (missing.length === 0) {
-    return positioned;
+    return syncTableGroupBounds(positioned);
   }
 
   const rankdir = useDiagramViewStore.getState().layoutDirection;
   const laidOut = applyDagreLayout(missing, [], rankdir);
   const laidOutById = new Map(laidOut.map((n) => [n.id, n]));
-  return positioned.map((node) => laidOutById.get(node.id) ?? node);
+  return syncTableGroupBounds(
+    positioned.map((node) => laidOutById.get(node.id) ?? node),
+  );
 }
 
 export function layoutFromNodes(
@@ -127,6 +138,9 @@ export function layoutFromNodes(
 ): DiagramLayout {
   const nodePositions: Record<string, LayoutNodePosition> = {};
   for (const node of nodes) {
+    if (isGroupNode(node)) {
+      continue;
+    }
     nodePositions[node.id] = { x: node.position.x, y: node.position.y };
   }
   return {

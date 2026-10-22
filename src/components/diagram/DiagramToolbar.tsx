@@ -7,27 +7,37 @@ import {
   ZoomOut,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useDiagramAutoLayout } from "../../features/diagram-layout/useDiagramAutoLayout";
+import type { LayoutScope } from "../../features/diagram-layout/layout-options";
 import { useDiagramStore } from "../../stores/diagram-store";
-import { useDiagramViewStore } from "../../stores/diagram-view-store";
+import {
+  useDiagramViewStore,
+  type LayoutAlgorithm,
+} from "../../stores/diagram-view-store";
 import { useReactFlow, useStore } from "@xyflow/react";
 import { LayoutMenu } from "./LayoutMenu";
 
 const zoomSelector = (s: { transform: [number, number, number] }) =>
   s.transform[2];
 
+export interface DiagramLayoutActions {
+  runLayout: (scope: LayoutScope, algorithm?: LayoutAlgorithm) => void;
+  isRunning: boolean;
+  canRun: boolean;
+  canRunSelection: boolean;
+}
+
 export function DiagramToolbar({
   onFocusSearch,
   onFocusSelection,
+  layout,
 }: {
   onFocusSearch: () => void;
   onFocusSelection: () => void;
+  layout: DiagramLayoutActions;
 }) {
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const zoom = useStore(zoomSelector);
 
-  const nodes = useDiagramStore((s) => s.nodes);
-  const edges = useDiagramStore((s) => s.edges);
   const searchQuery = useDiagramStore((s) => s.searchQuery);
   const setSearchQuery = useDiagramStore((s) => s.setSearchQuery);
   const selectedTableId = useDiagramStore((s) => s.selectedTableId);
@@ -44,13 +54,7 @@ export function DiagramToolbar({
   );
   const toggleOption = useDiagramViewStore((s) => s.toggleOption);
 
-  const { runLayout, isRunning, canRun, canRunSelection } = useDiagramAutoLayout(
-    {
-      nodes,
-      edges,
-      fitView,
-    },
-  );
+  const { runLayout, isRunning, canRun, canRunSelection } = layout;
 
   const [optionsOpen, setOptionsOpen] = useState(false);
   const optionsRef = useRef<HTMLDivElement>(null);

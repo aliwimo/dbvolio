@@ -544,12 +544,10 @@
 }
 
 .diagram-layout-dropdown {
-  position: absolute;
-  left: calc(100% + 6px);
-  top: 0;
-  z-index: 30;
-  width: min(280px, calc(100vw - 24px));
-  max-height: min(420px, calc(100vh - 120px));
+  position: fixed;
+  z-index: 1000;
+  width: min(280px, calc(100vw - 16px));
+  max-height: min(420px, calc(100vh - 16px));
   overflow: auto;
   padding: 10px;
   background: var(--bg-panel);
@@ -559,8 +557,8 @@
 }
 
 .diagram-layout-dropdown-wide {
-  width: min(340px, calc(100vw - 24px));
-  max-height: min(520px, calc(100vh - 120px));
+  width: min(340px, calc(100vw - 16px));
+  max-height: min(520px, calc(100vh - 16px));
 }
 
 .diagram-arrange-preset {
@@ -694,6 +692,130 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: var(--shadow-md);
+}
+
+.diagram-context-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 220px;
+  padding: 6px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-md);
+}
+
+.diagram-context-menu-label {
+  padding: 4px 10px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diagram-context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.diagram-context-menu-item:hover:not(:disabled) {
+  background: var(--bg-subtle);
+}
+
+.diagram-context-menu-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.diagram-context-menu-item svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.diagram-context-menu-separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+
+.diagram-context-menu-item.active {
+  background: var(--bg-subtle);
+}
+
+.diagram-context-menu-item .diagram-context-menu-chevron {
+  margin-left: auto;
+}
+
+.diagram-context-submenu {
+  min-width: 200px;
+  max-width: 280px;
+}
+
+.diagram-context-group-swatch {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.diagram-context-group-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diagram-context-menu-empty {
+  margin: 0;
+  padding: 4px 10px 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.diagram-context-menu-group-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 4px 4px;
+}
+
+.diagram-context-menu-group-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-app);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.diagram-context-menu-group-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.diagram-context-menu-group-error {
+  margin: 0;
+  color: var(--danger, #dc2626);
+  font-size: 11px;
+}
+
+.diagram-context-menu-group-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .diagram-option-row {

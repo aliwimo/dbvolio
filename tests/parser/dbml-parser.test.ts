@@ -121,4 +121,34 @@ Table activities {
       "0",
     );
   });
+
+  it("parses TableGroup blocks with color and note", () => {
+    const result = parseProject(
+      projectRoot,
+      {
+        "main.dbml": `Table orders {
+  id int [pk]
+}
+Table order_items {
+  id int [pk]
+  order_id int [ref: > orders.id]
+}
+TableGroup "Order Management" [color: #E74C3C, note: 'Manages order flow'] {
+  orders
+  order_items
+}`,
+      },
+      "main.dbml",
+    );
+    expect(result.diagnostics).toHaveLength(0);
+    expect(result.model!.tableGroups).toHaveLength(1);
+    const group = result.model!.tableGroups![0];
+    expect(group.name).toBe("Order Management");
+    expect(group.color?.toLowerCase()).toBe("#e74c3c");
+    expect(group.note).toBe("Manages order flow");
+    expect(group.tableIds).toEqual(["public.orders", "public.order_items"]);
+    expect(
+      result.model!.tables.find((t) => t.name === "orders")?.groupId,
+    ).toBe("public.Order Management");
+  });
 });

@@ -22,6 +22,7 @@
 }
 
 .workspace-rail-left {
+  position: relative;
   width: var(--explorer-width);
   border-right: 1px solid var(--border);
 }
@@ -42,7 +43,13 @@
   z-index: 20;
 }
 
-.workspace-rail-resizer::after {
+.workspace-rail-resizer-trailing {
+  left: auto;
+  right: -4px;
+}
+
+.workspace-rail-resizer::after,
+.split-pane-horizontal .split-pane-resizer::after {
   content: "";
   position: absolute;
   top: 0;
@@ -50,11 +57,19 @@
   left: 3px;
   width: 2px;
   background: transparent;
+  border-radius: 0;
   transition: background 0.15s ease;
 }
 
+.workspace-rail-resizer-trailing::after {
+  left: auto;
+  right: 3px;
+}
+
 .workspace-rail-resizer:hover::after,
-.workspace-rail-resizer.dragging::after {
+.workspace-rail-resizer.dragging::after,
+.split-pane-horizontal .split-pane-resizer:hover::after,
+.split-pane-horizontal .split-pane-resizer.dragging::after {
   background: var(--accent);
 }
 
@@ -215,11 +230,14 @@
 
 .split-pane-horizontal .split-pane-resizer {
   width: 8px;
+  margin-left: -4px;
+  margin-right: -4px;
   cursor: col-resize;
+  z-index: 20;
 }
 
-.split-pane-horizontal .split-pane-resizer::after {
-  inset: 8px 3px;
+.split-pane-horizontal .split-pane-resizer + .split-pane-pane {
+  border-left: 1px solid var(--border);
 }
 
 .split-pane-vertical .split-pane-resizer {
@@ -1502,6 +1520,81 @@
 
 .table-node-type {
   color: var(--text-muted);
+}
+
+.table-group-node {
+  border-radius: 12px;
+  border: 1.5px dashed color-mix(in srgb, var(--group-color, var(--accent)) 55%, var(--border-strong));
+  background: color-mix(in srgb, var(--group-color, var(--accent)) 8%, transparent);
+  box-sizing: border-box;
+  padding: 10px 14px;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    opacity 0.15s ease;
+  user-select: none;
+}
+
+.table-group-node:hover {
+  border-color: color-mix(in srgb, var(--group-color, var(--accent)) 80%, var(--border-strong));
+  background: color-mix(in srgb, var(--group-color, var(--accent)) 12%, transparent);
+}
+
+.table-group-node.selected {
+  border-style: solid;
+  border-color: var(--group-color, var(--accent));
+  box-shadow: 0 0 0 1px var(--group-color, var(--accent));
+}
+
+.table-group-header {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.table-group-header-main {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.table-group-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.table-group-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table-group-count {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--bg-panel) 75%, transparent);
+  padding: 1px 6px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.table-group-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-left: 16px;
 }
 
 .conflict-banner {

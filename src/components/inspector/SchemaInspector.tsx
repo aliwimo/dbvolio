@@ -11,6 +11,7 @@ import {
   Table2,
 } from "lucide-react";
 import { useMemo } from "react";
+import { resolveGroupColor } from "../diagram/TableGroupNode";
 import { useDiagramStore } from "../../stores/diagram-store";
 import { useUiStore } from "../../stores/ui-store";
 import type { SchemaEnum, SchemaModel, SchemaTable } from "../../types/schema";
@@ -143,17 +144,27 @@ function TableInspectorView({
   }, [outgoingRefs]);
 
   const totalRelations = outgoingRefs.length + incomingRefs.length;
+  const tableGroup = useMemo(
+    () =>
+      table.groupId
+        ? model?.tableGroups?.find((g) => g.id === table.groupId)
+        : undefined,
+    [model?.tableGroups, table.groupId],
+  );
+  const effectiveHeaderColor =
+    table.headerColor ??
+    (tableGroup ? resolveGroupColor(tableGroup) : undefined);
 
   return (
     <>
       <div className="inspector-header">
         <div className="inspector-header-top">
           <div className="inspector-title-group">
-            {table.headerColor && (
+            {effectiveHeaderColor && (
               <span
                 className="inspector-header-color-dot"
-                style={{ background: table.headerColor }}
-                title={`Header color ${table.headerColor}`}
+                style={{ background: effectiveHeaderColor }}
+                title={`Header color ${effectiveHeaderColor}`}
               />
             )}
             <div className="inspector-title-text">
@@ -181,6 +192,18 @@ function TableInspectorView({
       <div className="inspector-body inspector-body-scroll">
         <div className="inspector-overview-section">
           <div className="inspector-meta-pills">
+            {tableGroup && (
+              <span
+                className="inspector-meta-pill"
+                title={
+                  tableGroup.note
+                    ? `Group: ${tableGroup.name} — ${tableGroup.note}`
+                    : `Group: ${tableGroup.name}`
+                }
+              >
+                Group: {tableGroup.name}
+              </span>
+            )}
             <span className="inspector-meta-pill">
               {table.columns.length} {table.columns.length === 1 ? "field" : "fields"}
             </span>
