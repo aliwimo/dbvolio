@@ -544,12 +544,10 @@
 }
 
 .diagram-layout-dropdown {
-  position: absolute;
-  left: calc(100% + 6px);
-  top: 0;
-  z-index: 30;
-  width: min(280px, calc(100vw - 24px));
-  max-height: min(420px, calc(100vh - 120px));
+  position: fixed;
+  z-index: 1000;
+  width: min(280px, calc(100vw - 16px));
+  max-height: min(420px, calc(100vh - 16px));
   overflow: auto;
   padding: 10px;
   background: var(--bg-panel);
@@ -559,8 +557,8 @@
 }
 
 .diagram-layout-dropdown-wide {
-  width: min(340px, calc(100vw - 24px));
-  max-height: min(520px, calc(100vh - 120px));
+  width: min(340px, calc(100vw - 16px));
+  max-height: min(520px, calc(100vh - 16px));
 }
 
 .diagram-arrange-preset {

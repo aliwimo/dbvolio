@@ -8,7 +8,8 @@ import {
   Waypoints,
   Wand2,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { LayoutScope } from "../../features/diagram-layout/layout-options";
 import { LAYOUT_PRESET_COPY } from "../../features/diagram-layout/layout-preset-copy";
 import {
@@ -60,7 +61,9 @@ export function LayoutMenu({
   onFitView: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ left: 0, top: 0 });
   const wrapRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const layoutAlgorithm = useDiagramViewStore((s) => s.layoutAlgorithm);
   const layoutSpacing = useDiagramViewStore((s) => s.layoutSpacing);
@@ -76,9 +79,14 @@ export function LayoutMenu({
       return;
     }
     const onDocClick = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
+      const target = e.target as Node;
+      if (
+        wrapRef.current?.contains(target) ||
+        menuRef.current?.contains(target)
+      ) {
+        return;
       }
+      setMenuOpen(false);
     };
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -94,11 +102,14 @@ export function LayoutMenu({
         runPreset(preset.value);
       }
     };
+    const onResize = () => setMenuOpen(false);
     document.addEventListener("mousedown", onDocClick);
     window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", onResize);
     return () => {
       document.removeEventListener("mousedown", onDocClick);
       window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("resize", onResize);
     };
   }, [menuOpen, canRun, isRunning]);
 
@@ -112,6 +123,41 @@ export function LayoutMenu({
     setMenuOpen(false);
     onRunLayout(scope);
   };
+
+  const applyOption = (apply: () => void) => {
+    apply();
+    if (canRun && !isRunning) {
+      onRunLayout("all");
+    }
+  };
+
+  useLayoutEffect(() => {
+    if (!menuOpen) {
+      return;
+    }
+    const trigger = wrapRef.current;
+    const menu = menuRef.current;
+    if (!trigger || !menu) {
+      return;
+    }
+    const margin = 8;
+    const gap = 6;
+    const triggerRect = trigger.getBoundingClientRect();
+    const { width, height } = menu.getBoundingClientRect();
+    const left = Math.max(
+      margin,
+      Math.min(triggerRect.left, window.innerWidth - width - margin),
+    );
+    const below = triggerRect.bottom + gap;
+    const fitsBelow = below + height <= window.innerHeight - margin;
+    const above = triggerRect.top - height - gap;
+    const top = fitsBelow
+      ? below
+      : above >= margin
+        ? above
+        : Math.max(margin, window.innerHeight - height - margin);
+    setMenuPosition({ left, top });
+  }, [menuOpen]);
 
   const activePreset = PRESETS.find((p) => p.value === layoutAlgorithm);
   const activeSpacing = SPACING.find((s) => s.value === layoutSpacing);
@@ -147,12 +193,15 @@ export function LayoutMenu({
         </button>
       </div>
 
-      {menuOpen && (
-        <div
-          className="diagram-layout-dropdown diagram-layout-dropdown-wide"
-          role="menu"
-          aria-label="Auto-arrange"
-        >
+      {menuOpen &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="diagram-layout-dropdown diagram-layout-dropdown-wide"
+            style={{ left: menuPosition.left, top: menuPosition.top }}
+            role="menu"
+            aria-label="Auto-arrange"
+          >
           <p className="header-dropdown-section-label">Auto-arrange</p>
           {PRESETS.map(({ value, label, hint, shortcut, icon: Icon }) => (
             <button
@@ -190,7 +239,9 @@ export function LayoutMenu({
                 aria-checked={layoutSpacing === value}
                 title={hint}
                 className={`diagram-layout-spacing-btn ${layoutSpacing === value ? "active" : ""}`}
-                onClick={() => setOption("layoutSpacing", value)}
+                onClick={() =>
+                  applyOption(() => setOption("layoutSpacing", value))
+                }
               >
                 {label}
               </button>
@@ -253,12 +304,15 @@ export function LayoutMenu({
             <input
               type="checkbox"
               checked={layoutSeparateComponents}
-              onChange={() => toggleOption("layoutSeparateComponents")}
+              onChange={() =>
+                applyOption(() => toggleOption("layoutSeparateComponents"))
+              }
             />
             <span>Arrange disconnected groups separately</span>
           </label>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
