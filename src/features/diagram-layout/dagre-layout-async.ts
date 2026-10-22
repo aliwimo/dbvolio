@@ -6,6 +6,8 @@ import {
   positionsToNodes,
 } from "./dagre-layout";
 import type { AutoLayoutOptions } from "./layout-options";
+import { hasGroupedTables } from "./group-layout";
+import { resolveNodeOverlaps, spacingMetrics } from "./layout-spacing";
 import type { LayoutDirection } from "../../stores/diagram-view-store";
 import type { DagreLayoutPositions } from "./dagre-layout-core";
 import type {
@@ -91,7 +93,8 @@ export async function applyDagreLayoutAsync(
   if (
     resolved.separateComponents ||
     resolved.scope === "selection" ||
-    resolved.spacing !== "default"
+    resolved.spacing !== "default" ||
+    hasGroupedTables(nodes)
   ) {
     return applyDagreLayoutWithOptions(nodes, edges, resolved);
   }
@@ -106,7 +109,10 @@ export async function applyDagreLayoutAsync(
   try {
     if (typeof Worker !== "undefined") {
       const positions = await runDagreLayoutInWorker(input);
-      return positionsToNodes(nodes, positions);
+      return resolveNodeOverlaps(
+        positionsToNodes(nodes, positions),
+        spacingMetrics(resolved.spacing).margin,
+      );
     }
   } catch {
     // Fall back to synchronous layout (e.g. worker load failure).

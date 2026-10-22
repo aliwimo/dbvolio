@@ -10,6 +10,10 @@ export const GROUP_PADDING_TOP = 44;
 export const GROUP_PADDING_BOTTOM = 24;
 export const GROUP_NOTE_EXTRA_TOP = 24;
 
+export function groupTopPadding(hasGroupNote = false): number {
+  return GROUP_PADDING_TOP + (hasGroupNote ? GROUP_NOTE_EXTRA_TOP : 0);
+}
+
 export function groupNodeId(groupId: string): string {
   return `${GROUP_NODE_PREFIX}${groupId}`;
 }
@@ -72,8 +76,7 @@ export function syncTableGroupBounds(nodes: Node[]): Node[] {
       maxY = Math.max(maxY, member.position.y + Number(height));
     }
 
-    const topPad =
-      GROUP_PADDING_TOP + (group.note ? GROUP_NOTE_EXTRA_TOP : 0);
+    const topPad = groupTopPadding(Boolean(group.note?.trim()));
     const x = minX - GROUP_PADDING_X;
     const y = minY - topPad;
     const width = Math.max(240, maxX - minX + GROUP_PADDING_X * 2);
@@ -127,6 +130,11 @@ export function buildGroupLayoutEdges(
 
   if (byGroup.size === 0) {
     return edges;
+  }
+
+  for (const [groupId, memberIds] of byGroup) {
+    memberIds.sort((a, b) => a.localeCompare(b));
+    byGroup.set(groupId, memberIds);
   }
 
   const augmented = [...edges];

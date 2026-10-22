@@ -15,10 +15,18 @@ import {
 import type { AutoLayoutOptions } from "./layout-options";
 import { resolveNodeOverlaps, spacingMetrics } from "./layout-spacing";
 import {
+  groupLayoutHintsFromNodes,
+  hasGroupedTables,
+  layoutNodeSize,
+  layoutTableNodesWithGroups,
+} from "./group-layout";
+import { layoutNodeBounds as sharedLayoutNodeBounds } from "./layout-node-bounds";
+import {
   buildGroupLayoutEdges,
   isGroupNode,
   syncTableGroupBounds,
 } from "./table-group-bounds";
+import { layoutCompactTables } from "./layout-compact";
 
 const NODE_WIDTH = 260;
 const HEADER_HEIGHT = 36;
@@ -62,11 +70,10 @@ export function buildDagreLayoutInput(
   return {
     rankdir,
     spacing,
-    nodes: nodes.map((node) => ({
-      id: node.id,
-      width: NODE_WIDTH,
-      height: tableNodeHeight(node),
-    })),
+    nodes: nodes.map((node) => {
+      const { width, height } = layoutNodeSize(node);
+      return { id: node.id, width, height };
+    }),
     edges: uniqueLayoutEdges(edges),
   };
 }
@@ -77,21 +84,7 @@ function layoutNodeBounds(nodes: Node[]): {
   maxX: number;
   maxY: number;
 } {
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  for (const node of nodes) {
-    const height = tableNodeHeight(node);
-    minX = Math.min(minX, node.position.x);
-    minY = Math.min(minY, node.position.y);
-    maxX = Math.max(maxX, node.position.x + NODE_WIDTH);
-    maxY = Math.max(maxY, node.position.y + height);
-  }
-  if (nodes.length === 0) {
-    return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
-  }
-  return { minX, minY, maxX, maxY };
+  return sharedLayoutNodeBounds(nodes, layoutNodeSize);
 }
 
 function shiftNodes(nodes: Node[], dx: number, dy: number): Node[] {
@@ -151,19 +144,13 @@ function mergeLayoutIntoNodes(allNodes: Node[], laidOut: Node[]): Node[] {
   return allNodes.map((node) => byId.get(node.id) ?? node);
 }
 
-export function applyDagreLayoutWithOptions(
-  nodes: Node[],
+function applyDagreLayoutFlatTables(
+  tableNodes: Node[],
   edges: Edge[],
   options: AutoLayoutOptions,
 ): Node[] {
-  if (nodes.length === 0) {
-    return nodes;
-  }
-
-  const groupNodes = nodes.filter(isGroupNode);
-  const tableNodes = nodes.filter((n) => !isGroupNode(n));
   if (tableNodes.length === 0) {
-    return nodes;
+    return tableNodes;
   }
   const layoutEdges = buildGroupLayoutEdges(tableNodes, edges);
 
@@ -223,13 +210,49 @@ export function applyDagreLayoutWithOptions(
   }
 
   const { margin } = spacingMetrics(spacing);
-  laidOutTargets = resolveNodeOverlaps(laidOutTargets, margin);
+  const resolved = resolveNodeOverlaps(
+    [...fixedNodes, ...laidOutTargets],
+    margin,
+    scope === "selection" ? targetIdSet : undefined,
+    scope === "selection" ? selectedNodeId : null,
+  );
 
-  const mergedTables = mergeLayoutIntoNodes(tableNodes, [
-    ...fixedNodes,
-    ...laidOutTargets,
-  ]);
-  return syncTableGroupBounds([...groupNodes, ...mergedTables]);
+  return mergeLayoutIntoNodes(tableNodes, resolved);
+}
+
+export function applyDagreLayoutWithOptions(
+  nodes: Node[],
+  edges: Edge[],
+  options: AutoLayoutOptions,
+): Node[] {
+  if (nodes.length === 0) {
+    return nodes;
+  }
+
+  const groupNodes = nodes.filter(isGroupNode);
+  const tableNodes = nodes.filter((n) => !isGroupNode(n));
+  if (tableNodes.length === 0) {
+    return nodes;
+  }
+
+  const groupHints = groupLayoutHintsFromNodes(groupNodes);
+  const laidOutTables = hasGroupedTables(tableNodes)
+    ? layoutTableNodesWithGroups(
+        tableNodes,
+        edges,
+        options,
+        applyDagreLayoutFlatTables,
+        (members, memberEdges, memberOptions) => {
+          const connected = memberEdges.length > 0;
+          return connected
+            ? applyDagreLayoutFlatTables(members, memberEdges, memberOptions)
+            : layoutCompactTables(members, memberOptions.spacing);
+        },
+        groupHints,
+      )
+    : applyDagreLayoutFlatTables(tableNodes, edges, options);
+
+  return syncTableGroupBounds([...groupNodes, ...laidOutTables]);
 }
 
 export function positionsToNodes(
@@ -241,11 +264,11 @@ export function positionsToNodes(
     if (!center) {
       return node;
     }
-    const height = tableNodeHeight(node);
+    const { width, height } = layoutNodeSize(node);
     return {
       ...node,
       position: {
-        x: center.x - NODE_WIDTH / 2,
+        x: center.x - width / 2,
         y: center.y - height / 2,
       },
     };
