@@ -89,6 +89,7 @@ function DiagramFlow() {
   const hoveredTableId = useDiagramStore((s) => s.hoveredTableId);
   const projectRoot = useProjectStore((s) => s.projectRoot);
   const entryPoint = useProjectStore((s) => s.entryPoint);
+  const projectScope = useProjectStore((s) => s.projectScope);
   const projectFiles = useProjectStore((s) => s.files);
   const openTableEdit = useUiStore((s) => s.openTableEdit);
   const openTableCreate = useUiStore((s) => s.openTableCreate);
@@ -462,21 +463,23 @@ function DiagramFlow() {
       if (!table) {
         return;
       }
+      const scope = { entryPoint, projectScope };
       if (target.kind === "existing") {
         const group = model?.tableGroups?.find((g) => g.id === target.groupId);
         if (!group) {
           return;
         }
-        void applyAssignTableToGroup(table, group, projectFiles);
+        void applyAssignTableToGroup(table, group, projectFiles, scope);
         return;
       }
       void applyAssignTableToGroup(
         table,
         { name: target.name, schema: table.schema },
         projectFiles,
+        scope,
       );
     },
-    [projectFiles],
+    [entryPoint, projectFiles, projectScope],
   );
 
   const removeTableFromGroup = useCallback(
@@ -487,9 +490,12 @@ function DiagramFlow() {
       if (!table) {
         return;
       }
-      void applyAssignTableToGroup(table, null, projectFiles);
+      void applyAssignTableToGroup(table, null, projectFiles, {
+        entryPoint,
+        projectScope,
+      });
     },
-    [projectFiles],
+    [entryPoint, projectFiles, projectScope],
   );
 
   const hoverFrame = useRef<number | null>(null);

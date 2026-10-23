@@ -17,8 +17,85 @@ import {
   formatNewTableBlock,
 } from "./dbml-edit";
 import type { SchemaColumn, SchemaTable } from "../../types/schema";
+import type { ProjectScope } from "../open/project-scope-files";
 import { useEditorStore } from "../../stores/editor-store";
 import { readProjectFile } from "../../services/tauri-bridge";
+
+export interface DiagramFileScope {
+  entryPoint: string | null;
+  projectScope: ProjectScope;
+}
+
+function collectImportPaths(content: string): string[] {
+  const paths: string[] = [];
+  let inUseStatement = false;
+  for (const rawLine of content.split("\n")) {
+    const line = rawLine.trim();
+    if (!inUseStatement) {
+      if (!/^use\b/i.test(line)) {
+        continue;
+      }
+      inUseStatement = true;
+    }
+    const from = line.match(/\bfrom\s*['"]([^'"]+)['"]/);
+    if (from) {
+      paths.push(from[1]);
+      inUseStatement = false;
+    }
+  }
+  return paths;
+}
+
+function resolveImportPath(fromPath: string, specifier: string): string {
+  const base = specifier.startsWith("/")
+    ? specifier.slice(1).split("/")
+    : [...fromPath.split("/").slice(0, -1), ...specifier.split("/")];
+  const parts: string[] = [];
+  for (const part of base) {
+    if (!part || part === ".") {
+      continue;
+    }
+    if (part === "..") {
+      parts.pop();
+    } else {
+      parts.push(part);
+    }
+  }
+  return parts.join("/");
+}
+
+/**
+ * Files that make up the current diagram: the entry point plus everything it
+ * imports. Other DBML files in the project are separate diagrams and must not
+ * be touched — they may define tables with the same names.
+ */
+function resolveDiagramFiles(
+  fileMap: Record<string, string>,
+  scope: DiagramFileScope,
+): string[] {
+  const { entryPoint, projectScope } = scope;
+  if (!entryPoint || fileMap[entryPoint] === undefined) {
+    return Object.keys(fileMap);
+  }
+  if (projectScope === "file") {
+    return [entryPoint];
+  }
+  const files: string[] = [];
+  const seen = new Set<string>();
+  const queue = [entryPoint];
+  while (queue.length > 0) {
+    const path = queue.shift()!;
+    if (seen.has(path) || fileMap[path] === undefined) {
+      continue;
+    }
+    seen.add(path);
+    files.push(path);
+    for (const specifier of collectImportPaths(fileMap[path])) {
+      queue.push(resolveImportPath(path, specifier));
+    }
+  }
+  return files;
+}
 
 async function commitFileContent(
   relativePath: string,
@@ -252,16 +329,19 @@ export async function applyAssignTableToGroup(
   table: SchemaTable,
   group: { name: string; schema?: string } | null,
   projectFiles: { relativePath: string }[],
+  scope: DiagramFileScope,
 ): Promise<boolean> {
   const fileMap = await resolveFileMap(projectFiles);
-  const tablePath = locateTableFile(table, fileMap);
+  const diagramFiles = resolveDiagramFiles(fileMap, scope);
+  const tablePath =
+    diagramFiles.find((path) => findTableBlock(fileMap[path], table)) ?? null;
   if (!tablePath) {
     return false;
   }
 
   const working = { ...fileMap };
-  for (const [path, content] of Object.entries(working)) {
-    working[path] = removeTableFromAllTableGroupsInContent(content, table);
+  for (const path of diagramFiles) {
+    working[path] = removeTableFromAllTableGroupsInContent(working[path], table);
   }
 
   if (group) {
@@ -269,13 +349,10 @@ export async function applyAssignTableToGroup(
     if (!target.name) {
       return false;
     }
-    let groupPath: string | null = null;
-    for (const [path, content] of Object.entries(working)) {
-      if (findTableGroupBlock(content, target)) {
-        groupPath = path;
-        break;
-      }
-    }
+    const groupPath =
+      diagramFiles.find((path) =>
+        findTableGroupBlock(working[path], target),
+      ) ?? null;
     if (groupPath) {
       working[groupPath] = addTableToGroupInContent(
         working[groupPath],
@@ -290,9 +367,9 @@ export async function applyAssignTableToGroup(
     }
   }
 
-  for (const [path, content] of Object.entries(working)) {
-    if (content !== fileMap[path]) {
-      await commitFileContent(path, content);
+  for (const path of diagramFiles) {
+    if (working[path] !== fileMap[path]) {
+      await commitFileContent(path, working[path]);
     }
   }
   return true;
