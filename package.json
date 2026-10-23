@@ -1,7 +1,7 @@
 {
   "name": "dbvolio",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "Apache-2.0",
   "type": "module",
   "allowScripts": {
@@ -14,6 +14,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "icons": "bash scripts/sync-icons.sh",
+    "set-version": "node scripts/set-version.mjs",
     "test": "vitest",
     "test:run": "vitest run"
   },

@@ -80,6 +80,7 @@ npm run build          # frontend production build
 npm run test:run       # Vitest (parser, diagram adapters, stores)
 cd src-tauri && cargo test   # Rust path validation
 npm run icons          # sync app icons from src/assets
+npm run set-version -- patch # bump version across package.json, tauri.conf.json & Cargo.toml
 ```
 
 ## Building
@@ -107,6 +108,20 @@ To build only specific bundle types (optional):
 npm run tauri build -- --bundles dmg          # macOS
 npm run tauri build -- --bundles msi,nsis     # Windows
 npm run tauri build -- --bundles deb,appimage # Linux
+```
+
+### Versioning
+
+To keep all manifest and configuration files in sync (`package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, and `src-tauri/Cargo.lock`), use the `set-version` script:
+
+```bash
+# Bump semver
+npm run set-version -- patch    # e.g. 0.1.1 -> 0.1.2
+npm run set-version -- minor    # e.g. 0.1.1 -> 0.2.0
+npm run set-version -- major    # e.g. 0.1.1 -> 1.0.0
+
+# Or set an explicit version
+npm run set-version -- 0.2.0
 ```
 
 ### GitHub Releases
