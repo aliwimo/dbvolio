@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { createStoreFactory } from "./create-store";
 import type { LayoutViewport } from "../types/layout";
 
 export type LayoutDirection = "LR" | "TB" | "RL" | "BT";
@@ -93,7 +93,7 @@ function persistOptions(options: DiagramViewOptions) {
   );
 }
 
-export const useDiagramViewStore = create<DiagramViewState>((set, get) => ({
+export const useDiagramViewStore = createStoreFactory<DiagramViewState>((set, get) => ({
   ...loadOptions(),
   pendingViewport: null,
 

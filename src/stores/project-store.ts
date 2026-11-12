@@ -1,5 +1,5 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import { create } from "zustand";
+import { createStoreFactory } from "./create-store";
 import type { ProjectScope } from "../features/open/project-scope-files";
 import { splitDbmlFilePath } from "../features/open/split-dbml-file-path";
 import {
@@ -72,7 +72,7 @@ function resetDiagramState(): void {
   });
 }
 
-export const useProjectStore = create<ProjectState>((set, get) => ({
+export const useProjectStore = createStoreFactory<ProjectState>((set, get) => ({
   projectRoot: null,
   projectName: null,
   projectScope: "folder",
