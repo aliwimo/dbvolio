@@ -1,4 +1,4 @@
-import { type JSX } from "solid-js";
+import { createSignal, type JSX } from "solid-js";
 
 interface SplitPaneProps {
   direction?: "horizontal" | "vertical";
@@ -11,38 +11,39 @@ interface SplitPaneProps {
 
 export function SplitPane(props: SplitPaneProps) {
   let containerRef: HTMLDivElement | undefined;
+  const [ratio, setRatio] = createSignal(props.initialRatio ?? 0.5);
+  const [dragging, setDragging] = createSignal(false);
+
   const direction = () => props.direction ?? "horizontal";
   const minFirst = () => props.minFirst ?? 120;
   const minSecond = () => props.minSecond ?? 120;
 
-  let ratio = props.initialRatio ?? 0.5;
+  const onMouseDown = (e: MouseEvent) => {
+    e.preventDefault();
+    setDragging(true);
 
-  const onMouseDown = () => {
     const onMouseMove = (event: MouseEvent) => {
       if (!containerRef) return;
       const rect = containerRef.getBoundingClientRect();
       if (direction() === "horizontal") {
         const x = event.clientX - rect.left;
-        ratio = Math.min(
+        const next = Math.min(
           Math.max(x / rect.width, minFirst() / rect.width),
           1 - minSecond() / rect.width
         );
+        setRatio(next);
       } else {
         const y = event.clientY - rect.top;
-        ratio = Math.min(
+        const next = Math.min(
           Math.max(y / rect.height, minFirst() / rect.height),
           1 - minSecond() / rect.height
         );
-      }
-      const firstEl = containerRef.querySelector(".split-pane-first") as HTMLElement | null;
-      const secondEl = containerRef.querySelector(".split-pane-second") as HTMLElement | null;
-      if (firstEl && secondEl) {
-        firstEl.style.flex = `${ratio} 1 0`;
-        secondEl.style.flex = `${1 - ratio} 1 0`;
+        setRatio(next);
       }
     };
 
     const onMouseUp = () => {
+      setDragging(false);
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
     };
@@ -56,18 +57,18 @@ export function SplitPane(props: SplitPaneProps) {
   return (
     <div
       ref={containerRef}
-      class={`split-pane split-${direction()}`}
+      class={`split-pane ${isHorizontal() ? "split-pane-horizontal" : "split-pane-vertical"}`}
     >
-      <div class="split-pane-first" style={{ flex: `${ratio} 1 0` }}>
+      <div class="split-pane-pane" style={{ flex: `${ratio()} 1 0` }}>
         {props.first}
       </div>
       <div
-        class={`split-pane-resizer resizer-${direction()}`}
+        class={`split-pane-resizer ${dragging() ? "dragging" : ""}`}
+        onMouseDown={onMouseDown}
         role="separator"
         aria-orientation={isHorizontal() ? "vertical" : "horizontal"}
-        onMouseDown={onMouseDown}
       />
-      <div class="split-pane-second" style={{ flex: `${1 - ratio} 1 0` }}>
+      <div class="split-pane-pane" style={{ flex: `${1 - ratio()} 1 0` }}>
         {props.second}
       </div>
     </div>
