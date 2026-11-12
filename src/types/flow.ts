@@ -1,4 +1,11 @@
-export type Position = "left" | "right" | "top" | "bottom";
+export const Position = {
+  Left: "left",
+  Right: "right",
+  Top: "top",
+  Bottom: "bottom",
+} as const;
+
+export type Position = (typeof Position)[keyof typeof Position];
 
 export interface XYPosition {
   x: number;
@@ -24,6 +31,7 @@ export interface Node<T = Record<string, unknown>, U extends string = string> {
   dragHandle?: string;
   width?: number | null;
   height?: number | null;
+  measured?: { width?: number; height?: number };
   parentId?: string;
   zIndex?: number;
   extent?: "parent" | [[number, number], [number, number]];
@@ -91,4 +99,22 @@ export interface InternalNode<T = Record<string, unknown>> extends Node<T> {
     positionAbsolute: XYPosition;
     handleBounds?: Record<string, any>;
   };
+}
+
+export function getSmoothStepPath(params: {
+  sourceX: number;
+  sourceY: number;
+  targetX: number;
+  targetY: number;
+  sourcePosition?: Position;
+  targetPosition?: Position;
+  borderRadius?: number;
+}): [string, number, number] {
+  const { sourceX, sourceY, targetX, targetY } = params;
+  const dx = targetX - sourceX;
+  const dy = targetY - sourceY;
+  const midX = sourceX + dx / 2;
+  const midY = sourceY + dy / 2;
+  const path = `M ${sourceX} ${sourceY} C ${sourceX + 40} ${sourceY}, ${targetX - 40} ${targetY}, ${targetX} ${targetY}`;
+  return [path, midX, midY];
 }

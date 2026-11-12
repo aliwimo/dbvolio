@@ -50,11 +50,11 @@ export function useDiagramAutoLayout(params: {
 
     try {
       const nextNodes = await applyAutoLayoutAsync(currentNodes, currentEdges, {
-        direction: layoutDirection,
+        rankdir: layoutDirection,
         algorithm,
         spacing: layoutSpacing,
         scope,
-        selectedTableId: selectedTableId ?? undefined,
+        selectedNodeId: selectedTableId,
         separateComponents: layoutSeparateComponents,
       });
 

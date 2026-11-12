@@ -1,22 +1,8 @@
-import { FileCode2 } from "lucide-react";
-import type { ReactNode } from "react";
-import { formatQualifiedTableName } from "./column-helpers";
+import { FileCode2 } from "lucide-solid";
+import { For, Show, type JSX } from "solid-js";
 import { HeaderColorPicker } from "./HeaderColorPicker";
 
-export function TableMetaCard({
-  schema,
-  name,
-  onSchemaChange,
-  onNameChange,
-  headerColor,
-  onHeaderColorChange,
-  targetFile,
-  onTargetFileChange,
-  dbmlFilePaths,
-  disabled,
-  actions,
-  nameAutoFocus,
-}: {
+export function TableMetaCard(props: {
   schema: string;
   name: string;
   onSchemaChange: (value: string) => void;
@@ -27,72 +13,65 @@ export function TableMetaCard({
   onTargetFileChange?: (path: string) => void;
   dbmlFilePaths?: string[];
   disabled?: boolean;
-  actions?: ReactNode;
+  actions?: JSX.Element;
   nameAutoFocus?: boolean;
 }) {
-  const qualified = formatQualifiedTableName(schema, name);
-
   return (
-    <section className="table-form-meta-card">
-      <div className="table-form-meta-fields">
-        <label className="table-form-field table-form-field-schema">
+    <section class="table-form-meta-card">
+      <div class="table-form-meta-fields">
+        <label class="table-form-field table-form-field-schema">
           Schema
           <input
-            value={schema}
-            onChange={(e) => onSchemaChange(e.target.value)}
+            value={props.schema}
+            onInput={(e) => props.onSchemaChange(e.currentTarget.value)}
             placeholder="public"
-            disabled={disabled}
+            disabled={props.disabled}
           />
         </label>
-        <label className="table-form-field table-form-field-name">
+        <label class="table-form-field table-form-field-name">
           Table name
           <input
-            value={name}
-            onChange={(e) => onNameChange(e.target.value)}
-            placeholder="orders, user_profiles…"
-            autoFocus={nameAutoFocus}
-            disabled={disabled}
+            value={props.name}
+            autofocus={props.nameAutoFocus}
+            onInput={(e) => props.onNameChange(e.currentTarget.value)}
+            placeholder="users"
+            disabled={props.disabled}
           />
         </label>
-      </div>
-
-      <p className="table-form-meta-qualified" title="Qualified table name">
-        <span className="table-form-meta-qualified-label">Full name</span>
-        <code>{qualified}</code>
-      </p>
-
-      {dbmlFilePaths && dbmlFilePaths.length > 0 && onTargetFileChange && (
-        <label className="table-form-field table-form-field-file">
-          <span className="table-form-field-file-label">
-            <FileCode2 size={13} aria-hidden />
-            Save to DBML file
-          </span>
-          <select
-            value={targetFile}
-            onChange={(e) => onTargetFileChange(e.target.value)}
-            disabled={disabled}
-          >
-            {dbmlFilePaths.map((path) => (
-              <option key={path} value={path}>
-                {path}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-
-      <div className="table-form-meta-divider" role="presentation" />
-
-      <div className="table-form-meta-color">
-        <span className="table-form-meta-sublabel">Diagram header color</span>
         <HeaderColorPicker
-          value={headerColor}
-          onChange={onHeaderColorChange}
-          disabled={disabled}
+          value={props.headerColor}
+          onChange={props.onHeaderColorChange}
+          disabled={props.disabled}
         />
       </div>
 
-      {actions && <footer className="table-form-meta-footer">{actions}</footer>}
+      <Show when={props.dbmlFilePaths && props.dbmlFilePaths.length > 0 && props.onTargetFileChange}>
+        <div class="table-form-target-file">
+          <label class="table-form-target-file-label" for="table-form-target-file-select">
+            <FileCode2 size={13} aria-hidden />
+            <span>Target file</span>
+          </label>
+          <select
+            id="table-form-target-file-select"
+            class="select-compact table-form-target-file-select"
+            value={props.targetFile ?? props.dbmlFilePaths![0]}
+            onChange={(e) => props.onTargetFileChange!(e.currentTarget.value)}
+            disabled={props.disabled}
+          >
+            <For each={props.dbmlFilePaths}>
+              {(p) => (
+                <option value={p} title={p}>
+                  {p}
+                </option>
+              )}
+            </For>
+          </select>
+        </div>
+      </Show>
+
+      <Show when={props.actions}>
+        <div class="table-form-meta-actions">{props.actions}</div>
+      </Show>
     </section>
   );
 }

@@ -5,8 +5,8 @@ import {
   FileImage,
   FileText,
   Image,
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+} from "lucide-solid";
+import { createSignal, onCleanup, onMount, Show } from "solid-js";
 import {
   exportDiagramPdf,
   exportDiagramPng,
@@ -16,32 +16,24 @@ import {
 import { useProjectStore } from "../../stores/project-store";
 
 export function ExportMenu() {
-  const projectRoot = useProjectStore((s) => s.projectRoot);
-  const entryPoint = useProjectStore((s) => s.entryPoint);
-  const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const projectRoot = () => useProjectStore((s) => s.projectRoot);
+  const entryPoint = () => useProjectStore((s) => s.entryPoint);
+  const [open, setOpen] = createSignal(false);
+  const [busy, setBusy] = createSignal(false);
+  let wrapRef: HTMLDivElement | undefined;
 
-  const canExport = Boolean(projectRoot && entryPoint);
+  const canExport = () => Boolean(projectRoot() && entryPoint());
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
+  onMount(() => {
     const onDocClick = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as HTMLElement)) {
+      if (!open()) return;
+      if (wrapRef && !wrapRef.contains(e.target as HTMLElement)) {
         setOpen(false);
       }
     };
     document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, [open]);
-
-  useEffect(() => {
-    if (!canExport) {
-      setOpen(false);
-    }
-  }, [canExport]);
+    onCleanup(() => document.removeEventListener("mousedown", onDocClick));
+  });
 
   const run = (action: () => Promise<void>) => {
     setBusy(true);
@@ -52,78 +44,77 @@ export function ExportMenu() {
   };
 
   return (
-    <div className="header-dropdown" ref={wrapRef}>
-      <div className="header-dropdown-trigger">
+    <div class="header-dropdown" ref={wrapRef}>
+      <div class="header-dropdown-trigger">
         <button
           type="button"
-          className="btn btn-ghost btn-sm"
-          disabled={!canExport || busy}
+          class="btn btn-ghost btn-sm"
+          disabled={!canExport() || busy()}
           aria-label="Export"
-          aria-expanded={open}
+          aria-expanded={open()}
           aria-haspopup="menu"
           onClick={() => setOpen((v) => !v)}
         >
           <Download size={15} />
-          <span className="header-btn-label">Export</span>
-          <ChevronDown size={14} className="header-dropdown-caret" />
+          <span class="header-btn-label">Export</span>
+          <ChevronDown size={14} class="header-dropdown-caret" />
         </button>
       </div>
-      {open && canExport && (
-        <div className="header-dropdown-menu" role="menu">
+      <Show when={open() && canExport()}>
+        <div class="header-dropdown-menu" role="menu">
           <button
             type="button"
-            className="header-dropdown-item"
+            class="header-dropdown-item"
             role="menuitem"
-            disabled={busy}
+            disabled={busy()}
             onClick={() => run(() => exportSql(true))}
           >
             <FileCode size={15} aria-hidden />
-            <span>
-              <span className="header-dropdown-item-label">Postgres SQL</span>
-              <span className="header-dropdown-item-hint">schema.sql</span>
-            </span>
+            <span class="header-dropdown-item-label">Export SQL (PostgreSQL)…</span>
           </button>
           <button
             type="button"
-            className="header-dropdown-item"
+            class="header-dropdown-item"
             role="menuitem"
-            disabled={busy}
-            onClick={() => run(() => exportDiagramSvg())}
-          >
-            <Image size={15} aria-hidden />
-            <span>
-              <span className="header-dropdown-item-label">Diagram SVG</span>
-              <span className="header-dropdown-item-hint">Vector image</span>
-            </span>
-          </button>
-          <button
-            type="button"
-            className="header-dropdown-item"
-            role="menuitem"
-            disabled={busy}
-            onClick={() => run(() => exportDiagramPng())}
-          >
-            <FileImage size={15} aria-hidden />
-            <span>
-              <span className="header-dropdown-item-label">Diagram PNG</span>
-              <span className="header-dropdown-item-hint">Raster image</span>
-            </span>
-          </button>
-          <button
-            type="button"
-            className="header-dropdown-item"
-            role="menuitem"
-            disabled={busy}
-            onClick={() => run(() => exportDiagramPdf())}
+            disabled={busy()}
+            onClick={() => run(() => exportSql(false))}
           >
             <FileText size={15} aria-hidden />
-            <span>
-              <span className="header-dropdown-item-label">Diagram PDF</span>
-              <span className="header-dropdown-item-hint">Vector document</span>
-            </span>
+            <span class="header-dropdown-item-label">Export SQL (MySQL)…</span>
+          </button>
+          <div class="header-dropdown-divider" role="separator" />
+          <button
+            type="button"
+            class="header-dropdown-item"
+            role="menuitem"
+            disabled={busy()}
+            onClick={() => run(exportDiagramSvg)}
+          >
+            <FileImage size={15} aria-hidden />
+            <span class="header-dropdown-item-label">Export Diagram SVG…</span>
+          </button>
+          <button
+            type="button"
+            class="header-dropdown-item"
+            role="menuitem"
+            disabled={busy()}
+            onClick={() => run(exportDiagramPng)}
+          >
+            <Image size={15} aria-hidden />
+            <span class="header-dropdown-item-label">Export Diagram PNG…</span>
+          </button>
+          <button
+            type="button"
+            class="header-dropdown-item"
+            role="menuitem"
+            disabled={busy()}
+            onClick={() => run(exportDiagramPdf)}
+          >
+            <Download size={15} aria-hidden />
+            <span class="header-dropdown-item-label">Export Diagram PDF…</span>
           </button>
         </div>
-      )}
+      </Show>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { createSignal, createEffect, Show } from "solid-js";
 import {
   applyAddColumn,
   applyMoveColumn,
@@ -16,56 +16,47 @@ import { TableFormDialog } from "./table-form/TableFormDialog";
 import { TableMetaCard } from "./table-form/TableMetaCard";
 
 export function TableEditModal() {
-  const open = useUiStore((s) => s.tableEditOpen);
-  const closeTableEdit = useUiStore((s) => s.closeTableEdit);
-  const table = useDiagramStore((s) => s.selectedTable());
-  const files = useProjectStore((s) => s.files);
-  const projectFiles = useMemo(
-    () => files.filter((f) => !f.isDirectory),
-    [files],
-  );
+  const open = () => useUiStore((s) => s.tableEditOpen);
+  const closeTableEdit = useUiStore.getState().closeTableEdit;
+  const table = () => useDiagramStore((s) => s.selectedTable());
+  const files = () => useProjectStore((s) => s.files);
 
-  const [tableName, setTableName] = useState("");
-  const [tableSchema, setTableSchema] = useState("");
-  const [headerColor, setHeaderColor] = useState("");
-  const [columnError, setColumnError] = useState<string | null>(null);
-  const [editError, setEditError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [tableName, setTableName] = createSignal("");
+  const [tableSchema, setTableSchema] = createSignal("");
+  const [headerColor, setHeaderColor] = createSignal("");
+  const [columnError, setColumnError] = createSignal<string | null>(null);
+  const [editError, setEditError] = createSignal<string | null>(null);
+  const [busy, setBusy] = createSignal(false);
 
-  useEffect(() => {
-    if (!open || !table) {
-      return;
-    }
-    setTableName(table.name);
-    setTableSchema(table.schema ?? "");
-    setHeaderColor(table.headerColor ?? "");
-    setColumnError(null);
-    setEditError(null);
-  }, [open, table]);
-
-  useEffect(() => {
-    if (open && !table) {
+  createEffect(() => {
+    const t = table();
+    if (open() && t) {
+      setTableName(t.name);
+      setTableSchema(t.schema ?? "");
+      setHeaderColor(t.headerColor ?? "");
+      setColumnError(null);
+      setEditError(null);
+    } else if (open() && !t) {
       closeTableEdit();
     }
-  }, [open, table, closeTableEdit]);
+  });
 
-  const metaDirty = useMemo(() => {
-    if (!table) {
-      return false;
-    }
-    const nextSchema = tableSchema.trim();
-    const prevSchema = (table.schema ?? "").trim();
-    return tableName.trim() !== table.name || nextSchema !== prevSchema;
-  }, [table, tableName, tableSchema]);
+  const metaDirty = () => {
+    const t = table();
+    if (!t) return false;
+    const nextSchema = tableSchema().trim();
+    const prevSchema = (t.schema ?? "").trim();
+    return tableName().trim() !== t.name || nextSchema !== prevSchema;
+  };
 
-  const runEdit = useCallback(async (action: () => Promise<boolean>) => {
+  const runEdit = async (action: () => Promise<boolean>) => {
     setBusy(true);
     setEditError(null);
     try {
       const ok = await action();
       if (!ok) {
         setEditError(
-          "Could not find this table in project DBML files. Open or create the table definition first.",
+          "Could not find this table in project DBML files. Open or create the table definition first."
         );
       }
     } catch (error) {
@@ -73,103 +64,124 @@ export function TableEditModal() {
     } finally {
       setBusy(false);
     }
-  }, []);
+  };
 
-  if (!open || !table) {
-    return null;
-  }
+  const saveMeta = () => {
+    const t = table();
+    if (!t || !metaDirty()) return;
+    const nextName = tableName().trim();
+    if (!nextName) {
+      setEditError("Table name cannot be empty.");
+      return;
+    }
+    const nextSchema = tableSchema().trim() || undefined;
+    void runEdit(async () => {
+      const ok = await applyUpdateTableMeta(
+        t,
+        { schema: nextSchema, name: nextName },
+        files()
+      );
+      if (ok) {
+        const nextId = nextSchema ? `${nextSchema}.${nextName}` : nextName;
+        useDiagramStore.getState().selectTable(nextId);
+      }
+      return ok;
+    });
+  };
+
+  const handleColorChange = (color: string) => {
+    setHeaderColor(color);
+    const t = table();
+    if (!t) return;
+    void runEdit(() => applySetTableHeaderColor(t, color, files()));
+  };
 
   return (
-    <TableFormDialog
-      open={open}
-      onClose={closeTableEdit}
-      titleId="table-edit-title"
-      title="Edit table"
-      footer={
-        <button
-          type="button"
-          className="btn btn-sm btn-primary"
-          onClick={closeTableEdit}
+    <Show when={open() && table()}>
+      {(t) => (
+        <TableFormDialog
+          open={open()}
+          onClose={closeTableEdit}
+          titleId="table-edit-modal-title"
+          title={`Edit ${t().name}`}
+          subtitle="Modifications update the underlying DBML file immediately"
+          footer={
+            <>
+              <button
+                type="button"
+                class="btn btn-ghost"
+                onClick={closeTableEdit}
+                disabled={busy()}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                disabled={busy()}
+                onClick={() => {
+                  void openTableSourceFile(t(), files());
+                  closeTableEdit();
+                }}
+              >
+                Open in editor
+              </button>
+            </>
+          }
         >
-          Done
-        </button>
-      }
-    >
-      <TableMetaCard
-        schema={tableSchema}
-        name={tableName}
-        onSchemaChange={setTableSchema}
-        onNameChange={setTableName}
-        headerColor={headerColor}
-        onHeaderColorChange={(color) => {
-          setHeaderColor(color);
-          void runEdit(() =>
-            applySetTableHeaderColor(table, color || null, projectFiles),
-          );
-        }}
-        disabled={busy}
-        actions={
-          <>
-            <button
-              type="button"
-              className="btn btn-sm btn-ghost"
-              disabled={busy}
-              onClick={() => void openTableSourceFile(table, projectFiles)}
-            >
-              Open source
-            </button>
-            <button
-              type="button"
-              className="btn btn-sm btn-primary"
-              disabled={busy || !metaDirty || !tableName.trim()}
-              onClick={() =>
-                void runEdit(() =>
-                  applyUpdateTableMeta(
-                    table,
-                    {
-                      name: tableName.trim() || table.name,
-                      schema: tableSchema.trim() || undefined,
-                    },
-                    projectFiles,
-                  ),
-                )
+          <div>
+            <TableMetaCard
+              schema={tableSchema()}
+              name={tableName()}
+              onSchemaChange={setTableSchema}
+              onNameChange={setTableName}
+              headerColor={headerColor()}
+              onHeaderColorChange={handleColorChange}
+              disabled={busy()}
+              actions={
+                <Show when={metaDirty()}>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-primary"
+                    disabled={busy() || !tableName().trim()}
+                    onClick={saveMeta}
+                  >
+                    Save name &amp; schema
+                  </button>
+                </Show>
               }
-            >
-              Save definition
-            </button>
-          </>
-        }
-      />
+            />
 
-      <ColumnsSection
-        mode="live"
-        columns={table.columns}
-        disabled={busy}
-        error={columnError}
-        onError={setColumnError}
-        onUpdate={(originalName, next) =>
-          void runEdit(() =>
-            applyUpdateColumn(table, originalName, next, projectFiles),
-          )
-        }
-        onRemove={(name) =>
-          void runEdit(() => applyRemoveColumn(table, name, projectFiles))
-        }
-        onMove={(name, direction) =>
-          void runEdit(() =>
-            applyMoveColumn(table, name, direction, projectFiles),
-          )
-        }
-        onAdd={(column, placement) =>
-          void runEdit(() =>
-            applyAddColumn(table, column, projectFiles, placement),
-          )
-        }
-      />
+            <div style={{ height: "16px" }} />
 
-      {editError && (
-        <p className="inspector-error table-form-form-error">{editError}</p>
+            <ColumnsSection
+              mode="live"
+              columns={t().columns}
+              disabled={busy()}
+              error={columnError()}
+              onError={setColumnError}
+              onAdd={(col, placement) =>
+                void runEdit(() => applyAddColumn(t(), col, files(), placement))
+              }
+              onUpdate={(orig, next) =>
+                void runEdit(() => applyUpdateColumn(t(), orig, next, files()))
+              }
+              onRemove={(colName) =>
+                void runEdit(() => applyRemoveColumn(t(), colName, files()))
+              }
+              onMove={(colName, dir) =>
+                void runEdit(() => applyMoveColumn(t(), colName, dir, files()))
+              }
+            />
+
+            <Show when={editError()}>
+              <p class="form-error" role="alert">
+                {editError()}
+              </p>
+            </Show>
+          </div>
+        </TableFormDialog>
       )}
-    </TableFormDialog>
+    </Show>
   );
 }

@@ -16,8 +16,8 @@ export function ColumnConstraintToggles({
     : "table-form-constraint";
 
   return (
-    <div className="table-form-constraints">
-      <label className={className} title="Primary key">
+    <div class="table-form-constraints">
+      <label class={className} title="Primary key">
         <input
           type="checkbox"
           checked={column.isPrimaryKey}
@@ -28,7 +28,7 @@ export function ColumnConstraintToggles({
         />
         <span>PK</span>
       </label>
-      <label className={className} title="Not null">
+      <label class={className} title="Not null">
         <input
           type="checkbox"
           checked={!column.isNullable}
@@ -39,7 +39,7 @@ export function ColumnConstraintToggles({
         />
         <span>NN</span>
       </label>
-      <label className={className} title="Unique">
+      <label class={className} title="Unique">
         <input
           type="checkbox"
           checked={column.isUnique}

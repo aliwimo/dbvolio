@@ -1,7 +1,7 @@
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { listen } from "@tauri-apps/api/event";
 import { isTauri } from "@tauri-apps/api/core";
-import { useEffect } from "react";
+import { onCleanup, onMount } from "solid-js";
 import { executeCommand } from "./execute-command";
 import type { CommandId } from "./types";
 
@@ -15,7 +15,7 @@ const MENU_COMMANDS = new Set<CommandId>([
 ]);
 
 export function useNativeAppMenu(): void {
-  useEffect(() => {
+  onMount(() => {
     if (!isTauri()) {
       return;
     }
@@ -24,7 +24,6 @@ export function useNativeAppMenu(): void {
     const currentWindow = getCurrentWebviewWindow();
 
     void listen<string>("app-command", async (event) => {
-      // Only execute menu command in the focused window
       const isFocused = await currentWindow.isFocused().catch(() => false);
       if (!isFocused) {
         return;
@@ -37,8 +36,8 @@ export function useNativeAppMenu(): void {
       unlisten = off;
     });
 
-    return () => {
+    onCleanup(() => {
       unlisten?.();
-    };
-  }, []);
+    });
+  });
 }

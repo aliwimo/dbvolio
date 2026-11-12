@@ -1,5 +1,5 @@
-import { FileText, FolderOpen } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FileText, FolderOpen } from "lucide-solid";
+import { createEffect, Show } from "solid-js";
 import { ProjectExplorer } from "../components/explorer/ProjectExplorer";
 import { DbmlEditor } from "../components/editor/DbmlEditor";
 import { EditorTabs } from "../components/editor/EditorTabs";
@@ -20,17 +20,13 @@ import { useProjectStore } from "../stores/project-store";
 import { useExternalDbmlOpen } from "../features/open/useExternalDbmlOpen";
 import { useAppKeymap } from "../features/keymap/use-app-keymap";
 import { useNativeAppMenu } from "../features/keymap/use-native-app-menu";
-import {
-  DEFAULT_EXPLORER_WIDTH,
-  DEFAULT_INSPECTOR_WIDTH,
-  useUiStore,
-} from "../stores/ui-store";
+import { useUiStore } from "../stores/ui-store";
 
 function EditorPanel() {
   return (
-    <div className="panel panel-fill panel-flush">
+    <div class="panel panel-fill panel-flush">
       <EditorTabs />
-      <div className="panel-content">
+      <div class="panel-content">
         <DbmlEditor />
       </div>
     </div>
@@ -38,9 +34,9 @@ function EditorPanel() {
 }
 
 function Welcome() {
-  const openProjectDialog = useProjectStore((s) => s.openProjectDialog);
-  const openDbmlFileDialog = useProjectStore((s) => s.openDbmlFileDialog);
-  const recentProjects = useProjectStore((s) => s.recentProjects);
+  const openProjectDialog = useProjectStore.getState().openProjectDialog;
+  const openDbmlFileDialog = useProjectStore.getState().openDbmlFileDialog;
+  const recentProjects = () => useProjectStore((s) => s.recentProjects);
 
   const openWithError = (action: () => Promise<void>) => {
     void action().catch((err: unknown) => {
@@ -50,17 +46,17 @@ function Welcome() {
   };
 
   return (
-    <div className="welcome">
-      <div className="welcome-intro">
-        <p className="welcome-title">Open a project</p>
-        <p className="empty-hint">
+    <div class="welcome">
+      <div class="welcome-intro">
+        <p class="welcome-title">Open a project</p>
+        <p class="empty-hint">
           Open a folder or a single <code>.dbml</code> file, or double-click a
           file in Finder to start here.
         </p>
-        <div className="welcome-actions">
+        <div class="welcome-actions">
           <button
             type="button"
-            className="btn btn-primary btn-sm"
+            class="btn btn-primary btn-sm"
             onClick={() => openWithError(openProjectDialog)}
           >
             <FolderOpen size={15} />
@@ -68,7 +64,7 @@ function Welcome() {
           </button>
           <button
             type="button"
-            className="btn btn-ghost btn-sm"
+            class="btn btn-ghost btn-sm"
             onClick={() => openWithError(openDbmlFileDialog)}
           >
             <FileText size={15} />
@@ -77,19 +73,12 @@ function Welcome() {
         </div>
       </div>
 
-      <section
-        className="welcome-recent"
-        aria-labelledby="welcome-recent-heading"
-      >
-        <h2 id="welcome-recent-heading" className="welcome-recent-heading">
-          Recent
-        </h2>
-        {recentProjects.length === 0 ? (
-          <p className="welcome-recent-empty">No recent projects yet.</p>
-        ) : (
+      <Show when={recentProjects().length > 0}>
+        <section class="welcome-recent">
+          <p class="welcome-subtitle">Recent projects</p>
           <RecentProjectsList variant="welcome" />
-        )}
-      </section>
+        </section>
+      </Show>
     </div>
   );
 }
@@ -98,185 +87,81 @@ export function Workspace() {
   useDebouncedParse();
   useRevealTableInEditor();
   useExternalDbmlOpen();
-
   useAppKeymap();
   useNativeAppMenu();
 
-  const panels = useUiStore((s) => s.panels);
-  const explorerWidth = useUiStore((s) => s.explorerWidth);
-  const setExplorerWidth = useUiStore((s) => s.setExplorerWidth);
-  const inspectorWidth = useUiStore((s) => s.inspectorWidth);
-  const setInspectorWidth = useUiStore((s) => s.setInspectorWidth);
-  const projectRoot = useProjectStore((s) => s.projectRoot);
-  const entryPoint = useProjectStore((s) => s.entryPoint);
-  const openFile = useEditorStore((s) => s.openFile);
+  const projectRoot = () => useProjectStore((s) => s.projectRoot);
+  const entryPoint = () => useProjectStore((s) => s.entryPoint);
+  const panels = () => useUiStore((s) => s.panels);
+  const openFile = useEditorStore.getState().openFile;
+  const explorerWidth = () => useUiStore((s) => s.explorerWidth);
+  const inspectorWidth = () => useUiStore((s) => s.inspectorWidth);
 
-  const leftRailRef = useRef<HTMLElement>(null);
-  const rightRailRef = useRef<HTMLElement>(null);
-  const [resizingExplorer, setResizingExplorer] = useState(false);
-  const [resizingInspector, setResizingInspector] = useState(false);
-
-  const onExplorerResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setResizingExplorer(true);
-  }, []);
-
-  const onInspectorResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setResizingInspector(true);
-  }, []);
-
-  useEffect(() => {
-    if (!resizingExplorer) {
-      return;
+  createEffect(() => {
+    const ep = entryPoint();
+    if (ep) {
+      void openFile(ep);
     }
-    const onMouseMove = (event: MouseEvent) => {
-      const rail = leftRailRef.current;
-      if (!rail) {
-        return;
-      }
-      const rect = rail.getBoundingClientRect();
-      setExplorerWidth(event.clientX - rect.left);
-    };
-    const onMouseUp = () => setResizingExplorer(false);
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-    };
-  }, [resizingExplorer, setExplorerWidth]);
-
-  useEffect(() => {
-    if (!resizingInspector) {
-      return;
-    }
-    const onMouseMove = (event: MouseEvent) => {
-      const rail = rightRailRef.current;
-      if (!rail) {
-        return;
-      }
-      const rect = rail.getBoundingClientRect();
-      setInspectorWidth(rect.right - event.clientX);
-    };
-    const onMouseUp = () => setResizingInspector(false);
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-    };
-  }, [resizingInspector, setInspectorWidth]);
-
-  useEffect(() => {
-    if (projectRoot && entryPoint) {
-      void openFile(entryPoint);
-    }
-  }, [projectRoot, entryPoint, openFile]);
-
-  const externalConflict = useEditorStore((s) => s.externalConflict);
-  const reloadFromDisk = useEditorStore((s) => s.reloadFromDisk);
-  const saveFile = useEditorStore((s) => s.saveFile);
-  const mainContent = useMemo(() => {
-    if (!projectRoot) {
-      return <Welcome />;
-    }
-    if (panels.editor && panels.diagram) {
-      return (
-        <SplitPane
-          direction="horizontal"
-          initialRatio={0.48}
-          first={<EditorPanel />}
-          second={<SchemaDiagram />}
-        />
-      );
-    }
-    if (panels.editor) {
-      return <EditorPanel />;
-    }
-    if (panels.diagram) {
-      return <SchemaDiagram />;
-    }
-    return (
-      <div className="workspace-empty">
-        <p>All center panels are hidden.</p>
-        <p className="empty-hint">
-          Use the Explorer, Editor, Diagram, or Inspector buttons in the header
-          to show a panel.
-        </p>
-      </div>
-    );
-  }, [panels.editor, panels.diagram, projectRoot]);
+  });
 
   return (
-    <div className="workspace">
+    <div class="workspace-layout">
       <Header />
-      {externalConflict && (
-        <div className="conflict-banner">
-          <span>
-            {externalConflict} changed on disk while you were editing.
-          </span>
-          <button
-            type="button"
-            className="header-btn"
-            onClick={() => void reloadFromDisk(externalConflict)}
-          >
-            Reload from disk
-          </button>
-          <button
-            type="button"
-            className="header-btn primary"
-            onClick={() => void saveFile(externalConflict)}
-          >
-            Overwrite disk
-          </button>
-        </div>
-      )}
-      <div className="workspace-body">
-        {projectRoot && panels.explorer && (
-          <aside
-            ref={leftRailRef}
-            className="workspace-rail workspace-rail-left"
-            style={{ width: `${explorerWidth}px` }}
-          >
-            <ProjectExplorer />
-            <div
-              className={`workspace-rail-resizer workspace-rail-resizer-trailing ${resizingExplorer ? "dragging" : ""}`}
-              onMouseDown={onExplorerResizeStart}
-              onDoubleClick={() => setExplorerWidth(DEFAULT_EXPLORER_WIDTH)}
-              role="separator"
-              aria-orientation="vertical"
-              aria-label="Resize explorer sidebar"
-              title="Drag to resize · Double-click to reset"
-            />
-          </aside>
-        )}
-        <main className="workspace-main">{mainContent}</main>
-        {projectRoot && panels.inspector && (
-          <aside
-            ref={rightRailRef}
-            className="workspace-rail workspace-rail-right"
-            style={{ width: `${inspectorWidth}px` }}
-          >
-            <div
-              className={`workspace-rail-resizer ${resizingInspector ? "dragging" : ""}`}
-              onMouseDown={onInspectorResizeStart}
-              onDoubleClick={() => setInspectorWidth(DEFAULT_INSPECTOR_WIDTH)}
-              role="separator"
-              aria-orientation="vertical"
-              aria-label="Resize inspector sidebar"
-              title="Drag to resize · Double-click to reset"
-            />
-            <SchemaInspector />
-          </aside>
-        )}
-      </div>
+
+      <main class="workspace-body">
+        <Show when={projectRoot()} fallback={<Welcome />}>
+          <div class="workspace-main">
+            <Show when={panels().explorer}>
+              <div
+                class="workspace-sidebar"
+                style={{ width: `${explorerWidth()}px` }}
+              >
+                <ProjectExplorer />
+              </div>
+            </Show>
+
+            <div class="workspace-center">
+              <Show
+                when={panels().editor && panels().diagram}
+                fallback={
+                  <Show
+                    when={panels().editor}
+                    fallback={
+                      <Show when={panels().diagram}>
+                        <SchemaDiagram />
+                      </Show>
+                    }
+                  >
+                    <EditorPanel />
+                  </Show>
+                }
+              >
+                <SplitPane
+                  direction="horizontal"
+                  initialRatio={0.4}
+                  first={<EditorPanel />}
+                  second={<SchemaDiagram />}
+                />
+              </Show>
+            </div>
+
+            <Show when={panels().inspector}>
+              <div
+                class="workspace-sidebar workspace-sidebar-right"
+                style={{ width: `${inspectorWidth()}px` }}
+              >
+                <SchemaInspector />
+              </div>
+            </Show>
+          </div>
+        </Show>
+      </main>
+
       <StatusBar />
-      <AppSettings />
       <QuickPickModal />
-      <TableEditModal />
+      <AppSettings />
       <TableCreateModal />
+      <TableEditModal />
     </div>
   );
 }
-

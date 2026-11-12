@@ -1,91 +1,74 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { type JSX } from "solid-js";
 
 interface SplitPaneProps {
   direction?: "horizontal" | "vertical";
   initialRatio?: number;
   minFirst?: number;
   minSecond?: number;
-  first: ReactNode;
-  second: ReactNode;
+  first: JSX.Element;
+  second: JSX.Element;
 }
 
-export function SplitPane({
-  direction = "horizontal",
-  initialRatio = 0.5,
-  minFirst = 120,
-  minSecond = 120,
-  first,
-  second,
-}: SplitPaneProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [ratio, setRatio] = useState(initialRatio);
-  const [dragging, setDragging] = useState(false);
+export function SplitPane(props: SplitPaneProps) {
+  let containerRef: HTMLDivElement | undefined;
+  const direction = () => props.direction ?? "horizontal";
+  const minFirst = () => props.minFirst ?? 120;
+  const minSecond = () => props.minSecond ?? 120;
 
-  const onMouseDown = useCallback(() => {
-    setDragging(true);
-  }, []);
+  let ratio = props.initialRatio ?? 0.5;
 
-  useEffect(() => {
-    if (!dragging) {
-      return;
-    }
+  const onMouseDown = () => {
     const onMouseMove = (event: MouseEvent) => {
-      const container = containerRef.current;
-      if (!container) {
-        return;
-      }
-      const rect = container.getBoundingClientRect();
-      if (direction === "horizontal") {
+      if (!containerRef) return;
+      const rect = containerRef.getBoundingClientRect();
+      if (direction() === "horizontal") {
         const x = event.clientX - rect.left;
-        const next = Math.min(
-          Math.max(x / rect.width, minFirst / rect.width),
-          1 - minSecond / rect.width,
+        ratio = Math.min(
+          Math.max(x / rect.width, minFirst() / rect.width),
+          1 - minSecond() / rect.width
         );
-        setRatio(next);
       } else {
         const y = event.clientY - rect.top;
-        const next = Math.min(
-          Math.max(y / rect.height, minFirst / rect.height),
-          1 - minSecond / rect.height,
+        ratio = Math.min(
+          Math.max(y / rect.height, minFirst() / rect.height),
+          1 - minSecond() / rect.height
         );
-        setRatio(next);
+      }
+      const firstEl = containerRef.querySelector(".split-pane-first") as HTMLElement | null;
+      const secondEl = containerRef.querySelector(".split-pane-second") as HTMLElement | null;
+      if (firstEl && secondEl) {
+        firstEl.style.flex = `${ratio} 1 0`;
+        secondEl.style.flex = `${1 - ratio} 1 0`;
       }
     };
-    const onMouseUp = () => setDragging(false);
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-    return () => {
+
+    const onMouseUp = () => {
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
     };
-  }, [direction, dragging, minFirst, minSecond]);
 
-  const isHorizontal = direction === "horizontal";
-  const firstStyle = { flex: `${ratio} 1 0` };
-  const secondStyle = { flex: `${1 - ratio} 1 0` };
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  };
+
+  const isHorizontal = () => direction() === "horizontal";
 
   return (
     <div
       ref={containerRef}
-      className={`split-pane ${isHorizontal ? "split-pane-horizontal" : "split-pane-vertical"}`}
+      class={`split-pane split-${direction()}`}
     >
-      <div className="split-pane-pane" style={firstStyle}>
-        {first}
+      <div class="split-pane-first" style={{ flex: `${ratio} 1 0` }}>
+        {props.first}
       </div>
       <div
-        className={`split-pane-resizer ${dragging ? "dragging" : ""}`}
-        onMouseDown={onMouseDown}
+        class={`split-pane-resizer resizer-${direction()}`}
         role="separator"
-        aria-orientation={isHorizontal ? "vertical" : "horizontal"}
+        aria-orientation={isHorizontal() ? "vertical" : "horizontal"}
+        onMouseDown={onMouseDown}
       />
-      <div className="split-pane-pane" style={secondStyle}>
-        {second}
+      <div class="split-pane-second" style={{ flex: `${1 - ratio} 1 0` }}>
+        {props.second}
       </div>
     </div>
   );
