@@ -3,7 +3,7 @@ import {
   Position,
   type Edge,
   type Node,
-} from "@xyflow/react";
+} from "../types/flow";
 import type { TableNodeData } from "../components/diagram/TableNode";
 import {
   resolveGroupColor,

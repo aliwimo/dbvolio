@@ -1,5 +1,5 @@
-import type { Edge, Node } from "@xyflow/react";
-import type { InternalNode } from "@xyflow/react";
+import type { Edge, Node } from "../types/flow";
+import type { InternalNode } from "../types/flow";
 import {
   buildDiagramSvg,
   svgStringToPdfBlob,

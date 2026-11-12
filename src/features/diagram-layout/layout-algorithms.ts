@@ -1,4 +1,4 @@
-import type { Edge, Node } from "@xyflow/react";
+import type { Edge, Node } from "../../types/flow";
 import {
   componentForNode,
   connectedComponents,

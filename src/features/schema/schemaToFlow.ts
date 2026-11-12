@@ -1,4 +1,4 @@
-import type { Edge, Node } from "@xyflow/react";
+import type { Edge, Node } from "../../types/flow";
 import type { SchemaModel } from "../../types/schema";
 import type { TableNodeData } from "../../components/diagram/TableNode";
 import {

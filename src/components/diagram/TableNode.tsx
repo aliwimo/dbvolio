@@ -1,5 +1,4 @@
-import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { memo } from "react";
+import { For, Show } from "solid-js";
 import {
   sourceHandleId,
   targetHandleId,
@@ -15,91 +14,73 @@ export interface TableNodeData extends Record<string, unknown> {
   headerColor?: string;
 }
 
-function TableNodeComponent({ data, selected }: NodeProps) {
-  const nodeData = data as unknown as TableNodeData;
-  const {
-    table,
-    foreignKeys,
-    refSourceColumns = new Set<string>(),
-    refTargetColumns = new Set<string>(),
-    dimmed,
-  } = nodeData;
-  const headerColor = nodeData.headerColor ?? table.headerColor;
+export function TableNode(props: {
+  data: TableNodeData;
+  selected?: boolean;
+  id: string;
+}) {
+  const table = () => props.data.table;
+  const foreignKeys = () => props.data.foreignKeys || new Set<string>();
+  const refSourceColumns = () => props.data.refSourceColumns || new Set<string>();
+  const refTargetColumns = () => props.data.refTargetColumns || new Set<string>();
+  const headerColor = () => props.data.headerColor ?? table().headerColor;
 
   return (
     <div
-      className={`table-node ${selected ? "selected" : ""}`}
-      style={{ opacity: dimmed ? 0.35 : 1 }}
+      class={`table-node ${props.selected ? "selected" : ""}`}
+      style={{ opacity: props.data.dimmed ? 0.35 : 1 }}
     >
       <div
-        className="table-node-header"
+        class="table-node-header"
         style={
-          headerColor
+          headerColor()
             ? {
-                background: headerColor,
-                borderColor: headerColor,
+                background: headerColor(),
+                "border-color": headerColor(),
               }
             : undefined
         }
       >
-        {table.schema ? `${table.schema}.` : ""}
-        {table.name}
+        {table().schema ? `${table().schema}.` : ""}
+        {table().name}
       </div>
-      <div className="table-node-columns">
-        {table.columns.map((col) => {
-          const isFk =
-            refSourceColumns.has(col.name) || foreignKeys.has(col.name);
-          const showSource = refSourceColumns.has(col.name);
-          const showTarget = refTargetColumns.has(col.name);
+      <div class="table-node-columns">
+        <For each={table().columns}>
+          {(col) => {
+            const isFk = () =>
+              refSourceColumns().has(col.name) || foreignKeys().has(col.name);
+            const showSource = () => refSourceColumns().has(col.name);
+            const showTarget = () => refTargetColumns().has(col.name);
 
-          return (
-            <div key={col.name} className="table-node-row">
-              {showTarget && (
-                <Handle
-                  type="target"
-                  position={Position.Left}
-                  id={targetHandleId(col.name)}
-                  className="table-node-handle table-node-handle-target"
-                  isConnectable={false}
-                />
-              )}
-              <span className="table-node-row-label">
-                {col.name}
-                {col.isPrimaryKey && <span className="badge pk">PK</span>}
-                {isFk && <span className="badge fk">FK</span>}
-              </span>
-              <span className="table-node-type">{col.type}</span>
-              {showSource && (
-                <Handle
-                  type="source"
-                  position={Position.Right}
-                  id={sourceHandleId(col.name)}
-                  className="table-node-handle table-node-handle-source"
-                  isConnectable={false}
-                />
-              )}
-            </div>
-          );
-        })}
+            return (
+              <div class="table-node-row">
+                <Show when={showTarget()}>
+                  <div
+                    id={targetHandleId(col.name)}
+                    class="table-node-handle table-node-handle-target"
+                  />
+                </Show>
+                <span class="table-node-row-label">
+                  {col.name}
+                  <Show when={col.isPrimaryKey}>
+                    <span class="badge pk">PK</span>
+                  </Show>
+                  <Show when={isFk()}>
+                    <span class="badge fk">FK</span>
+                  </Show>
+                </span>
+                <span class="table-node-type">{col.type}</span>
+                <Show when={showSource()}>
+                  <div
+                    id={sourceHandleId(col.name)}
+                    class="table-node-handle table-node-handle-source"
+                  />
+                </Show>
+              </div>
+            );
+          }}
+        </For>
       </div>
     </div>
   );
 }
-
-function tableNodePropsEqual(prev: NodeProps, next: NodeProps): boolean {
-  if (prev.selected !== next.selected) {
-    return false;
-  }
-  const prevData = prev.data as TableNodeData;
-  const nextData = next.data as TableNodeData;
-  return (
-    prevData.table === nextData.table &&
-    prevData.foreignKeys === nextData.foreignKeys &&
-    prevData.refSourceColumns === nextData.refSourceColumns &&
-    prevData.refTargetColumns === nextData.refTargetColumns &&
-    (prevData.dimmed ?? false) === (nextData.dimmed ?? false) &&
-    prevData.headerColor === nextData.headerColor
-  );
-}
-
-export const TableNode = memo(TableNodeComponent, tableNodePropsEqual);

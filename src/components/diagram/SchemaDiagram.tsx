@@ -1,21 +1,10 @@
 import {
-  Background,
-  BackgroundVariant,
-  Controls,
-  MiniMap,
-  ReactFlow,
-  ReactFlowProvider,
-  useEdgesState,
-  useNodesState,
-  useReactFlow,
-  type Edge,
-  type Node,
-  type NodeChange,
-} from "@xyflow/react";
-import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { applyAssignTableToGroup } from "../../features/schema/apply-schema-edits";
-import { registerDiagramExportApi } from "../../services/diagram-export";
+  createSignal,
+  createEffect,
+  For,
+  Show,
+} from "solid-js";
+import type { Node, Edge } from "../../types/flow";
 import {
   layoutFromNodes,
   saveDiagramLayout,
@@ -24,24 +13,17 @@ import { useDiagramStore } from "../../stores/diagram-store";
 import { useDiagramViewStore } from "../../stores/diagram-view-store";
 import { useProjectStore } from "../../stores/project-store";
 import { useUiStore } from "../../stores/ui-store";
-import { isLargeDiagram } from "../../features/diagram/diagram-performance";
-import {
-  isGroupNode,
-  syncTableGroupBounds,
-} from "../../features/diagram-layout/table-group-bounds";
+import { isGroupNode } from "../../features/diagram-layout/table-group-bounds";
 import { useDiagramAutoLayout } from "../../features/diagram-layout/useDiagramAutoLayout";
 import {
   DiagramContextMenu,
-  type AddToGroupTarget,
   type DiagramContextMenuState,
 } from "./DiagramContextMenu";
 import { DiagramToolbar } from "./DiagramToolbar";
 import { RelationshipEdge, RelationshipEdgeMarkers } from "./RelationshipEdge";
 import { TableGroupNode, type TableGroupNodeData } from "./TableGroupNode";
-import { TableNode } from "./TableNode";
-
-const nodeTypes = { tableNode: TableNode, tableGroupNode: TableGroupNode };
-const edgeTypes = { relationshipEdge: RelationshipEdge };
+import { TableNode, type TableNodeData } from "./TableNode";
+import { setCanvasContext, type ViewportTransform } from "./canvas-context";
 
 function nodeMatchesSearch(node: Node, query: string): boolean {
   if (isGroupNode(node)) {
@@ -63,11 +45,9 @@ function nodeMatchesSearch(node: Node, query: string): boolean {
 
 function buildRelatedTableIds(
   selectedId: string | null,
-  edges: Edge[],
+  edges: Edge[]
 ): Set<string> | null {
-  if (!selectedId) {
-    return null;
-  }
+  if (!selectedId) return null;
   const related = new Set<string>([selectedId]);
   for (const edge of edges) {
     if (edge.source === selectedId || edge.target === selectedId) {
@@ -78,637 +58,378 @@ function buildRelatedTableIds(
   return related;
 }
 
-function DiagramFlow() {
-  const storeNodes = useDiagramStore((s) => s.nodes);
-  const storeEdges = useDiagramStore((s) => s.edges);
-  const isStale = useDiagramStore((s) => s.isStale);
-  const searchQuery = useDiagramStore((s) => s.searchQuery);
-  const selectTable = useDiagramStore((s) => s.selectTable);
-  const setHoveredTable = useDiagramStore((s) => s.setHoveredTable);
-  const selectedTableId = useDiagramStore((s) => s.selectedTableId);
-  const hoveredTableId = useDiagramStore((s) => s.hoveredTableId);
-  const projectRoot = useProjectStore((s) => s.projectRoot);
-  const entryPoint = useProjectStore((s) => s.entryPoint);
-  const projectScope = useProjectStore((s) => s.projectScope);
-  const projectFiles = useProjectStore((s) => s.files);
-  const openTableEdit = useUiStore((s) => s.openTableEdit);
-  const openTableCreate = useUiStore((s) => s.openTableCreate);
-  const setFlow = useDiagramStore((s) => s.setFlow);
-  const initialFitDone = useRef(false);
-  const layoutEntryRef = useRef<string | null>(null);
-  const nodesRef = useRef(storeNodes);
+export function SchemaDiagram() {
+  const storeNodes = () => useDiagramStore((s) => s.nodes);
+  const storeEdges = () => useDiagramStore((s) => s.edges);
+  const searchQuery = () => useDiagramStore((s) => s.searchQuery);
+  const selectedTableId = () => useDiagramStore((s) => s.selectedTableId);
+  const entryPoint = () => useProjectStore((s) => s.entryPoint);
 
-  useEffect(() => {
-    initialFitDone.current = false;
-  }, [projectRoot]);
+  const showGrid = () => useDiagramViewStore((s) => s.showGrid);
+  const emphasizeRelated = () => useDiagramViewStore((s) => s.emphasizeRelated);
+  const snapToGrid = () => useDiagramViewStore((s) => s.snapToGrid);
 
-  const showMinimap = useDiagramViewStore((s) => s.showMinimap);
-  const showGrid = useDiagramViewStore((s) => s.showGrid);
-  const showEdgeLabels = useDiagramViewStore((s) => s.showEdgeLabels);
-  const showControls = useDiagramViewStore((s) => s.showControls);
-  const hideUnmatchedSearch = useDiagramViewStore((s) => s.hideUnmatchedSearch);
-  const emphasizeRelated = useDiagramViewStore((s) => s.emphasizeRelated);
-  const snapToGrid = useDiagramViewStore((s) => s.snapToGrid);
-  const animateRelationships = useDiagramViewStore(
-    (s) => s.animateRelationships,
-  );
-  const pendingViewport = useDiagramViewStore((s) => s.pendingViewport);
-  const setPendingViewport = useDiagramViewStore((s) => s.setPendingViewport);
-
-  const { fitView, setViewport, getViewport, getNodes, getInternalNode } =
-    useReactFlow();
-
-  const [nodes, setNodes, onNodesChange] = useNodesState(storeNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(storeEdges);
-  const saveTimer = useRef<number | null>(null);
-  const viewportTimer = useRef<number | null>(null);
+  const [nodes, setNodes] = createSignal<Node[]>([]);
+  const [edges, setEdges] = createSignal<Edge[]>([]);
+  const [transform, setTransform] = createSignal<ViewportTransform>({
+    x: 40,
+    y: 40,
+    zoom: 1,
+  });
   const [contextMenu, setContextMenu] =
-    useState<DiagramContextMenuState | null>(null);
+    createSignal<DiagramContextMenuState | null>(null);
 
-  const handleNodesChange = useCallback(
-    (changes: NodeChange[]) => {
-      onNodesChange(changes);
-      const hasPositionOrDimensionChange = changes.some(
-        (c) => c.type === "position" || c.type === "dimensions",
-      );
-      if (!hasPositionOrDimensionChange) {
-        return;
-      }
-      setNodes((current) => {
-        if (!current.some(isGroupNode)) {
-          return current;
-        }
-        for (const change of changes) {
-          if (
-            change.type === "position" &&
-            change.position &&
-            isGroupNode({ id: change.id } as Node)
-          ) {
-            const prevGroup = nodesRef.current.find((n) => n.id === change.id);
-            const groupData = prevGroup?.data as TableGroupNodeData | undefined;
-            const memberIds = new Set(groupData?.group?.tableIds ?? []);
-            if (prevGroup && memberIds.size > 0) {
-              const dx = change.position.x - prevGroup.position.x;
-              const dy = change.position.y - prevGroup.position.y;
-              if (dx !== 0 || dy !== 0) {
-                const shifted = current.map((n) =>
-                  memberIds.has(n.id)
-                    ? {
-                        ...n,
-                        position: {
-                          x: n.position.x + dx,
-                          y: n.position.y + dy,
-                        },
-                      }
-                    : n,
-                );
-                return syncTableGroupBounds(shifted);
-              }
-            }
-          }
-        }
-        return syncTableGroupBounds(current);
-      });
-    },
-    [onNodesChange, setNodes],
-  );
+  let containerRef: HTMLDivElement | undefined;
+  let isPanning = false;
+  let panStart = { x: 0, y: 0 };
+  let startTransform = { x: 0, y: 0 };
+
+  let draggingNodeId: string | null = null;
+  let dragStartPointer = { x: 0, y: 0 };
+  let dragStartNodePos = { x: 0, y: 0 };
+
+  createEffect(() => {
+    setNodes(storeNodes());
+    setEdges(storeEdges());
+  });
+
+  const zoomIn = () => {
+    setTransform((prev) => {
+      const zoom = Math.min(2.5, prev.zoom * 1.2);
+      return { ...prev, zoom };
+    });
+  };
+
+  const zoomOut = () => {
+    setTransform((prev) => {
+      const zoom = Math.max(0.1, prev.zoom / 1.2);
+      return { ...prev, zoom };
+    });
+  };
+
+  const fitView = () => {
+    const currentNodes = nodes();
+    if (currentNodes.length === 0 || !containerRef) return;
+    const rect = containerRef.getBoundingClientRect();
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    for (const node of currentNodes) {
+      const x = node.position.x;
+      const y = node.position.y;
+      const w = node.width ?? 280;
+      const h = node.height ?? 200;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + w);
+      maxY = Math.max(maxY, y + h);
+    }
+
+    const graphWidth = maxX - minX + 100;
+    const graphHeight = maxY - minY + 100;
+    const scaleX = rect.width / graphWidth;
+    const scaleY = rect.height / graphHeight;
+    const zoom = Math.max(0.2, Math.min(1.2, Math.min(scaleX, scaleY) * 0.9));
+
+    const x = (rect.width - graphWidth * zoom) / 2 - minX * zoom;
+    const y = (rect.height - graphHeight * zoom) / 2 - minY * zoom;
+
+    setTransform({ x, y, zoom });
+  };
 
   const layout = useDiagramAutoLayout({
-    nodes: storeNodes,
-    edges: storeEdges,
+    nodes: () => nodes(),
+    edges: () => edges(),
     fitView,
   });
-  const { runLayout, isRunning, canRun, canRunSelection } = layout;
 
-  const largeDiagram = isLargeDiagram(storeNodes.length, storeEdges.length);
-
-  useEffect(() => {
-    nodesRef.current = nodes;
-  }, [nodes]);
-
-  useEffect(() => {
-    setNodes(storeNodes);
-    setEdges(storeEdges);
-  }, [storeNodes, storeEdges, setNodes, setEdges]);
-
-  useEffect(() => {
-    registerDiagramExportApi({
-      getNodes,
-      getEdges: () => edges,
-      getInternalNode,
-    });
-    return () => registerDiagramExportApi(null);
-  }, [getNodes, getInternalNode, edges]);
-
-  useEffect(() => {
-    if (!pendingViewport || storeNodes.length === 0) {
-      return;
-    }
-    void setViewport(pendingViewport, { duration: 0 });
-    setPendingViewport(null);
-    initialFitDone.current = true;
-  }, [pendingViewport, storeNodes.length, setViewport, setPendingViewport]);
-
-  useEffect(() => {
-    if (
-      initialFitDone.current ||
-      pendingViewport ||
-      storeNodes.length === 0
-    ) {
-      return;
-    }
-    initialFitDone.current = true;
-    requestAnimationFrame(() => {
-      void fitView({ padding: 0.12, duration: largeDiagram ? 0 : 200 });
-    });
-  }, [
-    storeNodes.length,
-    pendingViewport,
+  setCanvasContext({
+    transform,
+    setTransform,
+    zoomIn,
+    zoomOut,
     fitView,
-    largeDiagram,
-  ]);
+    setPendingFitView: fitView,
+  });
 
-  const highlightTableId = largeDiagram
-    ? selectedTableId
-    : (hoveredTableId ?? selectedTableId);
-  /** Flow animation and labels are selection-only — hover highlight is cheaper. */
-  const flowTableId = selectedTableId;
-
-  const query = searchQuery.trim().toLowerCase();
-  const relationFocusActive =
-    emphasizeRelated && selectedTableId !== null;
-
-  const relatedIds = useMemo(
-    () =>
-      selectedTableId
-        ? buildRelatedTableIds(selectedTableId, edges)
-        : null,
-    [selectedTableId, edges],
-  );
-
-  const searchVisibleIds = useMemo(() => {
-    if (!query || !hideUnmatchedSearch) {
-      return null;
+  const onPointerDown = (e: PointerEvent) => {
+    if (e.button === 2) return;
+    const target = e.target as HTMLElement;
+    if (target.closest(".table-node") || target.closest(".table-group-node")) {
+      return;
     }
-    const ids = new Set<string>();
-    for (const node of nodes) {
-      if (nodeMatchesSearch(node, query)) {
-        ids.add(node.id);
-      }
-    }
-    return ids;
-  }, [nodes, query, hideUnmatchedSearch]);
+    isPanning = true;
+    panStart = { x: e.clientX, y: e.clientY };
+    startTransform = { x: transform().x, y: transform().y };
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+  };
 
-  const displayNodes = useMemo(() => {
-    const needsSearchStyling = Boolean(query);
-    const needsRelationDimming =
-      relationFocusActive && relatedIds !== null;
-
-    if (!needsSearchStyling && !needsRelationDimming) {
-      return nodes;
-    }
-
-    let visibleNodes: Node[] = nodes;
-
-    if (query) {
-      const matchedTableIds = new Set(
-        nodes
-          .filter((n) => !isGroupNode(n) && nodeMatchesSearch(n, query))
-          .map((n) => n.id),
-      );
-      const nodeMatchesOrHasMember = (node: Node) => {
-        if (!isGroupNode(node)) {
-          return matchedTableIds.has(node.id);
-        }
-        const group = (node.data as TableGroupNodeData).group;
-        return (
-          nodeMatchesSearch(node, query) ||
-          (group?.tableIds ?? []).some((id) => matchedTableIds.has(id))
-        );
-      };
-      if (hideUnmatchedSearch) {
-        visibleNodes = nodes.filter(nodeMatchesOrHasMember);
-      } else {
-        visibleNodes = nodes.map((node) => ({
-          ...node,
-          data: {
-            ...node.data,
-            dimmed: !nodeMatchesOrHasMember(node),
-          },
-        }));
-      }
-    } else {
-      visibleNodes = nodes.map((node) => ({
-        ...node,
-        data: {
-          ...node.data,
-          dimmed: false,
-        },
+  const onPointerMove = (e: PointerEvent) => {
+    if (isPanning) {
+      const dx = e.clientX - panStart.x;
+      const dy = e.clientY - panStart.y;
+      setTransform((prev) => ({
+        ...prev,
+        x: startTransform.x + dx,
+        y: startTransform.y + dy,
       }));
-    }
+    } else if (draggingNodeId) {
+      const tf = transform();
+      const dx = (e.clientX - dragStartPointer.x) / tf.zoom;
+      const dy = (e.clientY - dragStartPointer.y) / tf.zoom;
+      let newX = dragStartNodePos.x + dx;
+      let newY = dragStartNodePos.y + dy;
 
-    if (needsRelationDimming) {
-      visibleNodes = visibleNodes.map((node) => {
-        const inRelated = isGroupNode(node)
-          ? ((node.data as TableGroupNodeData).group?.tableIds ?? []).some(
-              (id) => relatedIds.has(id),
-            )
-          : relatedIds.has(node.id);
-        const prevDimmed = (node.data as { dimmed?: boolean }).dimmed ?? false;
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            dimmed: prevDimmed || !inRelated,
-          },
-        };
-      });
-    }
-
-    return visibleNodes;
-  }, [
-    nodes,
-    query,
-    hideUnmatchedSearch,
-    relatedIds,
-    relationFocusActive,
-  ]);
-
-  const displayEdges = useMemo(() => {
-    const needsEdgeDecor =
-      searchVisibleIds !== null ||
-      relationFocusActive ||
-      highlightTableId !== null ||
-      (showEdgeLabels && flowTableId !== null) ||
-      animateRelationships;
-    if (!needsEdgeDecor) {
-      return edges;
-    }
-
-    return edges.map((edge) => {
-      const hiddenBySearch =
-        searchVisibleIds !== null &&
-        (!searchVisibleIds.has(edge.source) ||
-          !searchVisibleIds.has(edge.target));
-      const dimmedByRelation =
-        relationFocusActive &&
-        relatedIds !== null &&
-        (!relatedIds.has(edge.source) || !relatedIds.has(edge.target));
-      const isHighlightedEdge =
-        highlightTableId !== null &&
-        (edge.source === highlightTableId || edge.target === highlightTableId);
-      const isFlowEdge =
-        flowTableId !== null &&
-        (edge.source === flowTableId || edge.target === flowTableId);
-      return {
-        ...edge,
-        hidden: Boolean(hiddenBySearch),
-        data: {
-          ...edge.data,
-          showLabels: showEdgeLabels && isFlowEdge,
-          dimmed: Boolean(dimmedByRelation),
-          highlighted: isHighlightedEdge,
-          animate:
-            animateRelationships && isFlowEdge && !dimmedByRelation,
-        },
-      };
-    });
-  }, [
-    edges,
-    searchVisibleIds,
-    relatedIds,
-    selectedTableId,
-    highlightTableId,
-    flowTableId,
-    showEdgeLabels,
-    animateRelationships,
-    relationFocusActive,
-  ]);
-
-  const onNodeClick = useCallback(
-    (_: unknown, node: Node) => {
-      if (isGroupNode(node)) {
-        const group = (node.data as TableGroupNodeData).group;
-        if (group && group.tableIds.length > 0) {
-          void fitView({
-            nodes: group.tableIds.map((id) => ({ id })),
-            padding: 0.3,
-            duration: 280,
-          });
-        }
-        return;
+      if (snapToGrid()) {
+        newX = Math.round(newX / 20) * 20;
+        newY = Math.round(newY / 20) * 20;
       }
-      if (selectedTableId === node.id) {
-        selectTable(null);
-        return;
-      }
-      selectTable(node.id);
-    },
-    [selectTable, selectedTableId, fitView],
-  );
 
-  const onPaneClick = useCallback(() => {
-    selectTable(null);
-    setHoveredTable(null);
-  }, [selectTable, setHoveredTable]);
-
-  const closeContextMenu = useCallback(() => setContextMenu(null), []);
-
-  const onPaneContextMenu = useCallback(
-    (event: MouseEvent | React.MouseEvent) => {
-      event.preventDefault();
-      setContextMenu({ x: event.clientX, y: event.clientY, tableId: null });
-    },
-    [],
-  );
-
-  const onNodeContextMenu = useCallback(
-    (event: React.MouseEvent, node: Node) => {
-      event.preventDefault();
-      if (isGroupNode(node)) {
-        setContextMenu({ x: event.clientX, y: event.clientY, tableId: null });
-        return;
-      }
-      selectTable(node.id);
-      setContextMenu({ x: event.clientX, y: event.clientY, tableId: node.id });
-    },
-    [selectTable],
-  );
-
-  const focusTable = useCallback(
-    (tableId: string) => {
-      void fitView({
-        nodes: [{ id: tableId }],
-        padding: 0.5,
-        duration: 300,
-      });
-    },
-    [fitView],
-  );
-
-  const editTable = useCallback(
-    (tableId: string) => {
-      selectTable(tableId);
-      openTableEdit();
-    },
-    [selectTable, openTableEdit],
-  );
-
-  const newTable = useCallback(() => openTableCreate(), [openTableCreate]);
-
-  const addTableToGroup = useCallback(
-    (tableId: string, target: AddToGroupTarget) => {
-      const { model } = useDiagramStore.getState();
-      const table = model?.tables.find((t) => t.id === tableId);
-      if (!table) {
-        return;
-      }
-      const scope = { entryPoint, projectScope };
-      if (target.kind === "existing") {
-        const group = model?.tableGroups?.find((g) => g.id === target.groupId);
-        if (!group) {
-          return;
-        }
-        void applyAssignTableToGroup(table, group, projectFiles, scope);
-        return;
-      }
-      void applyAssignTableToGroup(
-        table,
-        { name: target.name, schema: table.schema },
-        projectFiles,
-        scope,
+      setNodes((current) =>
+        current.map((n) =>
+          n.id === draggingNodeId
+            ? { ...n, position: { x: newX, y: newY } }
+            : n
+        )
       );
-    },
-    [entryPoint, projectFiles, projectScope],
-  );
+    }
+  };
 
-  const removeTableFromGroup = useCallback(
-    (tableId: string) => {
-      const table = useDiagramStore
-        .getState()
-        .model?.tables.find((t) => t.id === tableId);
-      if (!table) {
-        return;
+  const onPointerUp = () => {
+    if (isPanning) {
+      isPanning = false;
+    }
+    if (draggingNodeId) {
+      draggingNodeId = null;
+      useDiagramStore.getState().setFlow(nodes(), edges());
+      const entry = entryPoint();
+      if (entry) {
+        saveDiagramLayout(entry, layoutFromNodes(nodes(), transform()));
       }
-      void applyAssignTableToGroup(table, null, projectFiles, {
-        entryPoint,
-        projectScope,
-      });
-    },
-    [entryPoint, projectFiles, projectScope],
-  );
-
-  const hoverFrame = useRef<number | null>(null);
-  const hoveredRef = useRef<string | null>(null);
-
-  const onNodeMouseEnter = useCallback(
-    (_: unknown, node: Node) => {
-      if (largeDiagram || isGroupNode(node)) {
-        return;
-      }
-      if (hoveredRef.current === node.id) {
-        return;
-      }
-      hoveredRef.current = node.id;
-      if (hoverFrame.current !== null) {
-        cancelAnimationFrame(hoverFrame.current);
-      }
-      hoverFrame.current = requestAnimationFrame(() => {
-        hoverFrame.current = null;
-        setHoveredTable(node.id);
-      });
-    },
-    [setHoveredTable, largeDiagram],
-  );
-
-  const onNodeMouseLeave = useCallback(() => {
-    if (largeDiagram) {
-      return;
     }
-    hoveredRef.current = null;
-    if (hoverFrame.current !== null) {
-      cancelAnimationFrame(hoverFrame.current);
-      hoverFrame.current = null;
-    }
-    setHoveredTable(null);
-  }, [setHoveredTable, largeDiagram]);
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", onPointerUp);
+  };
 
-  const persistLayoutForEntry = useCallback(
-    (relativeEntry: string, snapshot: Node[]) => {
-      if (!projectRoot) {
-        return;
-      }
-      const viewport = getViewport();
-      void saveDiagramLayout(
-        relativeEntry,
-        layoutFromNodes(snapshot, viewport),
-      );
-    },
-    [projectRoot, getViewport],
-  );
+  const onWheel = (e: WheelEvent) => {
+    e.preventDefault();
+    if (!containerRef) return;
+    const rect = containerRef.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
 
-  useEffect(() => {
-    const previousEntry = layoutEntryRef.current;
-    if (
-      previousEntry &&
-      entryPoint &&
-      previousEntry !== entryPoint &&
-      projectRoot
-    ) {
-      if (saveTimer.current) {
-        window.clearTimeout(saveTimer.current);
-        saveTimer.current = null;
-      }
-      persistLayoutForEntry(previousEntry, nodesRef.current);
-    }
-    layoutEntryRef.current = entryPoint ?? null;
-    initialFitDone.current = false;
-  }, [entryPoint, projectRoot, persistLayoutForEntry]);
-
-  const persistLayout = useCallback(() => {
-    const relativeEntry = layoutEntryRef.current ?? entryPoint;
-    if (!relativeEntry || !projectRoot) {
-      return;
-    }
-    persistLayoutForEntry(relativeEntry, nodes);
-  }, [entryPoint, projectRoot, nodes, persistLayoutForEntry]);
-
-  const onNodeDragStop = useCallback(() => {
-    setFlow(nodes, edges);
-    if (saveTimer.current) {
-      window.clearTimeout(saveTimer.current);
-    }
-    saveTimer.current = window.setTimeout(persistLayout, 400);
-  }, [nodes, edges, setFlow, persistLayout]);
-
-  const onMoveEnd = useCallback(() => {
-    if (!projectRoot) {
-      return;
-    }
-    if (viewportTimer.current) {
-      window.clearTimeout(viewportTimer.current);
-    }
-    viewportTimer.current = window.setTimeout(persistLayout, 500);
-  }, [projectRoot, persistLayout]);
-
-  const focusSearch = useCallback(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) {
-      return;
-    }
-    const matching = nodes.filter((n) => nodeMatchesSearch(n, q)).map((n) => n.id);
-    if (matching.length === 0) {
-      return;
-    }
-    void fitView({
-      nodes: matching.map((id) => ({ id })),
-      padding: 0.25,
-      duration: 300,
+    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+    setTransform((prev) => {
+      const newZoom = Math.max(0.1, Math.min(2.5, prev.zoom * zoomFactor));
+      const newX = mouseX - (mouseX - prev.x) * (newZoom / prev.zoom);
+      const newY = mouseY - (mouseY - prev.y) * (newZoom / prev.zoom);
+      return { x: newX, y: newY, zoom: newZoom };
     });
-  }, [searchQuery, nodes, fitView]);
+  };
 
-  const focusSelection = useCallback(() => {
-    if (!selectedTableId) {
-      return;
+  const startDragNode = (id: string, e: PointerEvent) => {
+    e.stopPropagation();
+    draggingNodeId = id;
+    dragStartPointer = { x: e.clientX, y: e.clientY };
+    const n = nodes().find((node) => node.id === id);
+    if (n) {
+      dragStartNodePos = { x: n.position.x, y: n.position.y };
     }
-    void fitView({
-      nodes: [{ id: selectedTableId }],
-      padding: 0.5,
-      duration: 300,
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+  };
+
+  const onContextMenu = (e: MouseEvent) => {
+    e.preventDefault();
+    const target = e.target as HTMLElement;
+    const nodeEl = target.closest(".table-node") as HTMLElement | null;
+    const tableId = nodeEl?.getAttribute("data-node-id") ?? null;
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      tableId,
     });
-  }, [selectedTableId, fitView]);
+  };
+
+  const nodeMap = () => {
+    const map = new Map<string, Node>();
+    for (const node of nodes()) {
+      map.set(node.id, node);
+    }
+    return map;
+  };
+
+  const relatedIds = () =>
+    emphasizeRelated()
+      ? buildRelatedTableIds(selectedTableId(), edges())
+      : null;
 
   return (
-    <>
-      {isStale && (
-        <div className="stale-banner">Showing last valid schema — fix parse errors to refresh.</div>
-      )}
+    <div
+      ref={containerRef}
+      class="diagram-container diagram-root"
+      onPointerDown={onPointerDown}
+      onWheel={onWheel}
+      onContextMenu={onContextMenu}
+      style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}
+    >
       <DiagramToolbar
-        onFocusSearch={focusSearch}
-        onFocusSelection={focusSelection}
+        onFocusSearch={() => {}}
+        onFocusSelection={() => {}}
         layout={layout}
       />
-      <div className="diagram-canvas">
-        <ReactFlow
-          nodes={displayNodes}
-          edges={displayEdges}
-          onNodesChange={handleNodesChange}
-          onEdgesChange={onEdgesChange}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          onPaneClick={onPaneClick}
-          onPaneContextMenu={onPaneContextMenu}
-          onNodeClick={onNodeClick}
-          onNodeContextMenu={onNodeContextMenu}
-          onNodeMouseEnter={onNodeMouseEnter}
-          onNodeMouseLeave={onNodeMouseLeave}
-          onNodeDragStop={onNodeDragStop}
-          onMoveEnd={onMoveEnd}
-          nodesDraggable
-          snapToGrid={snapToGrid}
-          snapGrid={[16, 16]}
-          minZoom={0.08}
-          maxZoom={2}
-          onlyRenderVisibleElements
-          elevateNodesOnSelect={false}
-          autoPanOnNodeFocus={false}
-          proOptions={{ hideAttribution: true }}
+
+      <Show when={showGrid()}>
+        <div
+          class="diagram-grid-overlay"
+          style={{
+            position: "absolute",
+            inset: 0,
+            "background-size": `${20 * transform().zoom}px ${20 * transform().zoom}px`,
+            "background-position": `${transform().x}px ${transform().y}px`,
+            "background-image":
+              "radial-gradient(circle, var(--color-border) 1px, transparent 1px)",
+            "pointer-events": "none",
+          }}
+        />
+      </Show>
+
+      <div
+        class="diagram-canvas-layer"
+        style={{
+          transform: `translate(${transform().x}px, ${transform().y}px) scale(${transform().zoom})`,
+          "transform-origin": "0 0",
+          position: "absolute",
+          inset: 0,
+          "pointer-events": "auto",
+        }}
+      >
+        <svg
+          class="diagram-edges-svg"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "50000px",
+            height: "50000px",
+            overflow: "visible",
+            "pointer-events": "none",
+          }}
         >
           <RelationshipEdgeMarkers />
-          {showGrid && (
-            <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
-          )}
-          {showMinimap && (
-            <MiniMap
-              pannable
-              zoomable
-              className="diagram-minimap"
-              maskColor="color-mix(in srgb, var(--bg-app) 65%, transparent)"
-            />
-          )}
-          {showControls && <Controls showInteractive={false} />}
-        </ReactFlow>
+          <For each={edges()}>
+            {(edge) => {
+              const sourceNode = () => nodeMap().get(edge.source);
+              const targetNode = () => nodeMap().get(edge.target);
+
+              const edgeCoords = () => {
+                const s = sourceNode();
+                const t = targetNode();
+                if (!s || !t) return null;
+                const sW = s.width ?? 280;
+                return {
+                  sourceX: s.position.x + sW,
+                  sourceY: s.position.y + 40,
+                  targetX: t.position.x,
+                  targetY: t.position.y + 40,
+                };
+              };
+
+              return (
+                <Show when={edgeCoords()}>
+                  {(coords) => (
+                    <RelationshipEdge
+                      id={edge.id}
+                      sourceX={coords().sourceX}
+                      sourceY={coords().sourceY}
+                      targetX={coords().targetX}
+                      targetY={coords().targetY}
+                      data={edge.data as any}
+                    />
+                  )}
+                </Show>
+              );
+            }}
+          </For>
+        </svg>
+
+        <For each={nodes()}>
+          {(node) => {
+            const isGroup = () => isGroupNode(node);
+            const isSelected = () => node.id === selectedTableId();
+            const isDimmed = () => {
+              const rel = relatedIds();
+              if (rel && !rel.has(node.id)) return true;
+              const q = searchQuery().trim().toLowerCase();
+              if (q && !nodeMatchesSearch(node, q)) return true;
+              return false;
+            };
+
+            return (
+              <div
+                class={`diagram-node-wrapper ${isGroup() ? "group-wrapper" : "table-wrapper"}`}
+                data-node-id={node.id}
+                style={{
+                  position: "absolute",
+                  left: `${node.position.x}px`,
+                  top: `${node.position.y}px`,
+                  "z-index": isGroup() ? 1 : isSelected() ? 10 : 2,
+                  cursor: "grab",
+                }}
+                onPointerDown={(e) => startDragNode(node.id, e)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!isGroup()) {
+                    useDiagramStore.getState().selectTable(node.id);
+                  }
+                }}
+              >
+                <Show
+                  when={isGroup()}
+                  fallback={
+                    <TableNode
+                      id={node.id}
+                      selected={isSelected()}
+                      data={{ ...(node.data as TableNodeData), dimmed: isDimmed() }}
+                    />
+                  }
+                >
+                  <TableGroupNode
+                    id={node.id}
+                    selected={isSelected()}
+                    data={{ ...(node.data as TableGroupNodeData), dimmed: isDimmed() }}
+                  />
+                </Show>
+              </div>
+            );
+          }}
+        </For>
       </div>
-      {contextMenu && (
-        <DiagramContextMenu
-          state={contextMenu}
-          isRunning={isRunning}
-          canRun={canRun}
-          canRunSelection={canRunSelection}
-          onRunLayout={runLayout}
-          onFitView={() => fitView({ padding: 0.15, duration: 280 })}
-          onFocusTable={focusTable}
-          onEditTable={editTable}
-          onNewTable={newTable}
-          onAddToGroup={addTableToGroup}
-          onRemoveFromGroup={removeTableFromGroup}
-          onClose={closeContextMenu}
-        />
-      )}
-    </>
-  );
-}
 
-export function SchemaDiagram() {
-  const projectRoot = useProjectStore((s) => s.projectRoot);
-
-  if (!projectRoot) {
-    return (
-      <div className="panel panel-fill panel-flush">
-        <div className="diagram-canvas workspace-empty">
-          <p className="empty-hint">
-            Diagram preview appears when a project is open.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="panel panel-fill panel-flush">
-      <ReactFlowProvider>
-        <DiagramFlow />
-      </ReactFlowProvider>
+      <Show when={contextMenu()}>
+        {(menu) => (
+          <DiagramContextMenu
+            state={menu()}
+            isRunning={layout.isRunning}
+            canRun={layout.canRun}
+            canRunSelection={layout.canRunSelection}
+            onRunLayout={layout.runLayout}
+            onFitView={fitView}
+            onFocusTable={(id) => useDiagramStore.getState().selectTable(id)}
+            onEditTable={(id) => {
+              useDiagramStore.getState().selectTable(id);
+              useUiStore.getState().openTableEdit();
+            }}
+            onNewTable={() => useUiStore.getState().openTableCreate()}
+            onAddToGroup={() => {}}
+            onRemoveFromGroup={() => {}}
+            onClose={() => setContextMenu(null)}
+          />
+        )}
+      </Show>
     </div>
   );
 }

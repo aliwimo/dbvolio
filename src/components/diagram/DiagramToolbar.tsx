@@ -5,19 +5,16 @@ import {
   Search,
   ZoomIn,
   ZoomOut,
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+} from "lucide-solid";
+import { createSignal, onCleanup, onMount, Show } from "solid-js";
 import type { LayoutScope } from "../../features/diagram-layout/layout-options";
 import { useDiagramStore } from "../../stores/diagram-store";
 import {
   useDiagramViewStore,
   type LayoutAlgorithm,
 } from "../../stores/diagram-view-store";
-import { useReactFlow, useStore } from "@xyflow/react";
+import { useCanvasContext } from "./canvas-context";
 import { LayoutMenu } from "./LayoutMenu";
-
-const zoomSelector = (s: { transform: [number, number, number] }) =>
-  s.transform[2];
 
 export interface DiagramLayoutActions {
   runLayout: (scope: LayoutScope, algorithm?: LayoutAlgorithm) => void;
@@ -26,201 +23,188 @@ export interface DiagramLayoutActions {
   canRunSelection: boolean;
 }
 
-export function DiagramToolbar({
-  onFocusSearch,
-  onFocusSelection,
-  layout,
-}: {
+export function DiagramToolbar(props: {
   onFocusSearch: () => void;
   onFocusSelection: () => void;
   layout: DiagramLayoutActions;
 }) {
-  const { fitView, zoomIn, zoomOut } = useReactFlow();
-  const zoom = useStore(zoomSelector);
+  const canvas = useCanvasContext();
 
-  const searchQuery = useDiagramStore((s) => s.searchQuery);
-  const setSearchQuery = useDiagramStore((s) => s.setSearchQuery);
-  const selectedTableId = useDiagramStore((s) => s.selectedTableId);
+  const searchQuery = () => useDiagramStore((s) => s.searchQuery);
+  const setSearchQuery = useDiagramStore.getState().setSearchQuery;
+  const selectedTableId = () => useDiagramStore((s) => s.selectedTableId);
 
-  const showMinimap = useDiagramViewStore((s) => s.showMinimap);
-  const showGrid = useDiagramViewStore((s) => s.showGrid);
-  const showEdgeLabels = useDiagramViewStore((s) => s.showEdgeLabels);
-  const showControls = useDiagramViewStore((s) => s.showControls);
-  const hideUnmatchedSearch = useDiagramViewStore((s) => s.hideUnmatchedSearch);
-  const emphasizeRelated = useDiagramViewStore((s) => s.emphasizeRelated);
-  const snapToGrid = useDiagramViewStore((s) => s.snapToGrid);
-  const animateRelationships = useDiagramViewStore(
-    (s) => s.animateRelationships,
-  );
-  const toggleOption = useDiagramViewStore((s) => s.toggleOption);
+  const showMinimap = () => useDiagramViewStore((s) => s.showMinimap);
+  const showGrid = () => useDiagramViewStore((s) => s.showGrid);
+  const showEdgeLabels = () => useDiagramViewStore((s) => s.showEdgeLabels);
+  const showControls = () => useDiagramViewStore((s) => s.showControls);
+  const hideUnmatchedSearch = () =>
+    useDiagramViewStore((s) => s.hideUnmatchedSearch);
+  const emphasizeRelated = () =>
+    useDiagramViewStore((s) => s.emphasizeRelated);
+  const snapToGrid = () => useDiagramViewStore((s) => s.snapToGrid);
+  const animateRelationships = () =>
+    useDiagramViewStore((s) => s.animateRelationships);
+  const toggleOption = useDiagramViewStore.getState().toggleOption;
 
-  const { runLayout, isRunning, canRun, canRunSelection } = layout;
+  const [optionsOpen, setOptionsOpen] = createSignal(false);
+  let optionsRef: HTMLDivElement | undefined;
 
-  const [optionsOpen, setOptionsOpen] = useState(false);
-  const optionsRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!optionsOpen) {
-      return;
-    }
+  onMount(() => {
     const onDocClick = (e: MouseEvent) => {
-      if (
-        optionsRef.current &&
-        !optionsRef.current.contains(e.target as Node)
-      ) {
+      if (!optionsOpen()) return;
+      if (optionsRef && !optionsRef.contains(e.target as Node)) {
         setOptionsOpen(false);
       }
     };
     document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, [optionsOpen]);
+    onCleanup(() => document.removeEventListener("mousedown", onDocClick));
+  });
+
+  const zoomPercent = () => Math.round(canvas.transform().zoom * 100);
 
   return (
-    <div className="diagram-toolbar diagram-toolbar-compact">
-      <div className="diagram-search diagram-search-compact">
-        <Search size={14} className="diagram-search-icon" aria-hidden />
+    <div class="diagram-toolbar diagram-toolbar-compact">
+      <div class="diagram-search diagram-search-compact">
+        <Search size={14} class="diagram-search-icon" aria-hidden />
         <input
           placeholder="Find table…"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          value={searchQuery()}
+          onInput={(e) => setSearchQuery(e.currentTarget.value)}
           aria-label="Search tables"
         />
-        {searchQuery.trim() && (
+        <Show when={searchQuery().trim()}>
           <button
             type="button"
-            className="diagram-search-focus"
+            class="diagram-search-focus"
             title="Focus matches"
-            onClick={onFocusSearch}
+            onClick={props.onFocusSearch}
           >
             <Focus size={13} />
           </button>
-        )}
+        </Show>
       </div>
 
-      <div className="toolbar-divider" />
+      <div class="toolbar-divider" />
 
-      <div className="toolbar-cluster" role="group" aria-label="Zoom">
+      <div class="toolbar-cluster" role="group" aria-label="Zoom">
         <button
           type="button"
-          className="btn-icon"
+          class="btn-icon"
           title="Zoom out"
-          onClick={() => zoomOut({ duration: 150 })}
+          onClick={() => canvas.zoomOut({ duration: 150 })}
         >
           <ZoomOut size={15} />
         </button>
-        <span className="diagram-zoom-label">{Math.round(zoom * 100)}%</span>
+        <span class="diagram-zoom-label">{zoomPercent()}%</span>
         <button
           type="button"
-          className="btn-icon"
+          class="btn-icon"
           title="Zoom in"
-          onClick={() => zoomIn({ duration: 150 })}
+          onClick={() => canvas.zoomIn({ duration: 150 })}
         >
           <ZoomIn size={15} />
         </button>
         <button
           type="button"
-          className="btn-icon"
+          class="btn-icon"
           title="Fit view"
-          onClick={() => fitView({ padding: 0.15, duration: 280 })}
+          onClick={() => canvas.fitView({ padding: 0.15, duration: 280 })}
         >
           <Maximize2 size={15} />
         </button>
-        {selectedTableId && (
+        <Show when={selectedTableId()}>
           <button
             type="button"
-            className="btn-icon"
+            class="btn-icon"
             title="Focus selection"
-            onClick={onFocusSelection}
+            onClick={props.onFocusSelection}
           >
             <Focus size={15} />
           </button>
-        )}
+        </Show>
       </div>
 
-      <div className="toolbar-divider" />
+      <div class="toolbar-divider" />
 
       <LayoutMenu
-        isRunning={isRunning}
-        canRun={canRun}
-        canRunSelection={canRunSelection}
-        onRunLayout={runLayout}
-        onFitView={() => fitView({ padding: 0.15, duration: 280 })}
+        isRunning={props.layout.isRunning}
+        canRun={props.layout.canRun}
+        canRunSelection={props.layout.canRunSelection}
+        onRunLayout={props.layout.runLayout}
+        onFitView={() => canvas.fitView({ padding: 0.15, duration: 280 })}
       />
 
-      <div className="diagram-toolbar-spacer" />
+      <div class="diagram-toolbar-spacer" />
 
-      <div className="diagram-options-wrap" ref={optionsRef}>
+      <div class="diagram-options-wrap" ref={optionsRef}>
         <button
           type="button"
-          className={`btn-icon ${optionsOpen ? "active" : ""}`}
+          class={`btn-icon ${optionsOpen() ? "active" : ""}`}
           title="View options"
-          aria-expanded={optionsOpen}
+          aria-expanded={optionsOpen()}
           onClick={() => setOptionsOpen((o) => !o)}
         >
           <MoreHorizontal size={16} />
         </button>
-        {optionsOpen && (
-          <div className="diagram-options-menu" role="menu">
+        <Show when={optionsOpen()}>
+          <div class="diagram-options-menu" role="menu">
             <OptionCheck
               label="Grid"
-              checked={showGrid}
+              checked={showGrid()}
               onChange={() => toggleOption("showGrid")}
             />
             <OptionCheck
               label="Minimap"
-              checked={showMinimap}
+              checked={showMinimap()}
               onChange={() => toggleOption("showMinimap")}
             />
             <OptionCheck
               label="Relation labels"
-              checked={showEdgeLabels}
+              checked={showEdgeLabels()}
               onChange={() => toggleOption("showEdgeLabels")}
             />
             <OptionCheck
               label="Animated flow"
-              checked={animateRelationships}
+              checked={animateRelationships()}
               onChange={() => toggleOption("animateRelationships")}
             />
             <OptionCheck
               label="Dim unrelated on select"
-              checked={emphasizeRelated}
+              checked={emphasizeRelated()}
               onChange={() => toggleOption("emphasizeRelated")}
             />
             <OptionCheck
               label="Hide search non-matches"
-              checked={hideUnmatchedSearch}
+              checked={hideUnmatchedSearch()}
               onChange={() => toggleOption("hideUnmatchedSearch")}
             />
             <OptionCheck
               label="Snap to grid"
-              checked={snapToGrid}
+              checked={snapToGrid()}
               onChange={() => toggleOption("snapToGrid")}
             />
             <OptionCheck
               label="Canvas zoom controls"
-              checked={showControls}
+              checked={showControls()}
               onChange={() => toggleOption("showControls")}
             />
           </div>
-        )}
+        </Show>
       </div>
     </div>
   );
 }
 
-function OptionCheck({
-  label,
-  checked,
-  onChange,
-}: {
+function OptionCheck(props: {
   label: string;
   checked: boolean;
   onChange: () => void;
 }) {
   return (
-    <label className="diagram-option-row">
-      <input type="checkbox" checked={checked} onChange={onChange} />
-      <span>{label}</span>
+    <label class="diagram-option-row">
+      <input type="checkbox" checked={props.checked} onChange={props.onChange} />
+      <span>{props.label}</span>
     </label>
   );
 }

@@ -1,10 +1,4 @@
-import {
-  BaseEdge,
-  EdgeLabelRenderer,
-  getSmoothStepPath,
-  type EdgeProps,
-} from "@xyflow/react";
-import { memo, useMemo } from "react";
+import { Show } from "solid-js";
 
 export interface RelationshipEdgeData extends Record<string, unknown> {
   sourceColumns: string[];
@@ -15,118 +9,95 @@ export interface RelationshipEdgeData extends Record<string, unknown> {
   animate?: boolean;
 }
 
-function relationshipEdgePropsEqual(
-  prev: EdgeProps,
-  next: EdgeProps,
-): boolean {
-  if (prev.id !== next.id) {
-    return false;
-  }
-  if (
-    prev.sourceX !== next.sourceX ||
-    prev.sourceY !== next.sourceY ||
-    prev.targetX !== next.targetX ||
-    prev.targetY !== next.targetY
-  ) {
-    return false;
-  }
-  const prevData = (prev.data ?? {}) as RelationshipEdgeData;
-  const nextData = (next.data ?? {}) as RelationshipEdgeData;
-  return (
-    prevData.showLabels === nextData.showLabels &&
-    prevData.dimmed === nextData.dimmed &&
-    prevData.highlighted === nextData.highlighted &&
-    prevData.animate === nextData.animate
-  );
+export function computeSmoothStepPath(params: {
+  sourceX: number;
+  sourceY: number;
+  targetX: number;
+  targetY: number;
+}): [string, number, number] {
+  const { sourceX, sourceY, targetX, targetY } = params;
+  const dx = targetX - sourceX;
+  const dy = targetY - sourceY;
+  const midX = sourceX + dx / 2;
+  const midY = sourceY + dy / 2;
+
+  const path = `M ${sourceX} ${sourceY} C ${sourceX + 40} ${sourceY}, ${targetX - 40} ${targetY}, ${targetX} ${targetY}`;
+  return [path, midX, midY];
 }
 
-function RelationshipEdgeComponent({
-  id,
-  sourceX,
-  sourceY,
-  targetX,
-  targetY,
-  sourcePosition,
-  targetPosition,
-  data,
-  style,
-}: EdgeProps) {
-  const edgeData = (data ?? {}) as unknown as RelationshipEdgeData;
-  const [path, labelX, labelY] = getSmoothStepPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-    borderRadius: 14,
-  });
-  const label = useMemo(
-    () =>
-      `${edgeData.sourceColumns?.join(", ") ?? ""} → ${edgeData.targetColumns?.join(", ") ?? ""}`,
-    [edgeData.sourceColumns, edgeData.targetColumns],
-  );
-  const showLabels = edgeData.showLabels ?? false;
-  const dimmed = edgeData.dimmed ?? false;
-  const highlighted = edgeData.highlighted ?? false;
-  const animate = edgeData.animate ?? false;
-  const showFlow = highlighted && !dimmed && animate;
+export function RelationshipEdge(props: {
+  id: string;
+  sourceX: number;
+  sourceY: number;
+  targetX: number;
+  targetY: number;
+  data?: RelationshipEdgeData;
+}) {
+  const data = () => props.data ?? { sourceColumns: [], targetColumns: [] };
+  const pathInfo = () =>
+    computeSmoothStepPath({
+      sourceX: props.sourceX,
+      sourceY: props.sourceY,
+      targetX: props.targetX,
+      targetY: props.targetY,
+    });
 
-  const trackClass = [
-    "relationship-edge-track",
-    highlighted ? "relationship-edge-track-active" : "",
-    dimmed ? "relationship-edge-track-dimmed" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const path = () => pathInfo()[0];
+  const labelX = () => pathInfo()[1];
+  const labelY = () => pathInfo()[2];
+
+  const label = () =>
+    `${data().sourceColumns?.join(", ") ?? ""} → ${data().targetColumns?.join(", ") ?? ""}`;
+  const showLabels = () => data().showLabels ?? false;
+  const dimmed = () => data().dimmed ?? false;
+  const highlighted = () => data().highlighted ?? false;
+  const animate = () => data().animate ?? false;
+  const showFlow = () => highlighted() && !dimmed() && animate();
+
+  const trackClass = () =>
+    [
+      "relationship-edge-track",
+      highlighted() ? "relationship-edge-track-active" : "",
+      dimmed() ? "relationship-edge-track-dimmed" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
 
   return (
-    <>
-      <BaseEdge
-        id={id}
-        path={path}
-        interactionWidth={18}
-        style={{
-          ...style,
-          stroke: "none",
-          fill: "none",
-        }}
-      />
+    <g class="relationship-edge-group">
       <path
-        d={path}
-        className={trackClass}
-        markerEnd={
-          highlighted && !dimmed ? "url(#relationship-arrowhead)" : undefined
+        d={path()}
+        class={trackClass()}
+        marker-end={
+          highlighted() && !dimmed() ? "url(#relationship-arrowhead)" : undefined
         }
       />
-      {showFlow && (
+      <Show when={showFlow()}>
         <path
-          d={path}
-          className="relationship-edge-flow-line"
-          markerEnd="url(#relationship-arrowhead-soft)"
+          d={path()}
+          class="relationship-edge-flow-line"
+          marker-end="url(#relationship-arrowhead-soft)"
         />
-      )}
-      {showLabels && (
-        <EdgeLabelRenderer>
+      </Show>
+      <Show when={showLabels()}>
+        <foreignObject
+          x={labelX() - 80}
+          y={labelY() - 14}
+          width={160}
+          height={28}
+          class="relationship-edge-label-container"
+        >
           <div
-            className="relationship-edge-label"
-            style={{
-              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-              opacity: dimmed ? 0.35 : 1,
-            }}
+            class="relationship-edge-label"
+            style={{ opacity: dimmed() ? 0.35 : 1 }}
           >
-            {label}
+            {label()}
           </div>
-        </EdgeLabelRenderer>
-      )}
-    </>
+        </foreignObject>
+      </Show>
+    </g>
   );
 }
-
-export const RelationshipEdge = memo(
-  RelationshipEdgeComponent,
-  relationshipEdgePropsEqual,
-);
 
 export function RelationshipEdgeMarkers() {
   return (
@@ -142,7 +113,7 @@ export function RelationshipEdgeMarkers() {
       >
         <path
           d="M 0 0 L 10 5 L 0 10 z"
-          className="relationship-edge-marker"
+          class="relationship-edge-marker"
         />
       </marker>
       <marker
@@ -156,7 +127,7 @@ export function RelationshipEdgeMarkers() {
       >
         <path
           d="M 0 0 L 10 5 L 0 10 z"
-          className="relationship-edge-marker-soft"
+          class="relationship-edge-marker-soft"
         />
       </marker>
     </defs>
