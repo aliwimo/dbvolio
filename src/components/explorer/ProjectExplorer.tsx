@@ -9,6 +9,7 @@ import {
   X,
 } from "lucide-solid";
 import { createSignal, createMemo, For, Show } from "solid-js";
+import { Portal } from "solid-js/web";
 import { useEditorStore } from "../../stores/editor-store";
 import { filesForScope } from "../../features/open/project-scope-files";
 import { useProjectStore } from "../../stores/project-store";
@@ -19,6 +20,7 @@ import {
   ancestorFolderPaths,
   buildTree,
   collectFolderPaths,
+  countLeafFiles,
   filterDbmlEntries,
   filterTree,
   isDbmlPath,
@@ -31,8 +33,6 @@ function TreeItems(props: {
   collapsed: Set<string>;
   onToggleFolder: (path: string) => void;
   forceExpand: boolean;
-  selectedPath: string | null;
-  onSelectNode: (path: string) => void;
 }) {
   const openFile = useEditorStore.getState().openFile;
   const activePath = () => useEditorStore((s) => s.activePath);
@@ -50,7 +50,6 @@ function TreeItems(props: {
           !props.collapsed.has(node.path) ||
           node.children.length === 0;
         const isActive = () => activePath() === node.path;
-        const isSelected = () => props.selectedPath === node.path;
         const isDirty = () => dirtyPaths().has(node.path);
         const isOpen = () => openPaths().has(node.path);
         const isDbml = () => isDbmlPath(node.path);
@@ -61,7 +60,6 @@ function TreeItems(props: {
               class={[
                 "tree-item",
                 isActive() ? "active" : "",
-                isSelected() ? "selected" : "",
                 isOpen() && !node.isDirectory ? "open" : "",
                 isDirty() ? "dirty" : "",
                 node.isDirectory ? "folder" : "file",
@@ -71,49 +69,52 @@ function TreeItems(props: {
                 .join(" ")}
               style={{ "--depth": props.depth ?? 0 }}
               onClick={() => {
-                props.onSelectNode(node.path);
                 if (node.isDirectory) {
                   props.onToggleFolder(node.path);
-                } else {
+                  return;
+                }
+                if (isDbml()) {
+                  useProjectStore.getState().setEntryPoint(node.path);
                   void openFile(node.path);
                 }
               }}
+              role="treeitem"
+              aria-expanded={node.isDirectory ? expanded() : undefined}
+              title={
+                !node.isDirectory && !isDbml()
+                  ? `${node.path} (not editable here)`
+                  : node.path
+              }
+              tabIndex={0}
             >
               <Show
                 when={node.isDirectory}
                 fallback={
-                  <>
-                    <span class="tree-arrow-spacer" />
-                    <Show
-                      when={isDbml()}
-                      fallback={<File size={14} class="tree-icon" aria-hidden />}
-                    >
-                      <FileCode size={14} class="tree-icon tree-icon-dbml" aria-hidden />
-                    </Show>
-                  </>
+                  <span class="tree-item-chevron tree-item-chevron-spacer" />
                 }
               >
-                <button
-                  type="button"
-                  class="tree-arrow"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    props.onToggleFolder(node.path);
-                  }}
-                >
-                  <Show
-                    when={expanded()}
-                    fallback={<ChevronRight size={12} />}
-                  >
-                    <ChevronDown size={12} />
+                <span class="tree-item-chevron" aria-hidden>
+                  <Show when={expanded()} fallback={<ChevronRight size={14} />}>
+                    <ChevronDown size={14} />
                   </Show>
-                </button>
-                <Folder size={14} class="tree-icon" aria-hidden />
+                </span>
               </Show>
 
-              <span class="tree-name" title={node.path}>
-                {node.name}
-              </span>
+              <Show
+                when={node.isDirectory}
+                fallback={
+                  <Show
+                    when={isDbml()}
+                    fallback={<File size={14} class="tree-item-icon" />}
+                  >
+                    <FileCode size={14} class="tree-item-icon" />
+                  </Show>
+                }
+              >
+                <Folder size={14} class="tree-item-icon" />
+              </Show>
+
+              <span class="tree-item-label">{node.name}</span>
             </div>
 
             <Show when={node.isDirectory && expanded() && node.children.length > 0}>
@@ -123,8 +124,6 @@ function TreeItems(props: {
                 collapsed={props.collapsed}
                 onToggleFolder={props.onToggleFolder}
                 forceExpand={props.forceExpand}
-                selectedPath={props.selectedPath}
-                onSelectNode={props.onSelectNode}
               />
             </Show>
           </div>
@@ -134,31 +133,49 @@ function TreeItems(props: {
   );
 }
 
+type ModalState =
+  | { type: "create" }
+  | { type: "rename"; path: string }
+  | { type: "delete"; path: string }
+  | null;
+
 export function ProjectExplorer() {
+  const files = () => useProjectStore((s) => s.files);
   const projectRoot = () => useProjectStore((s) => s.projectRoot);
-  const rawFiles = () => useProjectStore((s) => s.files);
-  const entryPoint = () => useProjectStore((s) => s.entryPoint);
   const projectScope = () => useProjectStore((s) => s.projectScope);
+  const entryPoint = () => useProjectStore((s) => s.entryPoint);
+  const setEntryPoint = useProjectStore.getState().setEntryPoint;
+
   const showAllFiles = () => useUiStore((s) => s.explorerShowAllFiles);
-  const setExplorerShowAllFiles = useUiStore.getState().setExplorerShowAllFiles;
-  const refreshFiles = useProjectStore.getState().refreshFiles;
+  const setShowAllFiles = useUiStore.getState().setExplorerShowAllFiles;
   const activePath = () => useEditorStore((s) => s.activePath);
+  const refreshFiles = useProjectStore.getState().refreshFiles;
   const createFile = useEditorStore.getState().createFile;
   const renameFile = useEditorStore.getState().renameFile;
   const deleteFile = useEditorStore.getState().deleteFile;
 
   const [query, setQuery] = createSignal("");
   const [collapsed, setCollapsed] = createSignal<Set<string>>(new Set());
-  const [selectedPath, setSelectedPath] = createSignal<string | null>(null);
+  const [modalState, setModalState] = createSignal<ModalState>(null);
+  const [modalInput, setModalInput] = createSignal("");
+  const [modalError, setModalError] = createSignal<string | null>(null);
 
-  const scopedEntries = createMemo(() => {
-    const list = filesForScope(rawFiles(), projectScope(), entryPoint());
-    return showAllFiles() ? list : filterDbmlEntries(list);
-  });
+  const scopedFiles = createMemo(() =>
+    filesForScope(files(), projectScope(), entryPoint())
+  );
 
-  const fullTree = createMemo(() => buildTree(scopedEntries()));
+  const visibleEntries = createMemo(() =>
+    showAllFiles() ? scopedFiles() : filterDbmlEntries(scopedFiles())
+  );
 
-  const filteredTree = createMemo(() => {
+  const fileCount = createMemo(() => scopedFiles().filter((f) => !f.isDirectory).length);
+  const dbmlCount = createMemo(
+    () => scopedFiles().filter((f) => !f.isDirectory && f.relativePath.endsWith(".dbml")).length
+  );
+
+  const fullTree = createMemo(() => buildTree(visibleEntries()));
+
+  const visibleTree = createMemo(() => {
     const q = query().trim();
     return q ? filterTree(fullTree(), q) : fullTree();
   });
@@ -176,9 +193,8 @@ export function ProjectExplorer() {
   };
 
   const expandAll = () => setCollapsed(new Set<string>());
-  const collapseAll = () => {
+  const collapseAll = () =>
     setCollapsed(new Set<string>(collectFolderPaths(fullTree())));
-  };
 
   const revealActive = () => {
     const current = activePath();
@@ -191,112 +207,251 @@ export function ProjectExplorer() {
       }
       return next;
     });
-    setSelectedPath(current);
   };
 
-  const handleNewFile = async () => {
-    const name = window.prompt("New DBML file name (e.g. schema.dbml):");
-    if (!name?.trim()) return;
-    const cleanName = name.trim().endsWith(".dbml")
-      ? name.trim()
-      : `${name.trim()}.dbml`;
-    await createFile(cleanName);
-    await refreshFiles();
+  const openCreateModal = () => {
+    setModalInput("");
+    setModalError(null);
+    setModalState({ type: "create" });
   };
 
-  const handleRename = async () => {
-    const target = selectedPath();
-    if (!target) return;
-    const newName = window.prompt("Rename file to:", target);
-    if (!newName?.trim() || newName === target) return;
-    await renameFile(target, newName.trim());
-    await refreshFiles();
+  const openRenameModal = () => {
+    const p = activePath();
+    if (!p) return;
+    setModalInput(p);
+    setModalError(null);
+    setModalState({ type: "rename", path: p });
   };
 
-  const handleDelete = async () => {
-    const target = selectedPath();
-    if (!target) return;
-    if (window.confirm(`Delete ${target}?`)) {
-      await deleteFile(target);
-      await refreshFiles();
+  const openDeleteModal = () => {
+    const p = activePath();
+    if (!p) return;
+    setModalError(null);
+    setModalState({ type: "delete", path: p });
+  };
+
+  const closeModal = () => {
+    setModalState(null);
+    setModalInput("");
+    setModalError(null);
+  };
+
+  const handleModalSubmit = async (e: SubmitEvent) => {
+    e.preventDefault();
+    const state = modalState();
+    if (!state) return;
+
+    try {
+      if (state.type === "create") {
+        const trimmed = modalInput().trim();
+        if (!trimmed) {
+          setModalError("Please enter a file path.");
+          return;
+        }
+        const candidate = trimmed.endsWith(".dbml") ? trimmed : `${trimmed}.dbml`;
+        await createFile(candidate);
+        await refreshFiles();
+        closeModal();
+      } else if (state.type === "rename") {
+        const trimmed = modalInput().trim();
+        if (!trimmed || trimmed === state.path) {
+          closeModal();
+          return;
+        }
+        await renameFile(state.path, trimmed);
+        await refreshFiles();
+        closeModal();
+      } else if (state.type === "delete") {
+        await deleteFile(state.path);
+        await refreshFiles();
+        closeModal();
+      }
+    } catch (err) {
+      setModalError(err instanceof Error ? err.message : String(err));
     }
   };
 
   return (
-    <div class="panel panel-fill explorer-panel">
+    <div class="panel panel-fill panel-flush explorer-panel">
       <div class="explorer-header">
-        <span class="explorer-title">Files</span>
-        <div class="explorer-actions">
-          <Show when={projectRoot()}>
-            <button
-              type="button"
-              class="btn-icon"
-              title="New file"
-              onClick={handleNewFile}
-            >
-              <Plus size={14} />
-            </button>
-          </Show>
-          <ExplorerTreeMenu
-            disabled={!projectRoot()}
-            canRevealActive={Boolean(activePath())}
-            canClearFilter={Boolean(query().trim())}
-            showAllFiles={showAllFiles()}
-            canRename={Boolean(selectedPath())}
-            canDelete={Boolean(selectedPath())}
-            canUseForDiagram={Boolean(selectedPath()?.endsWith(".dbml"))}
-            onExpandAll={expandAll}
-            onCollapseAll={collapseAll}
-            onRevealActive={revealActive}
-            onClearFilter={() => setQuery("")}
-            onRefresh={() => void refreshFiles()}
-            onToggleShowAllFiles={() =>
-              setExplorerShowAllFiles(!showAllFiles())
-            }
-            onRename={handleRename}
-            onDelete={handleDelete}
-            onUseForDiagram={() => {
-              const sel = selectedPath();
-              if (sel?.endsWith(".dbml")) {
-                useProjectStore.getState().setEntryPoint(sel);
-              }
-            }}
-          />
-        </div>
+        <Show when={projectRoot()}>
+          <div class="explorer-header-row">
+            <div class="explorer-search">
+              <Search size={13} class="explorer-search-icon" aria-hidden />
+              <input
+                placeholder="Search files…"
+                value={query()}
+                onInput={(e) => setQuery(e.currentTarget.value)}
+              />
+              <Show when={query()}>
+                <button
+                  type="button"
+                  class="explorer-search-clear"
+                  onClick={() => setQuery("")}
+                >
+                  <X size={12} />
+                </button>
+              </Show>
+            </div>
+            <div class="explorer-actions">
+              <button
+                type="button"
+                class="btn-icon btn-icon-xs"
+                title="New DBML file"
+                aria-label="New DBML file"
+                onClick={openCreateModal}
+              >
+                <Plus size={14} />
+              </button>
+              <ExplorerTreeMenu
+                disabled={!projectRoot()}
+                canRevealActive={Boolean(activePath())}
+                canClearFilter={Boolean(query().trim())}
+                showAllFiles={showAllFiles()}
+                canRename={Boolean(activePath())}
+                canDelete={Boolean(activePath())}
+                canUseForDiagram={Boolean(activePath()?.endsWith(".dbml"))}
+                onExpandAll={expandAll}
+                onCollapseAll={collapseAll}
+                onRevealActive={revealActive}
+                onClearFilter={() => setQuery("")}
+                onRefresh={() => void refreshFiles()}
+                onToggleShowAllFiles={() => setShowAllFiles(!showAllFiles())}
+                onRename={openRenameModal}
+                onDelete={openDeleteModal}
+                onUseForDiagram={() => {
+                  const ap = activePath();
+                  if (ap && isDbmlPath(ap)) {
+                    setEntryPoint(ap);
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </Show>
       </div>
 
-      <Show
-        when={projectRoot()}
-        fallback={<RecentProjectsList variant="default" />}
-      >
-        <div class="explorer-search">
-          <Search size={13} class="explorer-search-icon" aria-hidden />
-          <input
-            placeholder="Search files…"
-            value={query()}
-            onInput={(e) => setQuery(e.currentTarget.value)}
-          />
-          <Show when={query()}>
-            <button
-              type="button"
-              class="btn-icon explorer-search-clear"
-              onClick={() => setQuery("")}
-            >
-              <X size={12} />
-            </button>
-          </Show>
-        </div>
+      <div class="explorer-tree" role="tree">
+        <Show when={!projectRoot()}>
+          <div class="explorer-recent">
+            <p class="explorer-empty">Recent projects</p>
+            <RecentProjectsList variant="compact" />
+          </div>
+        </Show>
 
-        <div class="explorer-tree" role="tree">
+        <Show when={projectRoot() && !showAllFiles() && dbmlCount() === 0}>
+          <p class="explorer-empty">
+            No <code>.dbml</code> files yet. Use + to add one, or enable{" "}
+            <strong>Show all project files</strong>.
+          </p>
+        </Show>
+
+        <Show when={projectRoot() && showAllFiles() && fileCount() === 0}>
+          <p class="explorer-empty">This project folder is empty.</p>
+        </Show>
+
+        <Show when={projectRoot() && fileCount() > 0 && visibleTree().length === 0}>
+          <p class="explorer-empty">No files match your filter.</p>
+        </Show>
+
+        <Show when={projectRoot() && visibleTree().length > 0}>
           <TreeItems
-            nodes={filteredTree()}
+            nodes={visibleTree()}
             collapsed={collapsed()}
             onToggleFolder={toggleFolder}
             forceExpand={Boolean(query().trim())}
-            selectedPath={selectedPath()}
-            onSelectNode={setSelectedPath}
           />
+        </Show>
+      </div>
+
+      <Show when={projectRoot() && fileCount() > 0}>
+        <div class="explorer-footer">
+          <Show
+            when={showAllFiles()}
+            fallback={<>{dbmlCount()} dbml file{dbmlCount() === 1 ? "" : "s"}</>}
+          >
+            {fileCount()} file{fileCount() === 1 ? "" : "s"} · {dbmlCount()} dbml
+          </Show>
+          <Show when={query().trim()}>
+            {` · ${countLeafFiles(visibleTree())} shown`}
+          </Show>
         </div>
+      </Show>
+
+      <Show when={modalState()}>
+        {(state) => (
+          <Portal>
+            <div class="modal-overlay" onClick={closeModal}>
+              <div
+                class="prompt-modal-dialog"
+                onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+              >
+                <div class="modal-header">
+                  <h3 class="modal-title">
+                    {state().type === "create" && "New DBML File"}
+                    {state().type === "rename" && "Rename File"}
+                    {state().type === "delete" && "Delete File"}
+                  </h3>
+                  <button
+                    type="button"
+                    class="btn-icon btn-icon-xs"
+                    onClick={closeModal}
+                    aria-label="Close"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+                <form onSubmit={handleModalSubmit}>
+                  <div class="prompt-modal-body">
+                    <Show
+                      when={state().type === "delete"}
+                      fallback={
+                        <>
+                          <p class="prompt-modal-message">
+                            {state().type === "create"
+                              ? "Enter file path (e.g. schema.dbml or tables/users.dbml):"
+                              : "Enter new relative path:"}
+                          </p>
+                          <input
+                            type="text"
+                            class="prompt-modal-input"
+                            value={modalInput()}
+                            onInput={(e) => setModalInput(e.currentTarget.value)}
+                            placeholder={state().type === "create" ? "tables/orders.dbml" : (state() as any).path}
+                            autofocus
+                          />
+                        </>
+                      }
+                    >
+                      <p class="prompt-modal-message">
+                        Are you sure you want to delete <strong>{(state() as any).path}</strong>? This cannot be undone.
+                      </p>
+                    </Show>
+                    <Show when={modalError()}>
+                      <p class="prompt-modal-error">{modalError()}</p>
+                    </Show>
+                  </div>
+                  <div class="prompt-modal-footer">
+                    <button type="button" class="btn btn-sm btn-ghost" onClick={closeModal}>
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      class={`btn btn-sm ${state().type === "delete" ? "btn-danger" : "btn-primary"}`}
+                      style={state().type === "delete" ? { background: "var(--danger)", color: "#fff", "border-color": "var(--danger)" } : undefined}
+                    >
+                      {state().type === "create" && "Create File"}
+                      {state().type === "rename" && "Rename"}
+                      {state().type === "delete" && "Delete"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </Portal>
+        )}
       </Show>
     </div>
   );
