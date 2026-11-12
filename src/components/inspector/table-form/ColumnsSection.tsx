@@ -2,6 +2,7 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  Layers,
   Plus,
   Trash2,
 } from "lucide-solid";
@@ -41,10 +42,14 @@ type LiveProps = {
 
 export type ColumnsSectionProps = DraftProps | LiveProps;
 
-function resolveInsertPlacement(placement: string): AddColumnPlacement {
-  if (placement === "__start__") return { position: "start" };
-  if (placement === "__end__") return { position: "end" };
-  return { afterColumn: placement };
+function resolveInsertPlacement(value: string): AddColumnPlacement {
+  if (value === "__start__") {
+    return { position: "start" };
+  }
+  if (value === "__end__") {
+    return { position: "end" };
+  }
+  return { afterColumn: value };
 }
 
 export function ColumnsSection(props: ColumnsSectionProps) {
@@ -83,165 +88,180 @@ export function ColumnsSection(props: ColumnsSectionProps) {
     setNewColumn(emptyColumn());
   };
 
-  const removeColumn = (name: string) => {
-    props.onError(null);
-    if (props.mode === "draft") {
-      props.onChange(props.columns.filter((c) => c.name !== name));
-      return;
-    }
-    props.onRemove(name);
-  };
-
-  const moveColumn = (name: string, direction: "up" | "down") => {
-    props.onError(null);
-    if (props.mode === "draft") {
-      const moved = moveColumnInList(props.columns, name, direction);
-      if (moved) props.onChange(moved);
-      return;
-    }
-    props.onMove(name, direction);
-  };
-
-  const handleUpdate = (originalName: string, next: SchemaColumn) => {
-    const dup = findDuplicateColumnName(props.columns, next.name, originalName);
-    if (dup) {
-      props.onError(dup);
-      return;
-    }
-    props.onError(null);
-    if (props.mode === "draft") {
-      const updated = updateColumnInList(props.columns, originalName, next);
-      if (updated) props.onChange(updated);
-      return;
-    }
-    props.onUpdate(originalName, next);
-  };
-
   return (
-    <section class="table-form-section">
+    <section class="inspector-section table-form-section">
       <PgTypeDatalist />
 
-      <div class="table-form-section-header">
-        <h3 class="table-form-section-title">
-          Columns
-          <span class="table-form-count">({props.columns.length})</span>
+      <div class="inspector-section-header">
+        <h3 class="inspector-section-title">
+          <Layers size={13} aria-hidden />
+          Fields
         </h3>
-        <Show when={props.error}>
-          <span class="table-form-inline-error">{props.error}</span>
-        </Show>
+        <span class="inspector-section-count">{props.columns.length}</span>
       </div>
 
-      <div class="table-form-columns-list" role="list">
-        <For each={props.columns}>
-          {(col, index) => (
-            <div role="listitem">
-              <ColumnRowItem
-                column={col}
-                index={index()}
-                total={props.columns.length}
-                disabled={props.disabled}
-                onUpdate={(next) => handleUpdate(col.name, next)}
-                onRemove={() => removeColumn(col.name)}
-                onMove={(dir) => moveColumn(col.name, dir)}
-              />
-            </div>
-          )}
-        </For>
-      </div>
-
-      <div class="table-form-add-row">
-        <input
-          class="table-form-input table-form-input-name"
-          placeholder="New column name"
-          value={newColumn().name}
-          disabled={props.disabled}
-          onInput={(e) =>
-            setNewColumn({ ...newColumn(), name: e.currentTarget.value })
-          }
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              tryAddColumn();
-            }
-          }}
-        />
-        <input
-          class="table-form-input table-form-input-type"
-          placeholder="type (e.g. integer)"
-          list={PG_TYPES_DATALIST_ID}
-          value={newColumn().type}
-          disabled={props.disabled}
-          onInput={(e) =>
-            setNewColumn({ ...newColumn(), type: e.currentTarget.value })
-          }
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              tryAddColumn();
-            }
-          }}
-        />
-        <ColumnConstraintToggles
-          column={newColumn()}
-          disabled={props.disabled}
-          onChange={(patch) => setNewColumn({ ...newColumn(), ...patch })}
-        />
-        <Show when={props.mode === "live" && props.columns.length > 0}>
-          <select
-            class="select-compact table-form-placement-select"
-            value={insertPlacement()}
-            onChange={(e) => setInsertPlacement(e.currentTarget.value)}
-            disabled={props.disabled}
-            title="Where to insert the new column"
-          >
-            <option value="__start__">At start</option>
+      <div class="table-form-columns-shell">
+        <table class="inspector-columns table-form-columns">
+          <thead>
+            <tr>
+              <th class="table-form-col-order" aria-label="Order" />
+              <th>Name</th>
+              <th>Type</th>
+              <th class="table-form-col-flags">Constraints</th>
+              <Show when={props.mode === "live"}>
+                <th class="table-form-col-actions" />
+              </Show>
+              <Show when={props.mode === "draft"}>
+                <th class="table-form-col-actions" aria-label="Remove" />
+              </Show>
+            </tr>
+          </thead>
+          <tbody>
             <For each={props.columns}>
-              {(col) => (
-                <option value={col.name}>After {col.name}</option>
-              )}
+              {(col, index) =>
+                props.mode === "draft" ? (
+                  <DraftColumnRow
+                    column={col}
+                    index={index()}
+                    total={props.columns.length}
+                    disabled={props.disabled}
+                    onChange={(next) => {
+                      const updated = updateColumnInList(
+                        props.columns,
+                        col.name,
+                        next,
+                      );
+                      if (!updated) {
+                        props.onError(
+                          findDuplicateColumnName(props.columns, next.name, col.name),
+                        );
+                        return;
+                      }
+                      props.onError(null);
+                      props.onChange(updated);
+                    }}
+                    onMove={(direction) =>
+                      props.onChange(
+                        moveColumnInList(props.columns, col.name, direction) ??
+                          props.columns,
+                      )
+                    }
+                    onRemove={() => {
+                      if (props.columns.length <= 1) {
+                        return;
+                      }
+                      props.onChange(props.columns.filter((c) => c.name !== col.name));
+                    }}
+                    canRemove={props.columns.length > 1}
+                  />
+                ) : (
+                  <LiveColumnRow
+                    column={col}
+                    index={index()}
+                    total={props.columns.length}
+                    disabled={props.disabled}
+                    onSave={(next) => props.onUpdate(col.name, next)}
+                    onDelete={() => props.onRemove(col.name)}
+                    onMoveUp={() => props.onMove(col.name, "up")}
+                    onMoveDown={() => props.onMove(col.name, "down")}
+                  />
+                )
+              }
             </For>
-            <option value="__end__">At end</option>
-          </select>
-        </Show>
-        <button
-          type="button"
-          class="btn btn-sm btn-primary table-form-add-btn"
-          disabled={props.disabled || !newColumn().name.trim()}
-          onClick={tryAddColumn}
-        >
-          <Plus size={14} />
-          Add
-        </button>
+          </tbody>
+        </table>
+
+        <div class="table-form-add-panel">
+          <p class="table-form-add-label">Add field</p>
+          <div class="table-form-add-grid">
+            <label>
+              Name
+              <input
+                value={newColumn().name}
+                placeholder="column_name"
+                disabled={props.disabled}
+                onInput={(e) =>
+                  setNewColumn({ ...newColumn(), name: e.currentTarget.value })
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    tryAddColumn();
+                  }
+                }}
+              />
+            </label>
+            <label>
+              Type
+              <input
+                list={PG_TYPES_DATALIST_ID}
+                value={newColumn().type}
+                disabled={props.disabled}
+                onInput={(e) =>
+                  setNewColumn({ ...newColumn(), type: e.currentTarget.value })
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    tryAddColumn();
+                  }
+                }}
+              />
+            </label>
+            <ColumnConstraintToggles
+              column={newColumn()}
+              disabled={props.disabled}
+              onChange={setNewColumn}
+            />
+          </div>
+
+          <Show when={props.mode === "live"}>
+            <label class="table-form-insert-after">
+              Insert
+              <select
+                value={insertPlacement()}
+                disabled={props.disabled}
+                onChange={(e) => setInsertPlacement(e.currentTarget.value)}
+              >
+                <option value="__start__">At start</option>
+                <For each={props.columns}>
+                  {(col) => (
+                    <option value={col.name}>After {col.name}</option>
+                  )}
+                </For>
+                <option value="__end__">At end</option>
+              </select>
+            </label>
+          </Show>
+
+          <button
+            type="button"
+            class="btn btn-sm btn-ghost table-form-add-btn"
+            disabled={props.disabled || !newColumn().name.trim()}
+            onClick={tryAddColumn}
+          >
+            <Plus size={13} />
+            Add field
+          </button>
+        </div>
       </div>
     </section>
   );
 }
 
-function ColumnRowItem(props: {
+function DraftColumnRow(props: {
   column: SchemaColumn;
   index: number;
   total: number;
   disabled?: boolean;
-  onUpdate: (next: SchemaColumn) => void;
-  onRemove: () => void;
+  onChange: (column: SchemaColumn) => void;
   onMove: (direction: "up" | "down") => void;
+  onRemove: () => void;
+  canRemove: boolean;
 }) {
-  const [draft, setDraft] = createSignal<SchemaColumn>({ ...props.column });
-
-  createEffect(() => {
-    setDraft({ ...props.column });
-  });
-
-  const isDirty = () => !columnsEqual(draft(), props.column);
-
-  const save = () => {
-    if (!isDirty()) return;
-    props.onUpdate(draft());
-  };
-
   return (
-    <div class={`table-form-column-row ${isDirty() ? "dirty" : ""}`}>
-      <div class="table-form-row-reorder">
+    <tr class={props.column.isPrimaryKey ? "table-form-row-pk" : undefined}>
+      <td class="inspector-order-cell">
         <button
           type="button"
           class="btn-icon btn-icon-xs"
@@ -249,77 +269,155 @@ function ColumnRowItem(props: {
           title="Move up"
           onClick={() => props.onMove("up")}
         >
-          <ChevronUp size={12} />
+          <ChevronUp size={14} />
         </button>
         <button
           type="button"
           class="btn-icon btn-icon-xs"
-          disabled={props.disabled || props.index === props.total - 1}
+          disabled={props.disabled || props.index >= props.total - 1}
           title="Move down"
           onClick={() => props.onMove("down")}
         >
-          <ChevronDown size={12} />
+          <ChevronDown size={14} />
         </button>
-      </div>
-
-      <input
-        class="table-form-input table-form-input-name"
-        value={draft().name}
-        disabled={props.disabled}
-        onInput={(e) => setDraft({ ...draft(), name: e.currentTarget.value })}
-        onBlur={save}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.currentTarget.blur();
+      </td>
+      <td>
+        <input
+          class="inspector-inline-input"
+          value={props.column.name}
+          disabled={props.disabled}
+          onInput={(e) =>
+            props.onChange({ ...props.column, name: e.currentTarget.value })
           }
-        }}
-      />
-
-      <input
-        class="table-form-input table-form-input-type"
-        list={PG_TYPES_DATALIST_ID}
-        value={draft().type}
-        disabled={props.disabled}
-        onInput={(e) => setDraft({ ...draft(), type: e.currentTarget.value })}
-        onBlur={save}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.currentTarget.blur();
+        />
+      </td>
+      <td>
+        <input
+          class="inspector-inline-input"
+          list={PG_TYPES_DATALIST_ID}
+          value={props.column.type}
+          disabled={props.disabled}
+          onInput={(e) =>
+            props.onChange({ ...props.column, type: e.currentTarget.value })
           }
-        }}
-      />
-
-      <ColumnConstraintToggles
-        column={draft()}
-        disabled={props.disabled}
-        onChange={(patch) => {
-          const next = { ...draft(), ...patch };
-          setDraft(next);
-          props.onUpdate(next);
-        }}
-      />
-
-      <div class="table-form-row-actions">
-        <Show when={isDirty()}>
-          <button
-            type="button"
-            class="btn-icon btn-icon-xs btn-primary"
-            title="Save changes"
-            onClick={save}
-          >
-            <Check size={12} />
-          </button>
-        </Show>
+        />
+      </td>
+      <td>
+        <ColumnConstraintToggles
+          column={props.column}
+          compact
+          disabled={props.disabled}
+          onChange={props.onChange}
+        />
+      </td>
+      <td class="inspector-row-actions">
         <button
           type="button"
-          class="btn-icon btn-icon-xs text-danger"
-          disabled={props.disabled}
-          title="Delete column"
+          class="btn-icon btn-icon-xs"
+          title="Remove column"
+          disabled={props.disabled || !props.canRemove}
           onClick={props.onRemove}
         >
           <Trash2 size={13} />
         </button>
-      </div>
-    </div>
+      </td>
+    </tr>
+  );
+}
+
+function LiveColumnRow(props: {
+  column: SchemaColumn;
+  index: number;
+  total: number;
+  disabled?: boolean;
+  onSave: (column: SchemaColumn) => void;
+  onDelete: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+}) {
+  const [draft, setDraft] = createSignal<SchemaColumn>(props.column);
+
+  createEffect(() => {
+    setDraft(props.column);
+  });
+
+  const dirty = () => !columnsEqual(draft(), props.column);
+  const draftName = () => draft().name.trim();
+  const canSave = () => dirty() && draftName().length > 0;
+
+  return (
+    <tr
+      class={`${props.column.isPrimaryKey ? "table-form-row-pk" : ""} ${dirty() ? "table-form-row-dirty" : ""}`}
+    >
+      <td class="inspector-order-cell">
+        <button
+          type="button"
+          class="btn-icon btn-icon-xs"
+          disabled={props.disabled || props.index === 0}
+          title="Move up"
+          onClick={props.onMoveUp}
+        >
+          <ChevronUp size={14} />
+        </button>
+        <button
+          type="button"
+          class="btn-icon btn-icon-xs"
+          disabled={props.disabled || props.index >= props.total - 1}
+          title="Move down"
+          onClick={props.onMoveDown}
+        >
+          <ChevronDown size={14} />
+        </button>
+      </td>
+      <td>
+        <input
+          class="inspector-inline-input"
+          value={draft().name}
+          disabled={props.disabled}
+          onInput={(e) =>
+            setDraft({ ...draft(), name: e.currentTarget.value })
+          }
+        />
+      </td>
+      <td>
+        <input
+          class="inspector-inline-input"
+          list={PG_TYPES_DATALIST_ID}
+          value={draft().type}
+          disabled={props.disabled}
+          onInput={(e) =>
+            setDraft({ ...draft(), type: e.currentTarget.value })
+          }
+        />
+      </td>
+      <td>
+        <ColumnConstraintToggles
+          column={draft()}
+          compact
+          disabled={props.disabled}
+          onChange={setDraft}
+        />
+      </td>
+      <td class="inspector-row-actions">
+        <button
+          type="button"
+          class={`btn-icon btn-icon-xs ${canSave() ? "table-form-save-active" : ""}`}
+          disabled={props.disabled || !canSave()}
+          title={dirty() ? "Save column changes" : "No changes"}
+          onClick={() => props.onSave({ ...draft(), name: draftName() })}
+        >
+          <Check size={14} />
+        </button>
+        <button
+          type="button"
+          class="btn-icon btn-icon-xs table-form-delete-btn"
+          disabled={props.disabled}
+          title="Delete column"
+          onClick={props.onDelete}
+        >
+          <Trash2 size={13} />
+        </button>
+      </td>
+    </tr>
   );
 }

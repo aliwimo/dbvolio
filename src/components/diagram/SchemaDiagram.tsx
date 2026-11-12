@@ -32,6 +32,11 @@ import { TableGroupNode, type TableGroupNodeData } from "./TableGroupNode";
 import { TableNode, type TableNodeData } from "./TableNode";
 import { setCanvasContext, type ViewportTransform } from "./canvas-context";
 
+const NODE_WIDTH = 260;
+const HEADER_HEIGHT = 34;
+const COLUMNS_PADDING = 4;
+const ROW_HEIGHT = 26;
+
 function nodeMatchesSearch(node: Node, query: string): boolean {
   if (isGroupNode(node)) {
     const groupData = node.data as TableGroupNodeData;
@@ -65,18 +70,35 @@ function buildRelatedTableIds(
   return related;
 }
 
+function getColumnHandleY(node: Node, colName?: string | null, defaultToTop = false): number {
+  if (!colName) {
+    return defaultToTop ? 40 : 40;
+  }
+  const data = node.data as TableNodeData | undefined;
+  const columns = data?.table?.columns ?? [];
+  const idx = columns.findIndex((c) => c.name === colName);
+  if (idx < 0) {
+    return 40;
+  }
+  return HEADER_HEIGHT + COLUMNS_PADDING + idx * ROW_HEIGHT + ROW_HEIGHT / 2;
+}
+
 export function SchemaDiagram() {
   const storeNodes = () => useDiagramStore((s) => s.nodes);
   const storeEdges = () => useDiagramStore((s) => s.edges);
   const isStale = () => useDiagramStore((s) => s.isStale);
   const searchQuery = () => useDiagramStore((s) => s.searchQuery);
   const selectedTableId = () => useDiagramStore((s) => s.selectedTableId);
+  const hoveredTableId = () => useDiagramStore((s) => s.hoveredTableId);
+  const setHoveredTable = useDiagramStore.getState().setHoveredTable;
+  const selectTable = useDiagramStore.getState().selectTable;
   const entryPoint = () => useProjectStore((s) => s.entryPoint);
   const projectScope = () => useProjectStore((s) => s.projectScope);
   const projectFiles = () => useProjectStore((s) => s.files);
 
   const showGrid = () => useDiagramViewStore((s) => s.showGrid);
   const showEdgeLabels = () => useDiagramViewStore((s) => s.showEdgeLabels);
+  const hideUnmatchedSearch = () => useDiagramViewStore((s) => s.hideUnmatchedSearch);
   const emphasizeRelated = () => useDiagramViewStore((s) => s.emphasizeRelated);
   const snapToGrid = () => useDiagramViewStore((s) => s.snapToGrid);
   const animateRelationships = () =>
@@ -124,7 +146,7 @@ export function SchemaDiagram() {
     });
   };
 
-  const fitView = () => {
+  const fitView = (options?: { padding?: number; duration?: number }) => {
     const currentNodes = nodes();
     if (currentNodes.length === 0 || !containerRef) return;
     const rect = containerRef.getBoundingClientRect();
@@ -136,7 +158,7 @@ export function SchemaDiagram() {
     for (const node of currentNodes) {
       const x = node.position.x;
       const y = node.position.y;
-      const w = node.width ?? 280;
+      const w = node.width ?? NODE_WIDTH;
       const h = node.height ?? 200;
       minX = Math.min(minX, x);
       minY = Math.min(minY, y);
@@ -144,14 +166,15 @@ export function SchemaDiagram() {
       maxY = Math.max(maxY, y + h);
     }
 
-    const graphWidth = maxX - minX + 100;
-    const graphHeight = maxY - minY + 100;
+    const padding = (options?.padding ?? 0.15) * Math.min(rect.width, rect.height);
+    const graphWidth = maxX - minX + padding * 2;
+    const graphHeight = maxY - minY + padding * 2;
     const scaleX = rect.width / graphWidth;
     const scaleY = rect.height / graphHeight;
-    const zoom = Math.max(0.15, Math.min(1.2, Math.min(scaleX, scaleY) * 0.9));
+    const zoom = Math.max(0.15, Math.min(1.2, Math.min(scaleX, scaleY)));
 
-    const x = (rect.width - graphWidth * zoom) / 2 - minX * zoom;
-    const y = (rect.height - graphHeight * zoom) / 2 - minY * zoom;
+    const x = (rect.width - (maxX - minX) * zoom) / 2 - minX * zoom;
+    const y = (rect.height - (maxY - minY) * zoom) / 2 - minY * zoom;
 
     setTransform({ x, y, zoom });
   };
@@ -164,7 +187,7 @@ export function SchemaDiagram() {
       initialFitDone = true;
     } else if (!initialFitDone && nodes().length > 0) {
       initialFitDone = true;
-      requestAnimationFrame(fitView);
+      requestAnimationFrame(() => fitView());
     }
   });
 
@@ -180,7 +203,7 @@ export function SchemaDiagram() {
     zoomIn,
     zoomOut,
     fitView,
-    setPendingFitView: fitView,
+    setPendingFitView: () => fitView(),
   });
 
   onMount(() => {
@@ -211,6 +234,8 @@ export function SchemaDiagram() {
     if (target.closest(".table-node") || target.closest(".table-group-node")) {
       return;
     }
+    selectTable(null);
+    setHoveredTable(null);
     isPanning = true;
     panStart = { x: e.clientX, y: e.clientY };
     startTransform = { x: transform().x, y: transform().y };
@@ -313,10 +338,54 @@ export function SchemaDiagram() {
     return map;
   });
 
-  const relatedIds = () =>
-    emphasizeRelated()
-      ? buildRelatedTableIds(selectedTableId(), edges())
-      : null;
+  const query = () => searchQuery().trim().toLowerCase();
+
+  const relatedIds = createMemo(() => {
+    const sel = selectedTableId();
+    return sel ? buildRelatedTableIds(sel, edges()) : null;
+  });
+
+  const isTableHighlighted = (id: string) => {
+    const h = hoveredTableId();
+    const s = selectedTableId();
+    return id === h || id === s;
+  };
+
+  const focusSearch = () => {
+    const q = query();
+    if (!q || !containerRef) return;
+    const matching = nodes().filter((n) => nodeMatchesSearch(n, q));
+    if (matching.length === 0) return;
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const n of matching) {
+      minX = Math.min(minX, n.position.x);
+      minY = Math.min(minY, n.position.y);
+      maxX = Math.max(maxX, n.position.x + (n.width ?? NODE_WIDTH));
+      maxY = Math.max(maxY, n.position.y + (n.height ?? 200));
+    }
+    const rect = containerRef.getBoundingClientRect();
+    const pad = 80;
+    const zoom = Math.max(0.2, Math.min(1.2, Math.min(rect.width / (maxX - minX + pad), rect.height / (maxY - minY + pad))));
+    const x = (rect.width - (maxX - minX) * zoom) / 2 - minX * zoom;
+    const y = (rect.height - (maxY - minY) * zoom) / 2 - minY * zoom;
+    setTransform({ x, y, zoom });
+  };
+
+  const focusSelection = () => {
+    const selId = selectedTableId();
+    if (!selId || !containerRef) return;
+    const node = nodes().find((n) => n.id === selId);
+    if (!node) return;
+    const rect = containerRef.getBoundingClientRect();
+    const targetZoom = 1;
+    const x = rect.width / 2 - (node.position.x + 130) * targetZoom;
+    const y = rect.height / 2 - (node.position.y + 80) * targetZoom;
+    setTransform({ x, y, zoom: targetZoom });
+  };
 
   return (
     <div class="panel panel-fill panel-flush" style={{ display: "flex", "flex-direction": "column" }}>
@@ -327,18 +396,8 @@ export function SchemaDiagram() {
       </Show>
 
       <DiagramToolbar
-        onFocusSearch={() => {}}
-        onFocusSelection={() => {
-          const selId = selectedTableId();
-          if (!selId || !containerRef) return;
-          const node = nodes().find((n) => n.id === selId);
-          if (!node) return;
-          const rect = containerRef.getBoundingClientRect();
-          const targetZoom = 1;
-          const x = rect.width / 2 - (node.position.x + 140) * targetZoom;
-          const y = rect.height / 2 - (node.position.y + 100) * targetZoom;
-          setTransform({ x, y, zoom: targetZoom });
-        }}
+        onFocusSearch={focusSearch}
+        onFocusSelection={focusSelection}
         layout={layout}
       />
 
@@ -403,26 +462,36 @@ export function SchemaDiagram() {
                   const s = sourceNode();
                   const t = targetNode();
                   if (!s || !t) return null;
-                  const sW = s.width ?? 240;
+                  const sW = s.width ?? NODE_WIDTH;
+                  const data = edge.data as any;
+                  const srcCol = data?.sourceColumns?.[0];
+                  const tgtCol = data?.targetColumns?.[0];
+
+                  const srcY = getColumnHandleY(s, srcCol, false);
+                  const tgtY = getColumnHandleY(t, tgtCol, false);
+
                   return {
                     sourceX: s.position.x + sW,
-                    sourceY: s.position.y + 40,
+                    sourceY: s.position.y + srcY,
                     targetX: t.position.x,
-                    targetY: t.position.y + 40,
+                    targetY: t.position.y + tgtY,
                   };
                 };
 
                 const isHighlighted = () =>
                   Boolean(
-                    selectedTableId() &&
-                      (edge.source === selectedTableId() ||
-                        edge.target === selectedTableId())
+                    isTableHighlighted(edge.source) ||
+                    isTableHighlighted(edge.target)
                   );
 
                 const isDimmed = () => {
                   const rel = relatedIds();
-                  if (!rel) return false;
-                  return !rel.has(edge.source) || !rel.has(edge.target);
+                  if (emphasizeRelated() && rel) {
+                    if (!rel.has(edge.source) || !rel.has(edge.target)) {
+                      return true;
+                    }
+                  }
+                  return false;
                 };
 
                 return (
@@ -454,49 +523,106 @@ export function SchemaDiagram() {
               const isGroup = () => isGroupNode(node);
               const isSelected = () => node.id === selectedTableId();
               const isDimmed = () => {
-                const rel = relatedIds();
-                if (rel && !rel.has(node.id)) return true;
-                const q = searchQuery().trim().toLowerCase();
-                if (q && !nodeMatchesSearch(node, q)) return true;
+                if (emphasizeRelated() && relatedIds()) {
+                  const rel = relatedIds()!;
+                  if (isGroup()) {
+                    const g = (node.data as TableGroupNodeData).group;
+                    const hasTable = (g?.tableIds ?? []).some((id) => rel.has(id));
+                    if (!hasTable) return true;
+                  } else if (!rel.has(node.id)) {
+                    return true;
+                  }
+                }
+                const q = query();
+                if (q && !nodeMatchesSearch(node, q)) {
+                  return true;
+                }
+                return false;
+              };
+
+              const isHidden = () => {
+                const q = query();
+                if (q && hideUnmatchedSearch() && !nodeMatchesSearch(node, q)) {
+                  return true;
+                }
                 return false;
               };
 
               return (
-                <div
-                  class={`diagram-node-wrapper ${isGroup() ? "group-wrapper" : "table-wrapper"}`}
-                  data-node-id={node.id}
-                  style={{
-                    position: "absolute",
-                    left: `${node.position.x}px`,
-                    top: `${node.position.y}px`,
-                    "z-index": isGroup() ? 1 : isSelected() ? 10 : 2,
-                    cursor: "grab",
-                  }}
-                  onPointerDown={(e) => startDragNode(node.id, e)}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!isGroup()) {
-                      useDiagramStore.getState().selectTable(node.id);
-                    }
-                  }}
-                >
-                  <Show
-                    when={isGroup()}
-                    fallback={
-                      <TableNode
+                <Show when={!isHidden()}>
+                  <div
+                    class={`diagram-node-wrapper ${isGroup() ? "group-wrapper" : "table-wrapper"}`}
+                    data-node-id={node.id}
+                    style={{
+                      position: "absolute",
+                      left: `${node.position.x}px`,
+                      top: `${node.position.y}px`,
+                      "z-index": isGroup() ? 1 : isSelected() ? 10 : 2,
+                      cursor: "grab",
+                    }}
+                    onPointerDown={(e) => startDragNode(node.id, e)}
+                    onMouseEnter={() => {
+                      if (!isGroup()) {
+                        setHoveredTable(node.id);
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      if (!isGroup()) {
+                        setHoveredTable(null);
+                      }
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isGroup()) {
+                        if (selectedTableId() === node.id) {
+                          selectTable(null);
+                        } else {
+                          selectTable(node.id);
+                        }
+                      } else {
+                        const group = (node.data as TableGroupNodeData).group;
+                        if (group && group.tableIds.length > 0) {
+                          const memberNodes = nodes().filter((n) => group.tableIds.includes(n.id));
+                          if (memberNodes.length > 0 && containerRef) {
+                            let minX = Infinity;
+                            let minY = Infinity;
+                            let maxX = -Infinity;
+                            let maxY = -Infinity;
+                            for (const n of memberNodes) {
+                              minX = Math.min(minX, n.position.x);
+                              minY = Math.min(minY, n.position.y);
+                              maxX = Math.max(maxX, n.position.x + (n.width ?? NODE_WIDTH));
+                              maxY = Math.max(maxY, n.position.y + (n.height ?? 200));
+                            }
+                            const rect = containerRef.getBoundingClientRect();
+                            const pad = 100;
+                            const zoom = Math.max(0.2, Math.min(1.2, Math.min(rect.width / (maxX - minX + pad), rect.height / (maxY - minY + pad))));
+                            const x = (rect.width - (maxX - minX) * zoom) / 2 - minX * zoom;
+                            const y = (rect.height - (maxY - minY) * zoom) / 2 - minY * zoom;
+                            setTransform({ x, y, zoom });
+                          }
+                        }
+                      }
+                    }}
+                  >
+                    <Show
+                      when={isGroup()}
+                      fallback={
+                        <TableNode
+                          id={node.id}
+                          selected={isSelected()}
+                          data={{ ...(node.data as TableNodeData), dimmed: isDimmed() }}
+                        />
+                      }
+                    >
+                      <TableGroupNode
                         id={node.id}
                         selected={isSelected()}
-                        data={{ ...(node.data as TableNodeData), dimmed: isDimmed() }}
+                        data={{ ...(node.data as TableGroupNodeData), dimmed: isDimmed() }}
                       />
-                    }
-                  >
-                    <TableGroupNode
-                      id={node.id}
-                      selected={isSelected()}
-                      data={{ ...(node.data as TableGroupNodeData), dimmed: isDimmed() }}
-                    />
-                  </Show>
-                </div>
+                    </Show>
+                  </div>
+                </Show>
               );
             }}
           </For>
@@ -510,10 +636,13 @@ export function SchemaDiagram() {
               canRun={layout.canRun}
               canRunSelection={layout.canRunSelection}
               onRunLayout={layout.runLayout}
-              onFitView={fitView}
-              onFocusTable={(id) => useDiagramStore.getState().selectTable(id)}
+              onFitView={() => fitView()}
+              onFocusTable={(id) => {
+                selectTable(id);
+                focusSelection();
+              }}
               onEditTable={(id) => {
-                useDiagramStore.getState().selectTable(id);
+                selectTable(id);
                 useUiStore.getState().openTableEdit();
               }}
               onNewTable={() => useUiStore.getState().openTableCreate()}

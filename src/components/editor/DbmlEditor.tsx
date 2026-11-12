@@ -1,6 +1,7 @@
 import * as monaco from "monaco-editor";
+import editorWorker from "monaco-editor/editor/editor.worker?worker";
 import { dbmlMonarchTokensProvider } from "@dbml/core";
-import { createEffect, onCleanup, onMount, Show } from "solid-js";
+import { createEffect, onCleanup, Show } from "solid-js";
 import { useDiagramStore } from "../../stores/diagram-store";
 import { useEditorStore } from "../../stores/editor-store";
 import { useProjectStore } from "../../stores/project-store";
@@ -12,6 +13,12 @@ let monacoConfigured = false;
 function ensureMonacoConfigured() {
   if (monacoConfigured) return;
   monacoConfigured = true;
+
+  (globalThis as any).MonacoEnvironment = {
+    getWorker(_: unknown, _label: string) {
+      return new editorWorker();
+    },
+  };
 
   if (
     !monaco.languages
@@ -99,7 +106,6 @@ function ensureMonacoConfigured() {
 export function DbmlEditor() {
   ensureMonacoConfigured();
 
-  let containerRef: HTMLDivElement | undefined;
   let editorInstance: monaco.editor.IStandaloneCodeEditor | null = null;
   let isUpdatingModel = false;
 
@@ -110,14 +116,16 @@ export function DbmlEditor() {
   const theme = () => useUiStore((s) => s.theme);
   const editorSettings = () => useAppSettingsStore((s) => s);
   const projectRoot = () => useProjectStore((s) => s.projectRoot);
+  const pendingEditorReveal = () => useEditorStore((s) => s.pendingEditorReveal);
 
-  onMount(() => {
-    if (!containerRef) return;
+  const initOrUpdateEditor = (el: HTMLDivElement) => {
+    if (editorInstance) return;
 
-    editorInstance = monaco.editor.create(containerRef, {
+    editorInstance = monaco.editor.create(el, {
       language: "dbml",
       theme: theme() === "dark" ? "dbvolio-dark" : "dbvolio-light",
       automaticLayout: true,
+      value: activeTab()?.content ?? "",
       ...buildMonacoEditorOptions(editorSettings()),
     });
 
@@ -129,9 +137,22 @@ export function DbmlEditor() {
       useEditorStore.getState().updateContent(currentPath, val);
     });
 
-    onCleanup(() => {
-      editorInstance?.dispose();
-    });
+    const pending = useEditorStore.getState().pendingEditorReveal;
+    const currentPath = useEditorStore.getState().activePath;
+    if (pending && currentPath === pending.relativePath) {
+      requestAnimationFrame(() => {
+        if (!editorInstance) return;
+        editorInstance.revealLineInCenter(pending.line);
+        editorInstance.setPosition({ lineNumber: pending.line, column: 1 });
+        editorInstance.focus();
+        useEditorStore.getState().clearEditorReveal();
+      });
+    }
+  };
+
+  onCleanup(() => {
+    editorInstance?.dispose();
+    editorInstance = null;
   });
 
   // Sync content when active tab or active path changes
@@ -166,19 +187,43 @@ export function DbmlEditor() {
     const model = editorInstance.getModel();
     if (!model) return;
 
-    const markers: monaco.editor.IMarkerData[] = diagnostics().map((d) => ({
+    const currentPath = activePath();
+    const fileDiags = diagnostics().filter(
+      (d) => !d.filepath || d.filepath === currentPath
+    );
+
+    const markers: monaco.editor.IMarkerData[] = fileDiags.map((d) => ({
       message: d.message,
       severity:
         d.severity === "error"
           ? monaco.MarkerSeverity.Error
-          : monaco.MarkerSeverity.Warning,
+          : d.severity === "warning"
+            ? monaco.MarkerSeverity.Warning
+            : monaco.MarkerSeverity.Info,
       startLineNumber: d.line ?? 1,
       startColumn: d.column ?? 1,
-      endLineNumber: d.line ?? 1,
-      endColumn: (d.column ?? 1) + 10,
+      endLineNumber: d.endLine ?? d.line ?? 1,
+      endColumn: d.endColumn ?? (d.column ?? 1) + 10,
     }));
 
     monaco.editor.setModelMarkers(model, "dbml", markers);
+  });
+
+  // Handle pending editor reveals
+  createEffect(() => {
+    const pending = pendingEditorReveal();
+    const currentPath = activePath();
+    if (!pending || !editorInstance || currentPath !== pending.relativePath) {
+      return;
+    }
+    const handle = requestAnimationFrame(() => {
+      if (!editorInstance) return;
+      editorInstance.revealLineInCenter(pending.line);
+      editorInstance.setPosition({ lineNumber: pending.line, column: 1 });
+      editorInstance.focus();
+      useEditorStore.getState().clearEditorReveal();
+    });
+    onCleanup(() => cancelAnimationFrame(handle));
   });
 
   return (
@@ -195,7 +240,7 @@ export function DbmlEditor() {
           </div>
         }
       >
-        <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
+        <div ref={initOrUpdateEditor} style={{ width: "100%", height: "100%" }} />
       </Show>
     </div>
   );

@@ -1,5 +1,6 @@
 import { FileCode2 } from "lucide-solid";
 import { For, Show, type JSX } from "solid-js";
+import { formatQualifiedTableName } from "./column-helpers";
 import { HeaderColorPicker } from "./HeaderColorPicker";
 
 export function TableMetaCard(props: {
@@ -16,6 +17,8 @@ export function TableMetaCard(props: {
   actions?: JSX.Element;
   nameAutoFocus?: boolean;
 }) {
+  const qualified = () => formatQualifiedTableName(props.schema, props.name);
+
   return (
     <section class="table-form-meta-card">
       <div class="table-form-meta-fields">
@@ -32,12 +35,47 @@ export function TableMetaCard(props: {
           Table name
           <input
             value={props.name}
-            autofocus={props.nameAutoFocus}
             onInput={(e) => props.onNameChange(e.currentTarget.value)}
-            placeholder="users"
+            placeholder="orders, user_profiles…"
+            autofocus={props.nameAutoFocus}
             disabled={props.disabled}
           />
         </label>
+      </div>
+
+      <p class="table-form-meta-qualified" title="Qualified table name">
+        <span class="table-form-meta-qualified-label">Full name</span>
+        <code>{qualified()}</code>
+      </p>
+
+      <Show
+        when={
+          props.dbmlFilePaths &&
+          props.dbmlFilePaths.length > 0 &&
+          props.onTargetFileChange
+        }
+      >
+        <label class="table-form-field table-form-field-file">
+          <span class="table-form-field-file-label">
+            <FileCode2 size={13} aria-hidden />
+            Save to DBML file
+          </span>
+          <select
+            value={props.targetFile}
+            onChange={(e) => props.onTargetFileChange!(e.currentTarget.value)}
+            disabled={props.disabled}
+          >
+            <For each={props.dbmlFilePaths}>
+              {(path) => <option value={path}>{path}</option>}
+            </For>
+          </select>
+        </label>
+      </Show>
+
+      <div class="table-form-meta-divider" role="presentation" />
+
+      <div class="table-form-meta-color">
+        <span class="table-form-meta-sublabel">Diagram header color</span>
         <HeaderColorPicker
           value={props.headerColor}
           onChange={props.onHeaderColorChange}
@@ -45,32 +83,8 @@ export function TableMetaCard(props: {
         />
       </div>
 
-      <Show when={props.dbmlFilePaths && props.dbmlFilePaths.length > 0 && props.onTargetFileChange}>
-        <div class="table-form-target-file">
-          <label class="table-form-target-file-label" for="table-form-target-file-select">
-            <FileCode2 size={13} aria-hidden />
-            <span>Target file</span>
-          </label>
-          <select
-            id="table-form-target-file-select"
-            class="select-compact table-form-target-file-select"
-            value={props.targetFile ?? props.dbmlFilePaths![0]}
-            onChange={(e) => props.onTargetFileChange!(e.currentTarget.value)}
-            disabled={props.disabled}
-          >
-            <For each={props.dbmlFilePaths}>
-              {(p) => (
-                <option value={p} title={p}>
-                  {p}
-                </option>
-              )}
-            </For>
-          </select>
-        </div>
-      </Show>
-
       <Show when={props.actions}>
-        <div class="table-form-meta-actions">{props.actions}</div>
+        <footer class="table-form-meta-footer">{props.actions}</footer>
       </Show>
     </section>
   );
