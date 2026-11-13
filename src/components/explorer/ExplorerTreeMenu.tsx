@@ -10,6 +10,7 @@ import {
   Trash2,
 } from "lucide-solid";
 import { createSignal, onCleanup, onMount, Show } from "solid-js";
+import { Portal } from "solid-js/web";
 
 export interface ExplorerTreeMenuProps {
   disabled?: boolean;
@@ -32,14 +33,22 @@ export interface ExplorerTreeMenuProps {
 
 export function ExplorerTreeMenu(props: ExplorerTreeMenuProps) {
   const [open, setOpen] = createSignal(false);
+  const [menuPos, setMenuPos] = createSignal({ top: 0, left: 0 });
   let rootRef: HTMLDivElement | undefined;
+  let menuRef: HTMLDivElement | undefined;
+
+  const placeMenu = () => {
+    const rect = rootRef?.getBoundingClientRect();
+    if (!rect) return;
+    setMenuPos({ top: rect.bottom + 4, left: rect.right });
+  };
 
   onMount(() => {
     const onPointerDown = (event: MouseEvent) => {
       if (!open()) return;
-      if (!rootRef?.contains(event.target as HTMLElement)) {
-        setOpen(false);
-      }
+      const target = event.target as HTMLElement;
+      if (rootRef?.contains(target) || menuRef?.contains(target)) return;
+      setOpen(false);
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (!open()) return;
@@ -61,26 +70,46 @@ export function ExplorerTreeMenu(props: ExplorerTreeMenuProps) {
   };
 
   return (
-    <div class="explorer-menu-root" ref={rootRef}>
+    <div class="explorer-tree-menu" ref={rootRef}>
       <button
         type="button"
-        class={`btn-icon explorer-menu-trigger ${open() ? "active" : ""}`}
+        class={`btn-icon btn-icon-xs ${open() ? "active" : ""}`}
         disabled={props.disabled}
         aria-label="Explorer actions"
         title="Explorer actions"
         aria-expanded={open()}
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => {
+          if (open()) {
+            setOpen(false);
+            return;
+          }
+          placeMenu();
+          setOpen(true);
+        }}
       >
         <Ellipsis size={14} />
       </button>
 
       <Show when={open()}>
-        <div class="explorer-menu-popover" role="menu">
+        <Portal>
+        <div
+          class="explorer-tree-menu-panel"
+          role="menu"
+          ref={menuRef}
+          style={{
+            position: "fixed",
+            top: `${menuPos().top}px`,
+            left: `${menuPos().left}px`,
+            right: "auto",
+            width: "220px",
+            transform: "translateX(-100%)",
+          }}
+        >
           <Show when={props.canRevealActive}>
             <button
               type="button"
               role="menuitem"
-              class="explorer-menu-item"
+              class="explorer-tree-menu-item"
               onClick={() => run(props.onRevealActive)}
             >
               <Target size={14} />
@@ -91,7 +120,7 @@ export function ExplorerTreeMenu(props: ExplorerTreeMenuProps) {
           <button
             type="button"
             role="menuitem"
-            class="explorer-menu-item"
+            class="explorer-tree-menu-item"
             onClick={() => run(props.onExpandAll)}
           >
             <ChevronsUpDown size={14} />
@@ -101,7 +130,7 @@ export function ExplorerTreeMenu(props: ExplorerTreeMenuProps) {
           <button
             type="button"
             role="menuitem"
-            class="explorer-menu-item"
+            class="explorer-tree-menu-item"
             onClick={() => run(props.onCollapseAll)}
           >
             <ChevronsDownUp size={14} />
@@ -112,7 +141,7 @@ export function ExplorerTreeMenu(props: ExplorerTreeMenuProps) {
             <button
               type="button"
               role="menuitem"
-              class="explorer-menu-item"
+              class="explorer-tree-menu-item"
               onClick={() => run(props.onClearFilter)}
             >
               <SearchX size={14} />
@@ -120,12 +149,12 @@ export function ExplorerTreeMenu(props: ExplorerTreeMenuProps) {
             </button>
           </Show>
 
-          <div class="explorer-menu-divider" role="separator" />
+          <div class="explorer-tree-menu-separator" role="separator" />
 
           <button
             type="button"
             role="menuitem"
-            class="explorer-menu-item"
+            class="explorer-tree-menu-item"
             onClick={() => run(props.onRefresh)}
           >
             <FolderSync size={14} />
@@ -135,7 +164,7 @@ export function ExplorerTreeMenu(props: ExplorerTreeMenuProps) {
           <button
             type="button"
             role="menuitem"
-            class="explorer-menu-item"
+            class="explorer-tree-menu-item"
             onClick={() => run(props.onToggleShowAllFiles)}
           >
             <Files size={14} />
@@ -145,14 +174,14 @@ export function ExplorerTreeMenu(props: ExplorerTreeMenuProps) {
           </button>
 
           <Show when={props.canUseForDiagram || props.canRename || props.canDelete}>
-            <div class="explorer-menu-divider" role="separator" />
+            <div class="explorer-tree-menu-separator" role="separator" />
           </Show>
 
           <Show when={props.canUseForDiagram}>
             <button
               type="button"
               role="menuitem"
-              class="explorer-menu-item"
+              class="explorer-tree-menu-item"
               onClick={() => run(props.onUseForDiagram)}
             >
               <Target size={14} />
@@ -164,7 +193,7 @@ export function ExplorerTreeMenu(props: ExplorerTreeMenuProps) {
             <button
               type="button"
               role="menuitem"
-              class="explorer-menu-item"
+              class="explorer-tree-menu-item"
               onClick={() => run(props.onRename)}
             >
               <Pencil size={14} />
@@ -176,7 +205,7 @@ export function ExplorerTreeMenu(props: ExplorerTreeMenuProps) {
             <button
               type="button"
               role="menuitem"
-              class="explorer-menu-item explorer-menu-item-danger"
+              class="explorer-tree-menu-item explorer-tree-menu-danger"
               onClick={() => run(props.onDelete)}
             >
               <Trash2 size={14} />
@@ -184,6 +213,7 @@ export function ExplorerTreeMenu(props: ExplorerTreeMenuProps) {
             </button>
           </Show>
         </div>
+        </Portal>
       </Show>
     </div>
   );

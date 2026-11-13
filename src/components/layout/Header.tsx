@@ -84,7 +84,7 @@ export function Header() {
 
           <button
             type="button"
-            class="btn btn-ghost btn-sm"
+            class="btn btn-ghost btn-sm header-save"
             disabled={!activePath() || !isDirty()}
             aria-label="Save file"
             title={

@@ -294,6 +294,7 @@
 
 .header-save.btn-ghost {
   color: var(--text);
+  border-color: transparent;
 }
 
 .header-dropdown {
