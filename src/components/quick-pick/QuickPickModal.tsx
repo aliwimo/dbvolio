@@ -139,7 +139,7 @@ export function QuickPickModal() {
             }}
           >
             <div
-              class="quick-pick-modal"
+              class="quick-pick"
               role="dialog"
               aria-modal="true"
               aria-label={titleForKind(k())}
@@ -160,7 +160,7 @@ export function QuickPickModal() {
                     const isSelected = () => index() === selectedIndex();
                     return (
                       <li
-                        class={`quick-pick-item ${isSelected() ? "selected" : ""}`}
+                        class={`quick-pick-item ${isSelected() ? "active" : ""}`}
                         role="option"
                         aria-selected={isSelected()}
                         onClick={() => {
@@ -168,16 +168,20 @@ export function QuickPickModal() {
                           item.run();
                         }}
                       >
-                        <Show
-                          when={item.icon === "recent"}
-                          fallback={<FileCode size={14} class="quick-pick-icon" />}
-                        >
-                          <Clock size={14} class="quick-pick-icon" />
-                        </Show>
-                        <span class="quick-pick-label">{item.label}</span>
-                        <Show when={item.description}>
-                          <span class="quick-pick-desc">{item.description}</span>
-                        </Show>
+                        <span class="quick-pick-item-icon">
+                          <Show
+                            when={item.icon === "recent"}
+                            fallback={<FileCode size={14} />}
+                          >
+                            <Clock size={14} />
+                          </Show>
+                        </span>
+                        <span class="quick-pick-item-text">
+                          <span class="quick-pick-item-label">{item.label}</span>
+                          <Show when={item.description}>
+                            <span class="quick-pick-item-desc">{item.description}</span>
+                          </Show>
+                        </span>
                       </li>
                     );
                   }}

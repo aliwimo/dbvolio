@@ -18,7 +18,9 @@ import { useDiagramViewStore } from "../../stores/diagram-view-store";
 import { useProjectStore } from "../../stores/project-store";
 import { useUiStore } from "../../stores/ui-store";
 import {
+  groupNodeId,
   isGroupNode,
+  syncTableGroupBounds,
 } from "../../features/diagram-layout/table-group-bounds";
 import { useDiagramAutoLayout } from "../../features/diagram-layout/useDiagramAutoLayout";
 import { applyAssignTableToGroup } from "../../features/schema/apply-schema-edits";
@@ -27,15 +29,15 @@ import {
   type DiagramContextMenuState,
 } from "./DiagramContextMenu";
 import { DiagramToolbar } from "./DiagramToolbar";
-import { RelationshipEdge, RelationshipEdgeMarkers } from "./RelationshipEdge";
+import { DiagramEdges } from "./DiagramEdges";
+import {
+  getRelationshipEdgePoints,
+  TABLE_NODE_WIDTH,
+} from "../../features/diagram/relationship-edge-geometry";
+import { computeOrthogonalPath } from "./RelationshipEdge";
 import { TableGroupNode, type TableGroupNodeData } from "./TableGroupNode";
 import { TableNode, type TableNodeData } from "./TableNode";
 import { setCanvasContext, type ViewportTransform } from "./canvas-context";
-
-const NODE_WIDTH = 260;
-const HEADER_HEIGHT = 34;
-const COLUMNS_PADDING = 4;
-const ROW_HEIGHT = 26;
 
 function nodeMatchesSearch(node: Node, query: string): boolean {
   if (isGroupNode(node)) {
@@ -68,19 +70,6 @@ function buildRelatedTableIds(
     }
   }
   return related;
-}
-
-function getColumnHandleY(node: Node, colName?: string | null, defaultToTop = false): number {
-  if (!colName) {
-    return defaultToTop ? 40 : 40;
-  }
-  const data = node.data as TableNodeData | undefined;
-  const columns = data?.table?.columns ?? [];
-  const idx = columns.findIndex((c) => c.name === colName);
-  if (idx < 0) {
-    return 40;
-  }
-  return HEADER_HEIGHT + COLUMNS_PADDING + idx * ROW_HEIGHT + ROW_HEIGHT / 2;
 }
 
 export function SchemaDiagram() {
@@ -117,19 +106,52 @@ export function SchemaDiagram() {
     createSignal<DiagramContextMenuState | null>(null);
 
   let containerRef: HTMLDivElement | undefined;
+  let layerEl: HTMLDivElement | undefined;
+  let gridEl: HTMLDivElement | undefined;
   let isPanning = false;
   let panStart = { x: 0, y: 0 };
   let startTransform = { x: 0, y: 0 };
 
   let draggingNodeId: string | null = null;
+  let dragCaptureTarget: HTMLElement | null = null;
+  let dragPointerId: number | null = null;
   let dragStartPointer = { x: 0, y: 0 };
   let dragStartNodePos = { x: 0, y: 0 };
+  let didDrag = false;
+  let dragRafId: number | null = null;
+  let pendingPointerPos: { x: number; y: number } | null = null;
+  let dragEl: HTMLElement | null = null;
+  let dragCompanions: {
+    id: string;
+    el: HTMLElement;
+    startX: number;
+    startY: number;
+  }[] = [];
+  let dragGroupEl: HTMLElement | null = null;
+  let dragGroupInner: HTMLElement | null = null;
+  let dragGroupNodeId: string | null = null;
+  let dragLinks: {
+    group: SVGGElement;
+    edge: Edge;
+    source: Node;
+    target: Node;
+  }[] = [];
+  let viewportDirty = false;
+  let liveViewport: ViewportTransform = { x: 40, y: 40, zoom: 1 };
+  let wheelRafId: number | null = null;
+  let pendingWheel: { mouseX: number; mouseY: number; factor: number } | null = null;
 
   let initialFitDone = false;
 
   createEffect(() => {
-    setNodes(storeNodes());
-    setEdges(storeEdges());
+    const nextNodes = storeNodes();
+    const nextEdges = storeEdges();
+    if (draggingNodeId) {
+      setEdges(nextEdges);
+      return;
+    }
+    setNodes(nextNodes);
+    setEdges(nextEdges);
   });
 
   const zoomIn = () => {
@@ -158,7 +180,7 @@ export function SchemaDiagram() {
     for (const node of currentNodes) {
       const x = node.position.x;
       const y = node.position.y;
-      const w = node.width ?? NODE_WIDTH;
+      const w = node.width ?? TABLE_NODE_WIDTH;
       const h = node.height ?? 200;
       minX = Math.min(minX, x);
       minY = Math.min(minY, y);
@@ -178,6 +200,27 @@ export function SchemaDiagram() {
 
     setTransform({ x, y, zoom });
   };
+
+  const applyViewport = (tf: ViewportTransform) => {
+    liveViewport = tf;
+    if (layerEl) {
+      layerEl.style.transform = `translate(${tf.x}px, ${tf.y}px) scale(${tf.zoom})`;
+    }
+    if (gridEl) {
+      const step = tf.zoom < 0.45 ? 80 : tf.zoom < 0.8 ? 40 : 20;
+      const size = step * tf.zoom;
+      const opacity = Math.min(1, Math.max(0.2, (tf.zoom - 0.2) / 0.6));
+      gridEl.style.backgroundSize = `${size}px ${size}px`;
+      gridEl.style.backgroundPosition = `${tf.x}px ${tf.y}px`;
+      gridEl.style.opacity = String(opacity);
+    }
+  };
+
+  createEffect(() => {
+    showGrid();
+    if (viewportDirty) return;
+    applyViewport(transform());
+  });
 
   createEffect(() => {
     const vp = pendingViewport();
@@ -243,19 +286,31 @@ export function SchemaDiagram() {
     window.addEventListener("pointerup", onPointerUp);
   };
 
-  const onPointerMove = (e: PointerEvent) => {
+  const flushPointerMove = () => {
+    dragRafId = null;
+    if (!pendingPointerPos) return;
+    const { x: clientX, y: clientY } = pendingPointerPos;
+    pendingPointerPos = null;
+
     if (isPanning) {
-      const dx = e.clientX - panStart.x;
-      const dy = e.clientY - panStart.y;
-      setTransform((prev) => ({
-        ...prev,
+      const dx = clientX - panStart.x;
+      const dy = clientY - panStart.y;
+      viewportDirty = true;
+      applyViewport({
         x: startTransform.x + dx,
         y: startTransform.y + dy,
-      }));
-    } else if (draggingNodeId) {
+        zoom: transform().zoom,
+      });
+    } else if (draggingNodeId && dragEl) {
+      const rawDx = clientX - dragStartPointer.x;
+      const rawDy = clientY - dragStartPointer.y;
+      if (!didDrag && (Math.abs(rawDx) > 3 || Math.abs(rawDy) > 3)) {
+        didDrag = true;
+      }
+
       const tf = transform();
-      const dx = (e.clientX - dragStartPointer.x) / tf.zoom;
-      const dy = (e.clientY - dragStartPointer.y) / tf.zoom;
+      const dx = rawDx / tf.zoom;
+      const dy = rawDy / tf.zoom;
       let newX = dragStartNodePos.x + dx;
       let newY = dragStartNodePos.y + dy;
 
@@ -264,22 +319,131 @@ export function SchemaDiagram() {
         newY = Math.round(newY / 20) * 20;
       }
 
-      setNodes((current) =>
-        current.map((n) =>
-          n.id === draggingNodeId
-            ? { ...n, position: { x: newX, y: newY } }
-            : n
-        )
-      );
+      dragEl.style.left = `${newX}px`;
+      dragEl.style.top = `${newY}px`;
+      const movedX = newX - dragStartNodePos.x;
+      const movedY = newY - dragStartNodePos.y;
+      const positions = new Map<string, { x: number; y: number }>([
+        [draggingNodeId, { x: newX, y: newY }],
+      ]);
+      for (const companion of dragCompanions) {
+        const x = companion.startX + movedX;
+        const y = companion.startY + movedY;
+        companion.el.style.left = `${x}px`;
+        companion.el.style.top = `${y}px`;
+        positions.set(companion.id, { x, y });
+      }
+      paintDraggedEdges(positions);
+      paintDraggedGroup(positions);
+    }
+  };
+
+  const paintDraggedGroup = (positions: Map<string, { x: number; y: number }>) => {
+    if (!dragGroupEl || !dragGroupNodeId) return;
+    const preview = nodes().map((node) => {
+      const next = positions.get(node.id);
+      return next ? { ...node, position: next } : node;
+    });
+    const group = syncTableGroupBounds(preview).find(
+      (node) => node.id === dragGroupNodeId,
+    );
+    if (!group) return;
+    dragGroupEl.style.left = `${group.position.x}px`;
+    dragGroupEl.style.top = `${group.position.y}px`;
+    if (dragGroupInner) {
+      dragGroupInner.style.width = `${group.width}px`;
+      dragGroupInner.style.height = `${group.height}px`;
+    }
+  };
+
+  const paintDraggedEdges = (positions: Map<string, { x: number; y: number }>) => {
+    for (const link of dragLinks) {
+      const sourcePos = positions.get(link.edge.source);
+      const targetPos = positions.get(link.edge.target);
+      const source = sourcePos
+        ? { ...link.source, position: sourcePos }
+        : link.source;
+      const target = targetPos
+        ? { ...link.target, position: targetPos }
+        : link.target;
+      const [d, labelX, labelY, arrow] = computeOrthogonalPath({
+        ...getRelationshipEdgePoints(link.edge, source, target),
+        channel: Number(link.group.dataset.channel ?? 0),
+      });
+      const paths = link.group.querySelectorAll("path");
+      for (const path of paths) {
+        path.setAttribute(
+          "d",
+          path.classList.contains("relationship-edge-arrow") ? arrow : d,
+        );
+      }
+      const label = link.group.querySelector("foreignObject");
+      if (label) {
+        label.setAttribute("x", String(labelX - 80));
+        label.setAttribute("y", String(labelY - 14));
+      }
+    }
+  };
+
+  const onPointerMove = (e: PointerEvent) => {
+    pendingPointerPos = { x: e.clientX, y: e.clientY };
+    if (dragRafId === null) {
+      dragRafId = requestAnimationFrame(flushPointerMove);
     }
   };
 
   const onPointerUp = () => {
+    if (dragRafId !== null) {
+      cancelAnimationFrame(dragRafId);
+      dragRafId = null;
+    }
+    if (pendingPointerPos) {
+      flushPointerMove();
+    }
     if (isPanning) {
       isPanning = false;
+      viewportDirty = false;
+      setTransform({ ...liveViewport });
+    }
+    if (dragCaptureTarget && dragPointerId !== null) {
+      try {
+        dragCaptureTarget.releasePointerCapture(dragPointerId);
+      } catch {
+        /* already released */
+      }
+      dragCaptureTarget = null;
+      dragPointerId = null;
     }
     if (draggingNodeId) {
+      const id = draggingNodeId;
+      const left = dragEl ? Number.parseFloat(dragEl.style.left) : dragStartNodePos.x;
+      const top = dragEl ? Number.parseFloat(dragEl.style.top) : dragStartNodePos.y;
+      const positions = new Map<string, { x: number; y: number }>([
+        [id, { x: left, y: top }],
+      ]);
+      for (const companion of dragCompanions) {
+        positions.set(companion.id, {
+          x: Number.parseFloat(companion.el.style.left),
+          y: Number.parseFloat(companion.el.style.top),
+        });
+      }
       draggingNodeId = null;
+      dragEl = null;
+      dragCompanions = [];
+      dragGroupEl = null;
+      dragGroupInner = null;
+      dragGroupNodeId = null;
+      dragLinks = [];
+      if (didDrag) {
+        setNodes((current) =>
+          syncTableGroupBounds(
+            current.map((n) => {
+              const next = positions.get(n.id);
+              return next ? { ...n, position: next } : n;
+            }),
+          ),
+        );
+      }
       useDiagramStore.getState().setFlow(nodes(), edges());
       const entry = entryPoint();
       if (entry) {
@@ -290,29 +454,113 @@ export function SchemaDiagram() {
     window.removeEventListener("pointerup", onPointerUp);
   };
 
-  const onWheel = (e: WheelEvent) => {
-    e.preventDefault();
-    if (!containerRef) return;
-    const rect = containerRef.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+  const flushWheel = () => {
+    wheelRafId = null;
+    const pending = pendingWheel;
+    pendingWheel = null;
+    if (!pending) return;
+    const { mouseX, mouseY, factor } = pending;
     setTransform((prev) => {
-      const newZoom = Math.max(0.1, Math.min(2.5, prev.zoom * zoomFactor));
+      const newZoom = Math.max(0.1, Math.min(2.5, prev.zoom * factor));
       const newX = mouseX - (mouseX - prev.x) * (newZoom / prev.zoom);
       const newY = mouseY - (mouseY - prev.y) * (newZoom / prev.zoom);
       return { x: newX, y: newY, zoom: newZoom };
     });
   };
 
+  const onWheel = (e: WheelEvent) => {
+    e.preventDefault();
+    if (!containerRef) return;
+    const rect = containerRef.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+    if (pendingWheel) {
+      pendingWheel.mouseX = mouseX;
+      pendingWheel.mouseY = mouseY;
+      pendingWheel.factor *= zoomFactor;
+    } else {
+      pendingWheel = { mouseX, mouseY, factor: zoomFactor };
+    }
+    if (wheelRafId === null) {
+      wheelRafId = requestAnimationFrame(flushWheel);
+    }
+  };
+
   const startDragNode = (id: string, e: PointerEvent) => {
+    if (e.button !== 0) return;
     e.stopPropagation();
+    e.preventDefault();
     draggingNodeId = id;
+    didDrag = false;
     dragStartPointer = { x: e.clientX, y: e.clientY };
     const n = nodes().find((node) => node.id === id);
     if (n) {
       dragStartNodePos = { x: n.position.x, y: n.position.y };
+    }
+    dragCaptureTarget = (e.currentTarget as HTMLElement | undefined) ?? null;
+    dragPointerId = e.pointerId;
+    dragCaptureTarget?.setPointerCapture(e.pointerId);
+    dragEl = containerRef?.querySelector(
+      `.diagram-node-wrapper[data-node-id="${CSS.escape(id)}"]`,
+    ) as HTMLElement | null;
+    const currentNodes = nodes();
+    const byId = new Map(currentNodes.map((node) => [node.id, node]));
+    dragCompanions = [];
+    dragGroupEl = null;
+    dragGroupInner = null;
+    dragGroupNodeId = null;
+    const dragged = byId.get(id);
+    const memberIds =
+      dragged && isGroupNode(dragged)
+        ? ((dragged.data as TableGroupNodeData).group?.tableIds ?? [])
+        : [];
+    if (containerRef && memberIds.length > 0) {
+      for (const memberId of memberIds) {
+        const member = byId.get(memberId);
+        const el = containerRef.querySelector(
+          `.diagram-node-wrapper[data-node-id="${CSS.escape(memberId)}"]`,
+        ) as HTMLElement | null;
+        if (!member || !el) continue;
+        dragCompanions.push({
+          id: memberId,
+          el,
+          startX: member.position.x,
+          startY: member.position.y,
+        });
+      }
+    } else if (containerRef && dragged && !isGroupNode(dragged)) {
+      const groupId = (dragged.data as TableNodeData | undefined)?.table?.groupId;
+      if (groupId) {
+        dragGroupNodeId = groupNodeId(groupId);
+        dragGroupEl = containerRef.querySelector(
+          `.diagram-node-wrapper[data-node-id="${CSS.escape(dragGroupNodeId)}"]`,
+        ) as HTMLElement | null;
+        dragGroupInner = dragGroupEl?.querySelector(
+          ".table-group-node",
+        ) as HTMLElement | null;
+      }
+    }
+    const movingIds = new Set([id, ...memberIds]);
+    dragLinks = [];
+    if (containerRef) {
+      const selector = [...movingIds]
+        .flatMap((movingId) => [
+          `g.relationship-edge-group[data-source="${CSS.escape(movingId)}"]`,
+          `g.relationship-edge-group[data-target="${CSS.escape(movingId)}"]`,
+        ])
+        .join(", ");
+      const groups = selector
+        ? containerRef.querySelectorAll<SVGGElement>(selector)
+        : [];
+      for (const group of groups) {
+        const edge = edges().find((item) => item.id === group.dataset.edgeId);
+        if (!edge) continue;
+        const source = byId.get(edge.source);
+        const target = byId.get(edge.target);
+        if (!source || !target) continue;
+        dragLinks.push({ group, edge, source, target });
+      }
     }
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
@@ -330,26 +578,12 @@ export function SchemaDiagram() {
     });
   };
 
-  const nodeMap = createMemo(() => {
-    const map = new Map<string, Node>();
-    for (const node of nodes()) {
-      map.set(node.id, node);
-    }
-    return map;
-  });
-
   const query = () => searchQuery().trim().toLowerCase();
 
   const relatedIds = createMemo(() => {
     const sel = selectedTableId();
     return sel ? buildRelatedTableIds(sel, edges()) : null;
   });
-
-  const isTableHighlighted = (id: string) => {
-    const h = hoveredTableId();
-    const s = selectedTableId();
-    return id === h || id === s;
-  };
 
   const focusSearch = () => {
     const q = query();
@@ -364,7 +598,7 @@ export function SchemaDiagram() {
     for (const n of matching) {
       minX = Math.min(minX, n.position.x);
       minY = Math.min(minY, n.position.y);
-      maxX = Math.max(maxX, n.position.x + (n.width ?? NODE_WIDTH));
+      maxX = Math.max(maxX, n.position.x + (n.width ?? TABLE_NODE_WIDTH));
       maxY = Math.max(maxY, n.position.y + (n.height ?? 200));
     }
     const rect = containerRef.getBoundingClientRect();
@@ -417,106 +651,35 @@ export function SchemaDiagram() {
       >
         <Show when={showGrid()}>
           <div
+            ref={gridEl}
             class="diagram-grid-overlay"
             style={{
               position: "absolute",
               inset: 0,
-              "background-size": `${20 * transform().zoom}px ${20 * transform().zoom}px`,
-              "background-position": `${transform().x}px ${transform().y}px`,
-              "background-image":
-                "radial-gradient(circle, var(--color-border) 1px, transparent 1px)",
               "pointer-events": "none",
             }}
           />
         </Show>
 
         <div
+          ref={layerEl}
           class="diagram-canvas-layer"
           style={{
-            transform: `translate(${transform().x}px, ${transform().y}px) scale(${transform().zoom})`,
             "transform-origin": "0 0",
             position: "absolute",
             inset: 0,
             "pointer-events": "auto",
           }}
         >
-          <svg
-            class="diagram-edges-svg"
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "50000px",
-              height: "50000px",
-              overflow: "visible",
-              "pointer-events": "none",
-            }}
-          >
-            <RelationshipEdgeMarkers />
-            <For each={edges()}>
-              {(edge) => {
-                const sourceNode = () => nodeMap().get(edge.source);
-                const targetNode = () => nodeMap().get(edge.target);
-
-                const edgeCoords = () => {
-                  const s = sourceNode();
-                  const t = targetNode();
-                  if (!s || !t) return null;
-                  const sW = s.width ?? NODE_WIDTH;
-                  const data = edge.data as any;
-                  const srcCol = data?.sourceColumns?.[0];
-                  const tgtCol = data?.targetColumns?.[0];
-
-                  const srcY = getColumnHandleY(s, srcCol, false);
-                  const tgtY = getColumnHandleY(t, tgtCol, false);
-
-                  return {
-                    sourceX: s.position.x + sW,
-                    sourceY: s.position.y + srcY,
-                    targetX: t.position.x,
-                    targetY: t.position.y + tgtY,
-                  };
-                };
-
-                const isHighlighted = () =>
-                  Boolean(
-                    isTableHighlighted(edge.source) ||
-                    isTableHighlighted(edge.target)
-                  );
-
-                const isDimmed = () => {
-                  const rel = relatedIds();
-                  if (emphasizeRelated() && rel) {
-                    if (!rel.has(edge.source) || !rel.has(edge.target)) {
-                      return true;
-                    }
-                  }
-                  return false;
-                };
-
-                return (
-                  <Show when={edgeCoords()}>
-                    {(coords) => (
-                      <RelationshipEdge
-                        id={edge.id}
-                        sourceX={coords().sourceX}
-                        sourceY={coords().sourceY}
-                        targetX={coords().targetX}
-                        targetY={coords().targetY}
-                        data={{
-                          ...(edge.data as any),
-                          showLabels: showEdgeLabels(),
-                          highlighted: isHighlighted(),
-                          dimmed: isDimmed(),
-                          animate: animateRelationships(),
-                        }}
-                      />
-                    )}
-                  </Show>
-                );
-              }}
-            </For>
-          </svg>
+          <DiagramEdges
+            nodes={nodes}
+            edges={edges}
+            showLabels={showEdgeLabels}
+            animate={animateRelationships}
+            emphasizeRelated={emphasizeRelated}
+            selectedId={selectedTableId}
+            hoveredId={hoveredTableId}
+          />
 
           <For each={nodes()}>
             {(node) => {
@@ -551,7 +714,7 @@ export function SchemaDiagram() {
               return (
                 <Show when={!isHidden()}>
                   <div
-                    class={`diagram-node-wrapper ${isGroup() ? "group-wrapper" : "table-wrapper"}`}
+                    class={`diagram-node-wrapper ${isGroup() ? "group-wrapper" : "table-wrapper"}${isDimmed() ? " is-dimmed" : ""}`}
                     data-node-id={node.id}
                     style={{
                       position: "absolute",
@@ -559,6 +722,7 @@ export function SchemaDiagram() {
                       top: `${node.position.y}px`,
                       "z-index": isGroup() ? 1 : isSelected() ? 10 : 2,
                       cursor: "grab",
+                      "touch-action": "none",
                     }}
                     onPointerDown={(e) => startDragNode(node.id, e)}
                     onMouseEnter={() => {
@@ -573,6 +737,7 @@ export function SchemaDiagram() {
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (didDrag) return;
                       if (!isGroup()) {
                         if (selectedTableId() === node.id) {
                           selectTable(null);
@@ -591,7 +756,7 @@ export function SchemaDiagram() {
                             for (const n of memberNodes) {
                               minX = Math.min(minX, n.position.x);
                               minY = Math.min(minY, n.position.y);
-                              maxX = Math.max(maxX, n.position.x + (n.width ?? NODE_WIDTH));
+                              maxX = Math.max(maxX, n.position.x + (n.width ?? TABLE_NODE_WIDTH));
                               maxY = Math.max(maxY, n.position.y + (n.height ?? 200));
                             }
                             const rect = containerRef.getBoundingClientRect();
@@ -611,14 +776,14 @@ export function SchemaDiagram() {
                         <TableNode
                           id={node.id}
                           selected={isSelected()}
-                          data={{ ...(node.data as TableNodeData), dimmed: isDimmed() }}
+                          data={node.data as TableNodeData}
                         />
                       }
                     >
                       <TableGroupNode
                         id={node.id}
                         selected={isSelected()}
-                        data={{ ...(node.data as TableGroupNodeData), dimmed: isDimmed() }}
+                        data={node.data as TableGroupNodeData}
                       />
                     </Show>
                   </div>

@@ -144,7 +144,6 @@ export function DbmlEditor() {
         if (!editorInstance) return;
         editorInstance.revealLineInCenter(pending.line);
         editorInstance.setPosition({ lineNumber: pending.line, column: 1 });
-        editorInstance.focus();
         useEditorStore.getState().clearEditorReveal();
       });
     }
@@ -220,7 +219,6 @@ export function DbmlEditor() {
       if (!editorInstance) return;
       editorInstance.revealLineInCenter(pending.line);
       editorInstance.setPosition({ lineNumber: pending.line, column: 1 });
-      editorInstance.focus();
       useEditorStore.getState().clearEditorReveal();
     });
     onCleanup(() => cancelAnimationFrame(handle));

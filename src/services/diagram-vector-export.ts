@@ -4,6 +4,13 @@ import {
   type Edge,
   type Node,
 } from "../types/flow";
+import { columnFromHandle } from "../features/diagram/column-handle-id";
+import {
+  TABLE_COLUMNS_PADDING,
+  TABLE_HEADER_HEIGHT,
+  TABLE_ROW_STRIDE,
+  columnHandleOffsetY,
+} from "../features/diagram/relationship-edge-geometry";
 import type { TableNodeData } from "../components/diagram/TableNode";
 import {
   resolveGroupColor,
@@ -12,9 +19,9 @@ import {
 import { isGroupNode } from "../features/diagram-layout/table-group-bounds";
 
 const TABLE_MIN_WIDTH = 220;
-const HEADER_HEIGHT = 34;
-const ROW_HEIGHT = 26;
-const COLUMNS_PADDING = 4;
+const HEADER_HEIGHT = TABLE_HEADER_HEIGHT;
+const ROW_HEIGHT = TABLE_ROW_STRIDE;
+const COLUMNS_PADDING = TABLE_COLUMNS_PADDING;
 const CANVAS_PADDING = 48;
 
 /** Matches `font-family` on `html, body` in theme.css */
@@ -78,14 +85,6 @@ function escapeXml(value: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
-}
-
-function columnFromHandle(handleId: string | null | undefined): string {
-  if (!handleId) {
-    return "";
-  }
-  const idx = handleId.indexOf(":");
-  return idx >= 0 ? handleId.slice(idx + 1) : handleId;
 }
 
 function nodeDimensions(
@@ -188,19 +187,14 @@ function handlePoint(
 
   const columnName = columnFromHandle(handleId);
   const data = node.data as TableNodeData;
-  const columnIndex = data.table.columns.findIndex((c) => c.name === columnName);
+  const columnIndex = data.table?.columns?.findIndex((c) => c.name === columnName) ?? -1;
   if (columnIndex < 0) {
     if (kind === "source") {
       return { x: origin.x + width, y: centerY, position: Position.Right };
     }
     return { x: origin.x, y: centerY, position: Position.Left };
   }
-  const rowCenterY =
-    origin.y +
-    HEADER_HEIGHT +
-    COLUMNS_PADDING +
-    columnIndex * ROW_HEIGHT +
-    ROW_HEIGHT / 2;
+  const rowCenterY = origin.y + columnHandleOffsetY(node, handleId);
   if (kind === "source") {
     return { x: origin.x + width, y: rowCenterY, position: Position.Right };
   }

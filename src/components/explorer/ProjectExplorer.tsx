@@ -1,18 +1,25 @@
+import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import {
   ChevronDown,
   ChevronRight,
+  Copy,
   File,
   FileCode,
   Folder,
+  FolderOpen,
+  Pencil,
   Plus,
   Search,
+  Trash2,
+  Waypoints,
   X,
 } from "lucide-solid";
-import { createSignal, createMemo, For, Show } from "solid-js";
+import { createSignal, createMemo, For, onCleanup, onMount, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import { useEditorStore } from "../../stores/editor-store";
 import { filesForScope } from "../../features/open/project-scope-files";
 import { useProjectStore } from "../../stores/project-store";
+import { fileExplorerName } from "../../services/tauri-bridge";
 import { useUiStore } from "../../stores/ui-store";
 import { RecentProjectsList } from "../projects/RecentProjectsList";
 import { ExplorerTreeMenu } from "./ExplorerTreeMenu";
@@ -27,12 +34,19 @@ import {
   type TreeNode,
 } from "./explorer-tree";
 
+function absolutePath(root: string, relative: string): string {
+  const sep = root.includes("\\") ? "\\" : "/";
+  const rootClean = root.replace(/[/\\]+$/, "");
+  return `${rootClean}${sep}${relative.replaceAll("\\", "/").split("/").join(sep)}`;
+}
+
 function TreeItems(props: {
   nodes: TreeNode[];
   depth?: number;
   collapsed: Set<string>;
   onToggleFolder: (path: string) => void;
   forceExpand: boolean;
+  onFileContextMenu: (path: string, x: number, y: number) => void;
 }) {
   const openFile = useEditorStore.getState().openFile;
   const activePath = () => useEditorStore((s) => s.activePath);
@@ -86,6 +100,11 @@ function TreeItems(props: {
                   : node.path
               }
               tabIndex={0}
+              onContextMenu={(event) => {
+                if (node.isDirectory) return;
+                event.preventDefault();
+                props.onFileContextMenu(node.path, event.clientX, event.clientY);
+              }}
             >
               <Show
                 when={node.isDirectory}
@@ -124,6 +143,7 @@ function TreeItems(props: {
                 collapsed={props.collapsed}
                 onToggleFolder={props.onToggleFolder}
                 forceExpand={props.forceExpand}
+                onFileContextMenu={props.onFileContextMenu}
               />
             </Show>
           </div>
@@ -159,6 +179,47 @@ export function ProjectExplorer() {
   const [modalState, setModalState] = createSignal<ModalState>(null);
   const [modalInput, setModalInput] = createSignal("");
   const [modalError, setModalError] = createSignal<string | null>(null);
+  const [fileMenu, setFileMenu] = createSignal<{
+    path: string;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [revealError, setRevealError] = createSignal<string | null>(null);
+  const [explorerName, setExplorerName] = createSignal("File Explorer");
+  let fileMenuEl: HTMLDivElement | undefined;
+
+  onMount(() => {
+    void fileExplorerName()
+      .then((name) => {
+        if (name.trim()) setExplorerName(name.trim());
+      })
+      .catch(() => undefined);
+    const closeIfOutside = (event: MouseEvent) => {
+      if (event.button !== 0) return;
+      if (fileMenuEl?.contains(event.target as Node)) return;
+      setFileMenu(null);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setFileMenu(null);
+    };
+    document.addEventListener("mousedown", closeIfOutside);
+    document.addEventListener("keydown", onKey);
+    onCleanup(() => {
+      document.removeEventListener("mousedown", closeIfOutside);
+      document.removeEventListener("keydown", onKey);
+    });
+  });
+
+  const revealInFileExplorer = (relativePath: string) => {
+    const root = projectRoot();
+    if (!root) return;
+    setRevealError(null);
+    void revealItemInDir(absolutePath(root, relativePath))
+      .then(() => setFileMenu(null))
+      .catch((err) => {
+        setRevealError(err instanceof Error ? err.message : String(err));
+      });
+  };
 
   const scopedFiles = createMemo(() =>
     filesForScope(files(), projectScope(), entryPoint())
@@ -215,19 +276,27 @@ export function ProjectExplorer() {
     setModalState({ type: "create" });
   };
 
-  const openRenameModal = () => {
-    const p = activePath();
+  const openRenameModal = (path?: string) => {
+    const p = path ?? activePath();
     if (!p) return;
     setModalInput(p);
     setModalError(null);
     setModalState({ type: "rename", path: p });
+    setFileMenu(null);
   };
 
-  const openDeleteModal = () => {
-    const p = activePath();
+  const openDeleteModal = (path?: string) => {
+    const p = path ?? activePath();
     if (!p) return;
     setModalError(null);
     setModalState({ type: "delete", path: p });
+    setFileMenu(null);
+  };
+
+  const copyPath = (relativePath: string) => {
+    const root = projectRoot();
+    const text = root ? absolutePath(root, relativePath) : relativePath;
+    void navigator.clipboard.writeText(text).finally(() => setFileMenu(null));
   };
 
   const closeModal = () => {
@@ -360,6 +429,10 @@ export function ProjectExplorer() {
             collapsed={collapsed()}
             onToggleFolder={toggleFolder}
             forceExpand={Boolean(query().trim())}
+            onFileContextMenu={(path, x, y) => {
+              setRevealError(null);
+              setFileMenu({ path, x, y });
+            }}
           />
         </Show>
       </div>
@@ -376,6 +449,93 @@ export function ProjectExplorer() {
             {` · ${countLeafFiles(visibleTree())} shown`}
           </Show>
         </div>
+      </Show>
+
+      <Show when={fileMenu()}>
+        {(menu) => (
+          <Portal>
+            <div
+              class="explorer-file-menu"
+              role="menu"
+              ref={fileMenuEl}
+              style={{ left: `${menu().x}px`, top: `${menu().y}px` }}
+            >
+              <Show when={isDbmlPath(menu().path)}>
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="explorer-tree-menu-item"
+                  onMouseDown={(event) => event.stopPropagation()}
+                  onClick={() => {
+                    const path = menu().path;
+                    setFileMenu(null);
+                    useProjectStore.getState().setEntryPoint(path);
+                    void useEditorStore.getState().openFile(path);
+                  }}
+                >
+                  <FileCode size={14} />
+                  <span>Open</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="explorer-tree-menu-item"
+                  onMouseDown={(event) => event.stopPropagation()}
+                  onClick={() => {
+                    setEntryPoint(menu().path);
+                    setFileMenu(null);
+                  }}
+                >
+                  <Waypoints size={14} />
+                  <span>Use for diagram</span>
+                </button>
+              </Show>
+              <button
+                type="button"
+                role="menuitem"
+                class="explorer-tree-menu-item"
+                onMouseDown={(event) => event.stopPropagation()}
+                onClick={() => copyPath(menu().path)}
+              >
+                <Copy size={14} />
+                <span>Copy path</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                class="explorer-tree-menu-item"
+                onMouseDown={(event) => event.stopPropagation()}
+                onClick={() => revealInFileExplorer(menu().path)}
+              >
+                <FolderOpen size={14} />
+                <span>Show in {explorerName()}</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                class="explorer-tree-menu-item"
+                onMouseDown={(event) => event.stopPropagation()}
+                onClick={() => openRenameModal(menu().path)}
+              >
+                <Pencil size={14} />
+                <span>Rename</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                class="explorer-tree-menu-item"
+                onMouseDown={(event) => event.stopPropagation()}
+                onClick={() => openDeleteModal(menu().path)}
+              >
+                <Trash2 size={14} />
+                <span>Delete</span>
+              </button>
+              <Show when={revealError()}>
+                <p class="explorer-file-menu-error">{revealError()}</p>
+              </Show>
+            </div>
+          </Portal>
+        )}
       </Show>
 
       <Show when={modalState()}>

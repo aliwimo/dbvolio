@@ -1,14 +1,20 @@
-import { Clock, FileText, FolderOpen, X } from "lucide-solid";
+import { FileText, FolderOpen, X } from "lucide-solid";
 import { For, Show } from "solid-js";
 import { useProjectStore } from "../../stores/project-store";
 
 export function recentProjectLabel(path: string): {
   name: string;
   path: string;
+  isFile: boolean;
 } {
+  const sep = path.includes("\\") ? "\\" : "/";
   const parts = path.split(/[/\\]/).filter(Boolean);
   const name = parts.pop() ?? path;
-  return { name, path };
+  const rooted = path.startsWith("/") || path.startsWith("\\");
+  const parent = parts.length
+    ? `${rooted ? sep : ""}${parts.join(sep)}`
+    : path;
+  return { name, path: parent, isFile: name.toLowerCase().endsWith(".dbml") };
 }
 
 export function RecentProjectsList(props: {
@@ -88,9 +94,26 @@ export function RecentProjectsList(props: {
                         });
                     }}
                   >
-                    <Clock size={13} class="recent-projects-icon" aria-hidden />
-                    <span class="recent-projects-name">{info().name}</span>
-                    <span class="recent-projects-path">{info().path}</span>
+                    <Show
+                      when={info().isFile}
+                      fallback={
+                        <FolderOpen
+                          size={15}
+                          class="recent-projects-icon"
+                          aria-hidden
+                        />
+                      }
+                    >
+                      <FileText
+                        size={15}
+                        class="recent-projects-icon"
+                        aria-hidden
+                      />
+                    </Show>
+                    <span class="recent-projects-text">
+                      <span class="recent-projects-name">{info().name}</span>
+                      <span class="recent-projects-path">{info().path}</span>
+                    </span>
                   </button>
                   <button
                     type="button"
@@ -102,14 +125,14 @@ export function RecentProjectsList(props: {
                       removeRecentProject(path);
                     }}
                   >
-                    <X size={12} />
+                    <X size={13} stroke-width={1.75} />
                   </button>
                 </li>
               );
             }}
           </For>
         </ul>
-        <Show when={variant() !== "compact"}>
+        <Show when={variant() !== "compact" && variant() !== "welcome"}>
           <div class="recent-projects-footer">
             <button
               type="button"

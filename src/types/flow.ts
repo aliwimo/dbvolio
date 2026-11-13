@@ -111,10 +111,16 @@ export function getSmoothStepPath(params: {
   borderRadius?: number;
 }): [string, number, number] {
   const { sourceX, sourceY, targetX, targetY } = params;
-  const dx = targetX - sourceX;
-  const dy = targetY - sourceY;
-  const midX = sourceX + dx / 2;
-  const midY = sourceY + dy / 2;
-  const path = `M ${sourceX} ${sourceY} C ${sourceX + 40} ${sourceY}, ${targetX - 40} ${targetY}, ${targetX} ${targetY}`;
+  const midX = sourceX + (targetX - sourceX) / 2;
+  const midY = sourceY + (targetY - sourceY) / 2;
+
+  let path: string;
+  if (sourceX <= targetX) {
+    path = `M ${sourceX} ${sourceY} L ${midX} ${sourceY} L ${midX} ${targetY} L ${targetX} ${targetY}`;
+  } else {
+    const stub = 30;
+    path = `M ${sourceX} ${sourceY} L ${sourceX + stub} ${sourceY} L ${sourceX + stub} ${midY} L ${targetX - stub} ${midY} L ${targetX - stub} ${targetY} L ${targetX} ${targetY}`;
+  }
+
   return [path, midX, midY];
 }

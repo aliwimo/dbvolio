@@ -40,6 +40,7 @@ function EditorPanel() {
 function Welcome() {
   const openProjectDialog = useProjectStore.getState().openProjectDialog;
   const openDbmlFileDialog = useProjectStore.getState().openDbmlFileDialog;
+  const clearRecentProjects = useProjectStore.getState().clearRecentProjects;
   const recentProjects = () => useProjectStore((s) => s.recentProjects);
 
   const openWithError = (action: () => Promise<void>) => {
@@ -81,9 +82,20 @@ function Welcome() {
         class="welcome-recent"
         aria-labelledby="welcome-recent-heading"
       >
-        <h2 id="welcome-recent-heading" class="welcome-recent-heading">
-          Recent
-        </h2>
+        <div class="welcome-recent-head">
+          <h2 id="welcome-recent-heading" class="welcome-recent-heading">
+            Recent
+          </h2>
+          <Show when={recentProjects().length > 0}>
+            <button
+              type="button"
+              class="welcome-clear"
+              onClick={clearRecentProjects}
+            >
+              Clear
+            </button>
+          </Show>
+        </div>
         <Show
           when={recentProjects().length > 0}
           fallback={<p class="welcome-recent-empty">No recent projects yet.</p>}
