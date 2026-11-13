@@ -10,6 +10,7 @@ import { createSignal, createEffect, For, Show } from "solid-js";
 import type { AddColumnPlacement } from "../../../features/schema/dbml-edit";
 import type { SchemaColumn } from "../../../types/schema";
 import { columnsEqual, emptyColumn } from "./column-defaults";
+import { Button, Input } from "../../ui";
 import {
   findDuplicateColumnName,
   moveColumnInList,
@@ -176,7 +177,7 @@ export function ColumnsSection(props: ColumnsSectionProps) {
           <div class="table-form-add-grid">
             <label>
               Name
-              <input
+              <Input
                 value={newColumn().name}
                 placeholder="column_name"
                 disabled={props.disabled}
@@ -193,7 +194,7 @@ export function ColumnsSection(props: ColumnsSectionProps) {
             </label>
             <label>
               Type
-              <input
+              <Input
                 list={PG_TYPES_DATALIST_ID}
                 value={newColumn().type}
                 disabled={props.disabled}
@@ -234,15 +235,16 @@ export function ColumnsSection(props: ColumnsSectionProps) {
             </label>
           </Show>
 
-          <button
-            type="button"
-            class="btn btn-sm btn-ghost table-form-add-btn"
+          <Button
+            variant="outline"
+            size="sm"
+            class="table-form-add-btn"
             disabled={props.disabled || !newColumn().name.trim()}
             onClick={tryAddColumn}
           >
             <Plus size={13} />
             Add field
-          </button>
+          </Button>
         </div>
       </div>
     </section>

@@ -110,7 +110,6 @@ export function DiagramEdges(props: {
   nodes: () => Node[];
   edges: () => Edge[];
   showLabels: () => boolean;
-  animate: () => boolean;
   emphasizeRelated: () => boolean;
   selectedId: () => string | null;
   hoveredId: () => string | null;

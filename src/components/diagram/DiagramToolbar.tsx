@@ -2,7 +2,6 @@ import {
   Focus,
   Maximize2,
   MoreHorizontal,
-  Search,
   ZoomIn,
   ZoomOut,
 } from "lucide-solid";
@@ -15,6 +14,7 @@ import {
 } from "../../stores/diagram-view-store";
 import { useCanvasContext } from "./canvas-context";
 import { LayoutMenu } from "./LayoutMenu";
+import { Button, Checkbox, SearchField } from "../ui";
 
 export interface DiagramLayoutActions {
   runLayout: (scope: LayoutScope, algorithm?: LayoutAlgorithm) => void;
@@ -34,7 +34,6 @@ export function DiagramToolbar(props: {
   const setSearchQuery = useDiagramStore.getState().setSearchQuery;
   const selectedTableId = () => useDiagramStore((s) => s.selectedTableId);
 
-  const showMinimap = () => useDiagramViewStore((s) => s.showMinimap);
   const showGrid = () => useDiagramViewStore((s) => s.showGrid);
   const showEdgeLabels = () => useDiagramViewStore((s) => s.showEdgeLabels);
   const showControls = () => useDiagramViewStore((s) => s.showControls);
@@ -43,8 +42,6 @@ export function DiagramToolbar(props: {
   const emphasizeRelated = () =>
     useDiagramViewStore((s) => s.emphasizeRelated);
   const snapToGrid = () => useDiagramViewStore((s) => s.snapToGrid);
-  const animateRelationships = () =>
-    useDiagramViewStore((s) => s.animateRelationships);
   const toggleOption = useDiagramViewStore.getState().toggleOption;
 
   const [optionsOpen, setOptionsOpen] = createSignal(false);
@@ -65,63 +62,63 @@ export function DiagramToolbar(props: {
 
   return (
     <div class="diagram-toolbar diagram-toolbar-compact">
-      <div class="diagram-search diagram-search-compact">
-        <Search size={14} class="diagram-search-icon" aria-hidden />
-        <input
-          placeholder="Find table…"
-          value={searchQuery()}
-          onInput={(e) => setSearchQuery(e.currentTarget.value)}
-          aria-label="Search tables"
-        />
-        <Show when={searchQuery().trim()}>
-          <button
-            type="button"
-            class="diagram-search-focus"
-            title="Focus matches"
-            onClick={props.onFocusSearch}
-          >
-            <Focus size={13} />
-          </button>
-        </Show>
-      </div>
+      <SearchField
+        class="diagram-search-compact"
+        placeholder="Find table…"
+        ariaLabel="Search tables"
+        value={searchQuery()}
+        onInput={setSearchQuery}
+        trailing={
+          searchQuery().trim() ? (
+            <button
+              type="button"
+              class="diagram-search-focus"
+              title="Focus matches"
+              onClick={props.onFocusSearch}
+            >
+              <Focus size={13} />
+            </button>
+          ) : undefined
+        }
+      />
 
       <div class="toolbar-divider" />
 
       <div class="toolbar-cluster" role="group" aria-label="Zoom">
-        <button
-          type="button"
-          class="btn-icon"
+        <Button
+          variant="ghost"
+          size="icon"
           title="Zoom out"
           onClick={() => canvas.zoomOut({ duration: 150 })}
         >
           <ZoomOut size={15} />
-        </button>
+        </Button>
         <span class="diagram-zoom-label">{zoomPercent()}%</span>
-        <button
-          type="button"
-          class="btn-icon"
+        <Button
+          variant="ghost"
+          size="icon"
           title="Zoom in"
           onClick={() => canvas.zoomIn({ duration: 150 })}
         >
           <ZoomIn size={15} />
-        </button>
-        <button
-          type="button"
-          class="btn-icon"
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
           title="Fit view"
           onClick={() => canvas.fitView({ padding: 0.15, duration: 280 })}
         >
           <Maximize2 size={15} />
-        </button>
+        </Button>
         <Show when={selectedTableId()}>
-          <button
-            type="button"
-            class="btn-icon"
+          <Button
+            variant="ghost"
+            size="icon"
             title="Focus selection"
             onClick={props.onFocusSelection}
           >
             <Focus size={15} />
-          </button>
+          </Button>
         </Show>
       </div>
 
@@ -138,15 +135,16 @@ export function DiagramToolbar(props: {
       <div class="diagram-toolbar-spacer" />
 
       <div class="diagram-options-wrap" ref={optionsRef}>
-        <button
-          type="button"
-          class={`btn-icon ${optionsOpen() ? "active" : ""}`}
+        <Button
+          variant="ghost"
+          size="icon"
+          class={optionsOpen() ? "active" : ""}
           title="View options"
           aria-expanded={optionsOpen()}
           onClick={() => setOptionsOpen((o) => !o)}
         >
           <MoreHorizontal size={16} />
-        </button>
+        </Button>
         <Show when={optionsOpen()}>
           <div class="diagram-options-menu" role="menu">
             <OptionCheck
@@ -155,19 +153,9 @@ export function DiagramToolbar(props: {
               onChange={() => toggleOption("showGrid")}
             />
             <OptionCheck
-              label="Minimap"
-              checked={showMinimap()}
-              onChange={() => toggleOption("showMinimap")}
-            />
-            <OptionCheck
               label="Relation labels"
               checked={showEdgeLabels()}
               onChange={() => toggleOption("showEdgeLabels")}
-            />
-            <OptionCheck
-              label="Animated flow"
-              checked={animateRelationships()}
-              onChange={() => toggleOption("animateRelationships")}
             />
             <OptionCheck
               label="Dim unrelated on select"
@@ -203,7 +191,7 @@ function OptionCheck(props: {
 }) {
   return (
     <label class="diagram-option-row">
-      <input type="checkbox" checked={props.checked} onChange={props.onChange} />
+      <Checkbox checked={props.checked} onChange={props.onChange} />
       <span>{props.label}</span>
     </label>
   );

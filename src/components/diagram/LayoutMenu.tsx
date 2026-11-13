@@ -17,6 +17,7 @@ import {
   type LayoutAlgorithm,
   type LayoutSpacing,
 } from "../../stores/diagram-view-store";
+import { Checkbox } from "../ui";
 
 const SPACING: { value: LayoutSpacing; label: string; hint: string }[] = [
   { value: "compact", label: "Compact", hint: "Tighter gaps between tables" },
@@ -290,16 +291,14 @@ export function LayoutMenu(props: {
 
             <p class="header-dropdown-section-label">Options</p>
             <label class="diagram-option-row">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={layoutFitView()}
                 onChange={() => toggleOption("layoutFitView")}
               />
               <span>Fit view after arrange</span>
             </label>
             <label class="diagram-option-row">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={layoutSeparateComponents()}
                 onChange={() =>
                   applyOption(() => toggleOption("layoutSeparateComponents"))

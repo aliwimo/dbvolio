@@ -1,16 +1,10 @@
-import {
-  getSmoothStepPath,
-  Position,
-  type Edge,
-  type Node,
-} from "../types/flow";
-import { columnFromHandle } from "../features/diagram/column-handle-id";
+import type { Edge, Node } from "../types/flow";
 import {
   TABLE_COLUMNS_PADDING,
   TABLE_HEADER_HEIGHT,
   TABLE_ROW_STRIDE,
-  columnHandleOffsetY,
 } from "../features/diagram/relationship-edge-geometry";
+import { diagramEdgeGeometry } from "../components/diagram/DiagramEdges";
 import type { TableNodeData } from "../components/diagram/TableNode";
 import {
   resolveGroupColor,
@@ -38,18 +32,45 @@ function resolveExportFontFamily(): string {
   return UI_SANS_FONT_FAMILY;
 }
 
-const COLORS = {
-  background: "#eef0f3",
-  rowStripe: "#f6f7f9",
+const COLOR_FALLBACKS = {
+  background: "#f7f7f8",
+  rowStripe: "transparent",
   panel: "#ffffff",
-  elevated: "#fafbfc",
-  border: "#e2e5ea",
-  text: "#1a1d23",
-  muted: "#6b7280",
-  edge: "#b8bec8",
-  accent: "#2563eb",
-  warning: "#ca8a04",
+  border: "#ececee",
+  text: "#1c1c1f",
+  muted: "#73737c",
+  edge: "#a7a7b0",
 };
+
+function paintedColor(css: string, fallback: string): string {
+  if (typeof document === "undefined") return fallback;
+  const probe = document.createElement("span");
+  probe.style.color = css;
+  document.body.appendChild(probe);
+  const resolved = getComputedStyle(probe).color;
+  probe.remove();
+  if (!resolved || resolved === "rgba(0, 0, 0, 0)") {
+    return css.includes("transparent") ? "transparent" : fallback;
+  }
+  return resolved;
+}
+
+function exportColors() {
+  return {
+    background: paintedColor("var(--bg-app)", COLOR_FALLBACKS.background),
+    rowStripe: paintedColor("var(--table-row-stripe)", COLOR_FALLBACKS.rowStripe),
+    panel: paintedColor("var(--bg-panel)", COLOR_FALLBACKS.panel),
+    border: paintedColor("var(--border)", COLOR_FALLBACKS.border),
+    text: paintedColor("var(--text)", COLOR_FALLBACKS.text),
+    muted: paintedColor("var(--text-muted)", COLOR_FALLBACKS.muted),
+    edge: paintedColor(
+      "color-mix(in srgb, var(--text-muted) 55%, var(--border-strong))",
+      COLOR_FALLBACKS.edge,
+    ),
+  };
+}
+
+type ExportColors = ReturnType<typeof exportColors>;
 
 type InternalNodeLike = {
   internals: {
@@ -70,7 +91,6 @@ type HandleLike = {
   y?: number;
   width?: number;
   height?: number;
-  position?: Position;
 };
 
 export type DiagramVectorInput = {
@@ -137,73 +157,10 @@ function nodeOrigin(
   return { x: node.position.x, y: node.position.y };
 }
 
-function handlePoint(
-  node: Node,
-  internal: InternalNodeLike | undefined,
-  handleId: string | null | undefined,
-  kind: "source" | "target",
-): { x: number; y: number; position: Position } | null {
-  const bounds = internal?.internals.handleBounds?.[kind];
-  const handle = handleId
-    ? bounds?.find((entry) => entry.id === handleId)
-    : bounds?.[0];
-  if (handle && internal) {
-    const { x: ax, y: ay } = internal.internals.positionAbsolute;
-    const hx = handle.x ?? 0;
-    const hy = handle.y ?? 0;
-    const hw = handle.width ?? 8;
-    const hh = handle.height ?? 8;
-    const position =
-      handle.position ??
-      (kind === "source" ? Position.Right : Position.Left);
-    switch (position) {
-      case Position.Right:
-        return { x: ax + hx + hw, y: ay + hy + hh / 2, position };
-      case Position.Left:
-        return { x: ax + hx, y: ay + hy + hh / 2, position };
-      case Position.Top:
-        return { x: ax + hx + hw / 2, y: ay + hy, position };
-      case Position.Bottom:
-        return { x: ax + hx + hw / 2, y: ay + hy + hh, position };
-      default:
-        break;
-    }
-  }
-
-  const origin = nodeOrigin(node, internal);
-  const { width, height } = nodeDimensions(node, internal);
-  const centerY = origin.y + height / 2;
-  if (
-    handleId === "source" ||
-    handleId === "target" ||
-    !handleId ||
-    columnFromHandle(handleId) === handleId
-  ) {
-    if (kind === "source") {
-      return { x: origin.x + width, y: centerY, position: Position.Right };
-    }
-    return { x: origin.x, y: centerY, position: Position.Left };
-  }
-
-  const columnName = columnFromHandle(handleId);
-  const data = node.data as TableNodeData;
-  const columnIndex = data.table?.columns?.findIndex((c) => c.name === columnName) ?? -1;
-  if (columnIndex < 0) {
-    if (kind === "source") {
-      return { x: origin.x + width, y: centerY, position: Position.Right };
-    }
-    return { x: origin.x, y: centerY, position: Position.Left };
-  }
-  const rowCenterY = origin.y + columnHandleOffsetY(node, handleId);
-  if (kind === "source") {
-    return { x: origin.x + width, y: rowCenterY, position: Position.Right };
-  }
-  return { x: origin.x, y: rowCenterY, position: Position.Left };
-}
-
 function renderTableGroupNode(
   node: Node,
   internal: InternalNodeLike | undefined,
+  colors: ExportColors,
 ): string {
   const data = node.data as TableGroupNodeData;
   const group = data.group;
@@ -217,13 +174,13 @@ function renderTableGroupNode(
   const x = origin.x;
   const y = origin.y;
   const noteLine = group.note
-    ? `<text x="${x + 14}" y="${y + 42}" font-size="11" fill="${COLORS.muted}">${escapeXml(group.note.split("\n")[0])}</text>`
+    ? `<text x="${x + 14}" y="${y + 42}" font-size="11" fill="${colors.muted}">${escapeXml(group.note.split("\n")[0])}</text>`
     : "";
 
   return `<g>
 <rect x="${x}" y="${y}" width="${width}" height="${height}" rx="12" fill="${color}" fill-opacity="0.07" stroke="${color}" stroke-opacity="0.45" stroke-width="1.5" stroke-dasharray="5 4"/>
 <circle cx="${x + 18}" cy="${y + 20}" r="4.5" fill="${color}"/>
-<text x="${x + 28}" y="${y + 24}" font-size="12" font-weight="600" fill="${COLORS.text}">${escapeXml(title)}</text>
+<text x="${x + 28}" y="${y + 24}" font-size="12" font-weight="600" fill="${colors.text}">${escapeXml(title)}</text>
 ${noteLine}
 </g>`;
 }
@@ -231,6 +188,8 @@ ${noteLine}
 function renderTableNode(
   node: Node,
   internal: InternalNodeLike | undefined,
+  colors: ExportColors,
+  clipId: string,
 ): string {
   const data = node.data as TableNodeData;
   const { table, foreignKeys, refSourceColumns } = data;
@@ -243,11 +202,11 @@ function renderTableNode(
 
   const rowStripes = table.columns
     .map((_, index) => {
-      if (index % 2 === 0) {
+      if (index % 2 === 0 || colors.rowStripe === "transparent") {
         return "";
       }
       const stripeY = y + HEADER_HEIGHT + COLUMNS_PADDING + index * ROW_HEIGHT;
-      return `<rect x="${x}" y="${stripeY}" width="${width}" height="${ROW_HEIGHT}" fill="${COLORS.rowStripe}" stroke="none"/>`;
+      return `<rect x="${x}" y="${stripeY}" width="${width}" height="${ROW_HEIGHT}" fill="${colors.rowStripe}" stroke="none"/>`;
     })
     .join("\n");
 
@@ -256,8 +215,8 @@ function renderTableNode(
       const isFk =
         refSourceColumns?.has(col.name) || foreignKeys?.has(col.name);
       const badges = [
-        col.isPrimaryKey ? `<tspan fill="${COLORS.accent}"> PK</tspan>` : "",
-        isFk ? `<tspan fill="${COLORS.warning}"> FK</tspan>` : "",
+        col.isPrimaryKey ? `<tspan fill="${colors.muted}"> PK</tspan>` : "",
+        isFk ? `<tspan fill="${colors.muted}"> FK</tspan>` : "",
       ].join("");
       const rowY =
         y +
@@ -265,61 +224,27 @@ function renderTableNode(
         COLUMNS_PADDING +
         index * ROW_HEIGHT +
         ROW_HEIGHT * 0.68;
-      return `<text x="${x + 14}" y="${rowY}" font-size="12" fill="${COLORS.text}">${escapeXml(col.name)}${badges}</text>
-<text x="${x + width - 14}" y="${rowY}" font-size="12" fill="${COLORS.muted}" text-anchor="end">${escapeXml(col.type)}</text>`;
+      return `<text x="${x + 14}" y="${rowY}" font-size="12" fill="${colors.text}">${escapeXml(col.name)}${badges}</text>
+<text x="${x + width - 14}" y="${rowY}" font-size="12" fill="${colors.muted}" text-anchor="end">${escapeXml(col.type)}</text>`;
     })
     .join("\n");
 
-  const headerFill = headerColor || COLORS.elevated;
-  const headerTextColor = headerColor ? "#ffffff" : COLORS.text;
+  const headerFill = headerColor || colors.panel;
 
   return `<g>
-<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="8" fill="${COLORS.panel}" stroke="${COLORS.border}" stroke-width="1"/>
-<rect x="${x}" y="${y}" width="${width}" height="${HEADER_HEIGHT}" rx="8" fill="${headerFill}" stroke="none"/>
-<line x1="${x}" y1="${y + HEADER_HEIGHT}" x2="${x + width}" y2="${y + HEADER_HEIGHT}" stroke="${COLORS.border}" stroke-width="1"/>
-<text x="${x + 12}" y="${y + 22}" font-size="12" font-weight="600" fill="${headerTextColor}">${escapeXml(title)}</text>
+<defs>
+  <clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${width}" height="${height}" rx="10"/></clipPath>
+</defs>
+<g clip-path="url(#${clipId})">
+<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="${colors.panel}"/>
+<rect x="${x}" y="${y}" width="${width}" height="${HEADER_HEIGHT}" fill="${headerFill}"/>
 ${rowStripes}
+<line x1="${x}" y1="${y + HEADER_HEIGHT}" x2="${x + width}" y2="${y + HEADER_HEIGHT}" stroke="${colors.border}" stroke-width="1"/>
+</g>
+<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="10" fill="none" stroke="${colors.border}" stroke-width="1"/>
+<text x="${x + 12}" y="${y + 23}" font-size="13" font-weight="600" fill="${colors.text}">${escapeXml(title)}</text>
 ${rows}
 </g>`;
-}
-
-function renderRelationshipEdge(
-  edge: Edge,
-  nodeById: Map<string, Node>,
-  getInternalNode?: (id: string) => InternalNodeLike | undefined,
-): string | null {
-  const sourceNode = nodeById.get(edge.source);
-  const targetNode = nodeById.get(edge.target);
-  if (!sourceNode || !targetNode) {
-    return null;
-  }
-  const sourceInternal = getInternalNode?.(edge.source);
-  const targetInternal = getInternalNode?.(edge.target);
-  const source = handlePoint(
-    sourceNode,
-    sourceInternal,
-    edge.sourceHandle,
-    "source",
-  );
-  const target = handlePoint(
-    targetNode,
-    targetInternal,
-    edge.targetHandle,
-    "target",
-  );
-  if (!source || !target) {
-    return null;
-  }
-  const [path] = getSmoothStepPath({
-    sourceX: source.x,
-    sourceY: source.y,
-    targetX: target.x,
-    targetY: target.y,
-    sourcePosition: source.position,
-    targetPosition: target.position,
-    borderRadius: 14,
-  });
-  return `<path d="${path}" fill="none" stroke="${COLORS.edge}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#diagram-export-arrow)"/>`;
 }
 
 function computeBounds(
@@ -351,7 +276,7 @@ export function buildDiagramSvg(input: DiagramVectorInput): string {
     throw new Error("No tables to export.");
   }
 
-  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const colors = exportColors();
   const bounds = computeBounds(nodes, getInternalNode);
   const width = bounds.maxX - bounds.minX + CANVAS_PADDING * 2;
   const height = bounds.maxY - bounds.minY + CANVAS_PADDING * 2;
@@ -360,18 +285,34 @@ export function buildDiagramSvg(input: DiagramVectorInput): string {
 
   const groupShapes = nodes
     .filter(isGroupNode)
-    .map((node) => renderTableGroupNode(node, getInternalNode?.(node.id)))
+    .map((node) => renderTableGroupNode(node, getInternalNode?.(node.id), colors))
     .filter(Boolean)
     .join("\n");
 
-  const edgePaths = edges
-    .map((edge) => renderRelationshipEdge(edge, nodeById, getInternalNode))
-    .filter((path): path is string => Boolean(path))
+  const edgePaths = diagramEdgeGeometry(nodes, edges)
+    .items.map((item) => {
+      const line = item.d.replace(
+        /Q\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)/g,
+        "L $3 $4",
+      );
+      const marker = item.arrow.match(/M\s+([-\d.]+)\s+([-\d.]+)/);
+      const dot = marker
+        ? `<circle cx="${Number(marker[1]) + 2.5}" cy="${marker[2]}" r="2.5" fill="${colors.edge}"/>`
+        : "";
+      return `<path d="${line}" fill="none" stroke="${colors.edge}" stroke-width="1.5"/>\n${dot}`;
+    })
     .join("\n");
 
   const tables = nodes
     .filter((node) => !isGroupNode(node))
-    .map((node) => renderTableNode(node, getInternalNode?.(node.id)))
+    .map((node, index) =>
+      renderTableNode(
+        node,
+        getInternalNode?.(node.id),
+        colors,
+        `diagram-export-table-${index}`,
+      ),
+    )
     .join("\n");
 
   const fontFamily = resolveExportFontFamily();
@@ -383,12 +324,7 @@ export function buildDiagramSvg(input: DiagramVectorInput): string {
       font-family: ${fontFamily};
     }
   </style>
-  <defs>
-    <marker id="diagram-export-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="${COLORS.edge}"/>
-    </marker>
-  </defs>
-  <rect width="100%" height="100%" fill="${COLORS.background}"/>
+  <rect width="100%" height="100%" fill="${colors.background}"/>
   <g transform="translate(${offsetX} ${offsetY})">
     ${groupShapes}
     ${edgePaths}
@@ -455,6 +391,10 @@ export async function svgStringToPdfBlob(svg: string): Promise<Blob> {
     throw new Error("Invalid diagram SVG root.");
   }
 
+  svgEl.style.position = "fixed";
+  svgEl.style.left = "-10000px";
+  document.body.appendChild(svgEl);
+
   const width = Number(svgEl.getAttribute("width") ?? 800);
   const height = Number(svgEl.getAttribute("height") ?? 600);
 
@@ -469,7 +409,11 @@ export async function svgStringToPdfBlob(svg: string): Promise<Blob> {
     format: [width, height],
   });
 
-  await svg2pdf(svgEl, pdf, { x: 0, y: 0, width, height });
+  try {
+    await svg2pdf(svgEl, pdf, { x: 0, y: 0, width, height });
+  } finally {
+    svgEl.remove();
+  }
 
   const blob = pdf.output("blob");
   if (!(blob instanceof Blob)) {

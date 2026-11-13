@@ -15,14 +15,12 @@ export interface DiagramViewOptions {
   layoutSpacing: LayoutSpacing;
   layoutFitView: boolean;
   layoutSeparateComponents: boolean;
-  showMinimap: boolean;
   showGrid: boolean;
   showEdgeLabels: boolean;
   showControls: boolean;
   hideUnmatchedSearch: boolean;
   emphasizeRelated: boolean;
   snapToGrid: boolean;
-  animateRelationships: boolean;
 }
 
 interface DiagramViewState extends DiagramViewOptions {
@@ -43,14 +41,12 @@ const defaults: DiagramViewOptions = {
   layoutSpacing: "default",
   layoutFitView: true,
   layoutSeparateComponents: true,
-  showMinimap: false,
   showGrid: true,
   showEdgeLabels: false,
   showControls: false,
   hideUnmatchedSearch: true,
   emphasizeRelated: true,
   snapToGrid: false,
-  animateRelationships: false,
 };
 
 const STORAGE_VERSION = 4;
@@ -106,14 +102,12 @@ export const useDiagramViewStore = createStoreFactory<DiagramViewState>((set, ge
         layoutSpacing: next.layoutSpacing,
         layoutFitView: next.layoutFitView,
         layoutSeparateComponents: next.layoutSeparateComponents,
-        showMinimap: next.showMinimap,
         showGrid: next.showGrid,
         showEdgeLabels: next.showEdgeLabels,
         showControls: next.showControls,
         hideUnmatchedSearch: next.hideUnmatchedSearch,
         emphasizeRelated: next.emphasizeRelated,
         snapToGrid: next.snapToGrid,
-        animateRelationships: next.animateRelationships,
       });
       return next;
     });

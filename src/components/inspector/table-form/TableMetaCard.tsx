@@ -2,6 +2,7 @@ import { FileCode2 } from "lucide-solid";
 import { For, Show, type JSX } from "solid-js";
 import { formatQualifiedTableName } from "./column-helpers";
 import { HeaderColorPicker } from "./HeaderColorPicker";
+import { Input } from "../../ui";
 
 export function TableMetaCard(props: {
   schema: string;
@@ -24,7 +25,7 @@ export function TableMetaCard(props: {
       <div class="table-form-meta-fields">
         <label class="table-form-field table-form-field-schema">
           Schema
-          <input
+          <Input
             value={props.schema}
             onInput={(e) => props.onSchemaChange(e.currentTarget.value)}
             placeholder="public"
@@ -33,7 +34,7 @@ export function TableMetaCard(props: {
         </label>
         <label class="table-form-field table-form-field-name">
           Table name
-          <input
+          <Input
             value={props.name}
             onInput={(e) => props.onNameChange(e.currentTarget.value)}
             placeholder="orders, user_profiles…"

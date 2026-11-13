@@ -528,6 +528,22 @@
   align-items: center;
   gap: 6px;
   width: 100%;
+  height: 100%;
+}
+
+.explorer-header-row > * {
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.explorer-header-row > .search-field {
+  flex: 1 1 120px;
+  flex-shrink: 1;
+}
+
+.explorer-header .ui-btn-icon {
+  width: 28px;
+  height: 28px;
 }
 
 .explorer-header-top {
@@ -552,8 +568,8 @@
 }
 
 .explorer-actions .btn-icon-xs {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 6px;
   color: var(--text-muted);
 }
@@ -571,51 +587,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.explorer-search {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-  min-width: 0;
-  padding: 0 8px;
-  height: 26px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg-panel);
-  transition: border-color 0.12s ease, background-color 0.12s ease, box-shadow 0.12s ease;
-}
-
-.explorer-search:hover {
-  border-color: var(--border-strong);
-}
-
-.explorer-search:focus-within {
-  border-color: var(--accent);
-  background: var(--bg-panel);
-  box-shadow: 0 0 0 1px var(--accent);
-}
-
-.explorer-search-icon {
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.explorer-search input {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  background: transparent;
-  font-size: 12px;
-  color: var(--text);
-  outline: none;
-  line-height: 1;
-}
-
-.explorer-search input::placeholder {
-  color: var(--text-muted);
-  opacity: 0.8;
 }
 
 .explorer-search-clear {
@@ -1098,11 +1069,29 @@
   margin-left: 0.25rem;
 }
 
-.diagram-minimap {
-  border: 1px solid var(--border) !important;
+.diagram-canvas-controls {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.diagram-canvas-controls button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  overflow: hidden;
+  background: var(--bg-panel);
+  color: var(--text);
   box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+
+.relationship-edge-label-container .relationship-edge-label {
+  position: static;
 }
 
 .relationship-edge-label {
@@ -1177,11 +1166,11 @@
     color-mix(in srgb, var(--text-muted) 28%, transparent) 0,
     transparent 1.6px
   );
+  background-size: 20px 20px;
 }
 
 /* Static, export-friendly diagram styling (html-to-image cannot render color-mix / wide hit paths) */
-.diagram-export-capture .react-flow__controls,
-.diagram-export-capture .diagram-minimap {
+.diagram-export-capture .react-flow__controls {
   display: none !important;
 }
 

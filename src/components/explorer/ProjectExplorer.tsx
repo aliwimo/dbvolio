@@ -9,7 +9,6 @@ import {
   FolderOpen,
   Pencil,
   Plus,
-  Search,
   Trash2,
   Waypoints,
   X,
@@ -22,6 +21,7 @@ import { useProjectStore } from "../../stores/project-store";
 import { fileExplorerName } from "../../services/tauri-bridge";
 import { useUiStore } from "../../stores/ui-store";
 import { RecentProjectsList } from "../projects/RecentProjectsList";
+import { Button, Input, SearchField } from "../ui";
 import { ExplorerTreeMenu } from "./ExplorerTreeMenu";
 import {
   ancestorFolderPaths,
@@ -345,33 +345,34 @@ export function ProjectExplorer() {
       <div class="explorer-header">
         <Show when={projectRoot()}>
           <div class="explorer-header-row">
-            <div class="explorer-search">
-              <Search size={13} class="explorer-search-icon" aria-hidden />
-              <input
-                placeholder="Search files…"
-                value={query()}
-                onInput={(e) => setQuery(e.currentTarget.value)}
-              />
-              <Show when={query()}>
-                <button
-                  type="button"
-                  class="explorer-search-clear"
-                  onClick={() => setQuery("")}
-                >
-                  <X size={12} />
-                </button>
-              </Show>
-            </div>
+            <SearchField
+              placeholder="Search files…"
+              ariaLabel="Search files"
+              value={query()}
+              onInput={setQuery}
+              trailing={
+                query() ? (
+                  <button
+                    type="button"
+                    class="explorer-search-clear"
+                    aria-label="Clear search"
+                    onClick={() => setQuery("")}
+                  >
+                    <X size={12} />
+                  </button>
+                ) : undefined
+              }
+            />
             <div class="explorer-actions">
-              <button
-                type="button"
-                class="btn-icon btn-icon-xs"
+              <Button
+                variant="ghost"
+                size="icon"
                 title="New DBML file"
                 aria-label="New DBML file"
                 onClick={openCreateModal}
               >
                 <Plus size={14} />
-              </button>
+              </Button>
               <ExplorerTreeMenu
                 disabled={!projectRoot()}
                 canRevealActive={Boolean(activePath())}
@@ -554,14 +555,14 @@ export function ProjectExplorer() {
                     {state().type === "rename" && "Rename File"}
                     {state().type === "delete" && "Delete File"}
                   </h3>
-                  <button
-                    type="button"
-                    class="btn-icon btn-icon-xs"
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={closeModal}
                     aria-label="Close"
                   >
                     <X size={14} />
-                  </button>
+                  </Button>
                 </div>
                 <form onSubmit={handleModalSubmit}>
                   <div class="prompt-modal-body">
@@ -574,7 +575,7 @@ export function ProjectExplorer() {
                               ? "Enter file path (e.g. schema.dbml or tables/users.dbml):"
                               : "Enter new relative path:"}
                           </p>
-                          <input
+                          <Input
                             type="text"
                             class="prompt-modal-input"
                             value={modalInput()}
@@ -594,18 +595,18 @@ export function ProjectExplorer() {
                     </Show>
                   </div>
                   <div class="prompt-modal-footer">
-                    <button type="button" class="btn btn-sm btn-ghost" onClick={closeModal}>
+                    <Button variant="outline" size="sm" onClick={closeModal}>
                       Cancel
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="submit"
-                      class={`btn btn-sm ${state().type === "delete" ? "btn-danger" : "btn-primary"}`}
-                      style={state().type === "delete" ? { background: "var(--danger)", color: "#fff", "border-color": "var(--danger)" } : undefined}
+                      size="sm"
+                      variant={state().type === "delete" ? "destructive" : "default"}
                     >
                       {state().type === "create" && "Create File"}
                       {state().type === "rename" && "Rename"}
                       {state().type === "delete" && "Delete"}
-                    </button>
+                    </Button>
                   </div>
                 </form>
               </div>

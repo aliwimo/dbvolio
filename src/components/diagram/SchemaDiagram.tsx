@@ -86,12 +86,11 @@ export function SchemaDiagram() {
   const projectFiles = () => useProjectStore((s) => s.files);
 
   const showGrid = () => useDiagramViewStore((s) => s.showGrid);
+  const showControls = () => useDiagramViewStore((s) => s.showControls);
   const showEdgeLabels = () => useDiagramViewStore((s) => s.showEdgeLabels);
   const hideUnmatchedSearch = () => useDiagramViewStore((s) => s.hideUnmatchedSearch);
   const emphasizeRelated = () => useDiagramViewStore((s) => s.emphasizeRelated);
   const snapToGrid = () => useDiagramViewStore((s) => s.snapToGrid);
-  const animateRelationships = () =>
-    useDiagramViewStore((s) => s.animateRelationships);
   const pendingViewport = () => useDiagramViewStore((s) => s.pendingViewport);
   const setPendingViewport = useDiagramViewStore.getState().setPendingViewport;
 
@@ -274,7 +273,11 @@ export function SchemaDiagram() {
   const onPointerDown = (e: PointerEvent) => {
     if (e.button === 2) return;
     const target = e.target as HTMLElement;
-    if (target.closest(".table-node") || target.closest(".table-group-node")) {
+    if (
+      target.closest(".table-node") ||
+      target.closest(".table-group-node") ||
+      target.closest(".diagram-canvas-controls")
+    ) {
       return;
     }
     selectTable(null);
@@ -580,6 +583,18 @@ export function SchemaDiagram() {
 
   const query = () => searchQuery().trim().toLowerCase();
 
+  const visibleEdges = () => {
+    const list = edges();
+    const q = query();
+    if (!q || !hideUnmatchedSearch()) return list;
+    const ids = new Set(
+      nodes()
+        .filter((node) => nodeMatchesSearch(node, q))
+        .map((node) => node.id),
+    );
+    return list.filter((edge) => ids.has(edge.source) && ids.has(edge.target));
+  };
+
   const relatedIds = createMemo(() => {
     const sel = selectedTableId();
     return sel ? buildRelatedTableIds(sel, edges()) : null;
@@ -673,9 +688,8 @@ export function SchemaDiagram() {
         >
           <DiagramEdges
             nodes={nodes}
-            edges={edges}
+            edges={visibleEdges}
             showLabels={showEdgeLabels}
-            animate={animateRelationships}
             emphasizeRelated={emphasizeRelated}
             selectedId={selectedTableId}
             hoveredId={hoveredTableId}
@@ -792,6 +806,23 @@ export function SchemaDiagram() {
             }}
           </For>
         </div>
+
+        <Show when={showControls()}>
+          <div
+            class="diagram-canvas-controls"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <button type="button" title="Zoom in" onClick={zoomIn}>
+              +
+            </button>
+            <button type="button" title="Zoom out" onClick={zoomOut}>
+              −
+            </button>
+            <button type="button" title="Fit view" onClick={() => fitView()}>
+              ⌂
+            </button>
+          </div>
+        </Show>
 
         <Show when={contextMenu()}>
           {(menu) => (

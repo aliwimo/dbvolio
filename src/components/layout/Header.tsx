@@ -1,5 +1,6 @@
 import { FileText, FolderOpen, Save, Settings, X } from "lucide-solid";
 import { Show } from "solid-js";
+import { Button } from "../ui";
 import { ExportMenu } from "./ExportMenu";
 import { OpenProjectMenu } from "./OpenProjectMenu";
 import { useEditorStore } from "../../stores/editor-store";
@@ -50,9 +51,10 @@ export function Header() {
             <span class="header-project" title={projectName() ?? ""}>
               {projectName()}
             </span>
-            <button
-              type="button"
-              class="btn-icon header-project-close"
+            <Button
+              variant="ghost"
+              size="icon"
+              class="header-project-close"
               aria-label={closeLabel()}
               title={closeTitle()}
               onClick={() =>
@@ -64,7 +66,7 @@ export function Header() {
               }
             >
               <X size={14} />
-            </button>
+            </Button>
           </div>
         </Show>
       </div>
@@ -82,9 +84,10 @@ export function Header() {
 
           <OpenProjectMenu />
 
-          <button
-            type="button"
-            class="btn btn-ghost btn-sm header-save"
+          <Button
+            variant="ghost"
+            size="icon"
+            class="header-save"
             disabled={!activePath() || !isDirty()}
             aria-label="Save file"
             title={
@@ -96,13 +99,14 @@ export function Header() {
           >
             <Save size={15} />
             <span class="header-btn-label">Save</span>
-          </button>
+          </Button>
 
           <ExportMenu />
 
-          <button
-            type="button"
-            class="btn-icon header-btn-settings"
+          <Button
+            variant="ghost"
+            size="icon"
+            class="header-btn-settings"
             title={
               settingsShortcut()
                 ? `Settings (${settingsShortcut()})`
@@ -112,7 +116,7 @@ export function Header() {
             onClick={openSettings}
           >
             <Settings size={15} />
-          </button>
+          </Button>
         </div>
       </div>
     </header>

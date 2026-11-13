@@ -15,6 +15,7 @@ import { resolveGroupColor } from "../diagram/TableGroupNode";
 import { useDiagramStore } from "../../stores/diagram-store";
 import { useUiStore } from "../../stores/ui-store";
 import type { SchemaEnum, SchemaModel, SchemaTable } from "../../types/schema";
+import { Button } from "../ui";
 
 function findMatchingEnum(
   colType: string,
@@ -181,14 +182,15 @@ function TableInspectorView(props: {
             </div>
           </div>
           <div class="inspector-header-actions">
-            <button
-              type="button"
-              class="btn btn-sm btn-ghost inspector-edit-btn"
+            <Button
+              variant="outline"
+              size="sm"
+              class="inspector-edit-btn"
               onClick={props.onEdit}
             >
               <Pencil size={13} aria-hidden />
               Edit
-            </button>
+            </Button>
           </div>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import type { SchemaColumn } from "../../../types/schema";
+import { Checkbox } from "../../ui";
 
 export function ColumnConstraintToggles({
   column,
@@ -18,8 +19,7 @@ export function ColumnConstraintToggles({
   return (
     <div class="table-form-constraints">
       <label class={className} title="Primary key">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={column.isPrimaryKey}
           disabled={disabled}
           onChange={(e) =>
@@ -29,8 +29,7 @@ export function ColumnConstraintToggles({
         <span>PK</span>
       </label>
       <label class={className} title="Not null">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={!column.isNullable}
           disabled={disabled}
           onChange={(e) =>
@@ -40,8 +39,7 @@ export function ColumnConstraintToggles({
         <span>NN</span>
       </label>
       <label class={className} title="Unique">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={column.isUnique}
           disabled={disabled}
           onChange={(e) =>

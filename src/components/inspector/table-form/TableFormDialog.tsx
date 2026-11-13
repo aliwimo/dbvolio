@@ -2,6 +2,7 @@ import { X } from "lucide-solid";
 import { Show, type JSX } from "solid-js";
 import { Portal } from "solid-js/web";
 import { useModalEscape } from "./useModalEscape";
+import { Button } from "../../ui";
 
 export function TableFormDialog(props: {
   open: boolean;
@@ -41,14 +42,14 @@ export function TableFormDialog(props: {
                   <p class="table-form-subtitle">{props.subtitle}</p>
                 </Show>
               </div>
-              <button
-                type="button"
-                class="btn-icon"
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={props.onClose}
                 aria-label="Close"
               >
                 <X size={18} />
-              </button>
+              </Button>
             </header>
 
             <div class="table-edit-body inspector-body-scroll table-form-body">

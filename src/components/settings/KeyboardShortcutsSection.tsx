@@ -9,6 +9,7 @@ import {
   getEffectiveKeybinding,
 } from "../../features/keymap/resolve-keybindings";
 import { useKeymapStore } from "../../stores/keymap-store";
+import { Button, Input } from "../ui";
 
 export function KeyboardShortcutsSection() {
   const overrides = () => useKeymapStore((s) => s.overrides);
@@ -84,17 +85,13 @@ export function KeyboardShortcutsSection() {
             clear.
           </p>
         </div>
-        <button
-          type="button"
-          class="btn btn-ghost btn-sm"
-          onClick={resetAllOverrides}
-        >
+        <Button variant="outline" size="sm" onClick={resetAllOverrides}>
           Reset all
-        </button>
+        </Button>
       </div>
 
       <div class="settings-shortcuts-search">
-        <input
+        <Input
           class="settings-input"
           placeholder="Filter shortcuts…"
           value={query()}

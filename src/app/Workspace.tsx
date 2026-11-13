@@ -1,4 +1,5 @@
 import { FileText, FolderOpen } from "lucide-solid";
+import { Button } from "../components/ui";
 import { createSignal, createEffect, Show } from "solid-js";
 import { ProjectExplorer } from "../components/explorer/ProjectExplorer";
 import { DbmlEditor } from "../components/editor/DbmlEditor";
@@ -59,22 +60,18 @@ function Welcome() {
           file in Finder to start here.
         </p>
         <div class="welcome-actions">
-          <button
-            type="button"
-            class="btn btn-primary btn-sm"
-            onClick={() => openWithError(openProjectDialog)}
-          >
+          <Button size="sm" onClick={() => openWithError(openProjectDialog)}>
             <FolderOpen size={15} />
             Open folder
-          </button>
-          <button
-            type="button"
-            class="btn btn-ghost btn-sm"
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => openWithError(openDbmlFileDialog)}
           >
             <FileText size={15} />
             Open file
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -183,20 +180,16 @@ export function Workspace() {
             <span>
               {conflict()} changed on disk while you were editing.
             </span>
-            <button
-              type="button"
-              class="header-btn"
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => void reloadFromDisk(conflict())}
             >
               Reload from disk
-            </button>
-            <button
-              type="button"
-              class="header-btn primary"
-              onClick={() => void saveFile(conflict())}
-            >
+            </Button>
+            <Button size="sm" onClick={() => void saveFile(conflict())}>
               Overwrite disk
-            </button>
+            </Button>
           </div>
         )}
       </Show>

@@ -8,6 +8,7 @@ import { ColumnsSection } from "./table-form/ColumnsSection";
 import { defaultIdColumn } from "./table-form/column-defaults";
 import { TableFormDialog } from "./table-form/TableFormDialog";
 import { TableMetaCard } from "./table-form/TableMetaCard";
+import { Button } from "../ui";
 
 export function TableCreateModal() {
   const open = () => useUiStore((s) => s.tableCreateOpen);
@@ -98,22 +99,16 @@ export function TableCreateModal() {
       subtitle="Creates a table definition and appends it to your selected DBML file"
       footer={
         <>
-          <button
-            type="button"
-            class="btn btn-ghost"
-            onClick={closeTableCreate}
-            disabled={busy()}
-          >
+          <Button variant="outline" onClick={closeTableCreate} disabled={busy()}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
             form="table-create-form"
-            class="btn btn-primary"
             disabled={busy() || !tableName().trim()}
           >
             {busy() ? "Creating…" : "Create table"}
-          </button>
+          </Button>
         </>
       }
     >

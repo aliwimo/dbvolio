@@ -1,4 +1,5 @@
 import { ChevronDown, FileText, FolderOpen, X } from "lucide-solid";
+import { Button } from "../ui";
 import { createSignal, onCleanup, onMount, Show } from "solid-js";
 import { useCommandKeybindingLabel } from "../../features/keymap/format-command-keybinding";
 import { RecentProjectsList } from "../projects/RecentProjectsList";
@@ -37,9 +38,9 @@ export function OpenProjectMenu() {
   return (
     <div class="header-dropdown open-project-menu" ref={wrapRef}>
       <div class="header-dropdown-trigger open-project-menu-trigger">
-        <button
-          type="button"
-          class="btn btn-ghost btn-sm"
+        <Button
+          variant="ghost"
+          size="icon"
           title="Open folder or file"
           aria-label="Open folder or file"
           aria-expanded={open()}
@@ -48,7 +49,7 @@ export function OpenProjectMenu() {
           <FolderOpen size={15} />
           <span class="header-btn-label">Open</span>
           <ChevronDown size={14} class="open-project-menu-chevron" />
-        </button>
+        </Button>
       </div>
       <Show when={open()}>
         <div class="header-dropdown-menu open-project-menu-popover" role="menu">

@@ -14,6 +14,7 @@ import { useUiStore } from "../../stores/ui-store";
 import { ColumnsSection } from "./table-form/ColumnsSection";
 import { TableFormDialog } from "./table-form/TableFormDialog";
 import { TableMetaCard } from "./table-form/TableMetaCard";
+import { Button } from "../ui";
 
 export function TableEditModal() {
   const open = () => useUiStore((s) => s.tableEditOpen);
@@ -107,17 +108,11 @@ export function TableEditModal() {
           subtitle="Modifications update the underlying DBML file immediately"
           footer={
             <>
-              <button
-                type="button"
-                class="btn btn-ghost"
-                onClick={closeTableEdit}
-                disabled={busy()}
-              >
+              <Button variant="outline" onClick={closeTableEdit} disabled={busy()}>
                 Close
-              </button>
-              <button
-                type="button"
-                class="btn btn-secondary"
+              </Button>
+              <Button
+                variant="secondary"
                 disabled={busy()}
                 onClick={() => {
                   void openTableSourceFile(t(), files());
@@ -125,7 +120,7 @@ export function TableEditModal() {
                 }}
               >
                 Open in editor
-              </button>
+              </Button>
             </>
           }
         >
@@ -140,14 +135,13 @@ export function TableEditModal() {
               disabled={busy()}
               actions={
                 <Show when={metaDirty()}>
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-primary"
+                  <Button
+                    size="sm"
                     disabled={busy() || !tableName().trim()}
                     onClick={saveMeta}
                   >
                     Save name &amp; schema
-                  </button>
+                  </Button>
                 </Show>
               }
             />

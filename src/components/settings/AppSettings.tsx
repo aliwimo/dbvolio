@@ -10,6 +10,7 @@ import {
 import { RecentProjectsList } from "../projects/RecentProjectsList";
 import { useUiStore, type PanelId } from "../../stores/ui-store";
 import { KeyboardShortcutsSection } from "./KeyboardShortcutsSection";
+import { Button, Checkbox, Input, Label } from "../ui";
 
 type SettingsSection =
   | "recent"
@@ -42,9 +43,7 @@ const DIAGRAM_TOGGLES: {
   label: string;
 }[] = [
   { key: "showGrid", label: "Show grid" },
-  { key: "showMinimap", label: "Show minimap" },
   { key: "showEdgeLabels", label: "Relation labels on edges" },
-  { key: "animateRelationships", label: "Animate relationship flow" },
   { key: "emphasizeRelated", label: "Dim unrelated tables on selection" },
   { key: "hideUnmatchedSearch", label: "Hide tables that do not match search" },
   { key: "snapToGrid", label: "Snap nodes to grid" },
@@ -116,14 +115,14 @@ export function AppSettings() {
                 <h3 class="settings-heading">
                   {SECTIONS.find((s) => s.id === section())?.label}
                 </h3>
-                <button
-                  type="button"
-                  class="btn-icon"
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={closeSettings}
                   aria-label="Close settings"
                 >
                   <X size={16} />
-                </button>
+                </Button>
               </header>
 
               <div class="settings-body">
@@ -133,39 +132,38 @@ export function AppSettings() {
 
                 <Show when={section() === "appearance"}>
                   <div class="settings-group">
-                    <label class="settings-label">Theme</label>
+                    <Label class="settings-label">Theme</Label>
                     <div class="settings-theme-options">
-                      <button
-                        type="button"
-                        class={`btn btn-sm ${theme() === "dark" ? "btn-primary" : "btn-ghost"}`}
+                      <Button
+                        size="sm"
+                        variant={theme() === "dark" ? "default" : "outline"}
                         onClick={() => setTheme("dark")}
                       >
                         Dark
-                      </button>
-                      <button
-                        type="button"
-                        class={`btn btn-sm ${theme() === "light" ? "btn-primary" : "btn-ghost"}`}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={theme() === "light" ? "default" : "outline"}
                         onClick={() => setTheme("light")}
                       >
                         Light
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </Show>
 
                 <Show when={section() === "workspace"}>
                   <div class="settings-group">
-                    <label class="settings-label">Panels visibility</label>
+                    <Label class="settings-label">Panels visibility</Label>
                     <For each={(["explorer", "editor", "diagram", "inspector"] as PanelId[])}>
                       {(pId) => (
-                        <label class="settings-checkbox-row">
-                          <input
-                            type="checkbox"
+                        <Label class="settings-checkbox-row">
+                          <Checkbox
                             checked={panels()[pId]}
                             onChange={() => togglePanel(pId)}
                           />
                           <span>{PANEL_LABELS[pId]}</span>
-                        </label>
+                        </Label>
                       )}
                     </For>
                   </div>
@@ -173,8 +171,8 @@ export function AppSettings() {
 
                 <Show when={section() === "editor"}>
                   <div class="settings-group">
-                    <label class="settings-label">Font Size</label>
-                    <input
+                    <Label class="settings-label">Font Size</Label>
+                    <Input
                       type="number"
                       class="settings-input"
                       value={editor().fontSize}
@@ -186,21 +184,19 @@ export function AppSettings() {
                     />
                   </div>
                   <div class="settings-group">
-                    <label class="settings-checkbox-row">
-                      <input
-                        type="checkbox"
+                    <Label class="settings-checkbox-row">
+                      <Checkbox
                         checked={editor().minimap}
                         onChange={(e) =>
                           patchEditor({ minimap: e.currentTarget.checked })
                         }
                       />
                       <span>Minimap</span>
-                    </label>
+                    </Label>
                   </div>
                   <div class="settings-group">
-                    <label class="settings-checkbox-row">
-                      <input
-                        type="checkbox"
+                    <Label class="settings-checkbox-row">
+                      <Checkbox
                         checked={editor().wordWrap === "on"}
                         onChange={(e) =>
                           patchEditor({
@@ -209,23 +205,22 @@ export function AppSettings() {
                         }
                       />
                       <span>Word wrap</span>
-                    </label>
+                    </Label>
                   </div>
                 </Show>
 
                 <Show when={section() === "diagram"}>
                   <div class="settings-group">
-                    <label class="settings-label">Diagram Toggles</label>
+                    <Label class="settings-label">Diagram Toggles</Label>
                     <For each={DIAGRAM_TOGGLES}>
                       {({ key, label }) => (
-                        <label class="settings-checkbox-row">
-                          <input
-                            type="checkbox"
+                        <Label class="settings-checkbox-row">
+                          <Checkbox
                             checked={Boolean(diagramView()[key])}
                             onChange={() => toggleDiagramOption(key)}
                           />
                           <span>{label}</span>
-                        </label>
+                        </Label>
                       )}
                     </For>
                   </div>
@@ -241,16 +236,16 @@ export function AppSettings() {
                     <p class="settings-about-version">
                       Desktop DBML Schema Designer
                     </p>
-                    <button
-                      type="button"
-                      class="btn btn-ghost btn-sm"
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() =>
                         void openUrl("https://github.com/aliwimo/dbvolio")
                       }
                     >
                       <ExternalLink size={14} />
                       GitHub Repository
-                    </button>
+                    </Button>
                   </div>
                 </Show>
               </div>

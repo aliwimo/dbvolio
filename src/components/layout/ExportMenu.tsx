@@ -14,6 +14,7 @@ import {
   exportSql,
 } from "../../features/export/export-actions";
 import { useProjectStore } from "../../stores/project-store";
+import { Button } from "../ui";
 
 export function ExportMenu() {
   const projectRoot = () => useProjectStore((s) => s.projectRoot);
@@ -46,9 +47,9 @@ export function ExportMenu() {
   return (
     <div class="header-dropdown" ref={wrapRef}>
       <div class="header-dropdown-trigger">
-        <button
-          type="button"
-          class="btn btn-ghost btn-sm"
+        <Button
+          variant="ghost"
+          size="icon"
           disabled={!canExport() || busy()}
           aria-label="Export"
           aria-expanded={open()}
@@ -58,7 +59,7 @@ export function ExportMenu() {
           <Download size={15} />
           <span class="header-btn-label">Export</span>
           <ChevronDown size={14} class="header-dropdown-caret" />
-        </button>
+        </Button>
       </div>
       <Show when={open() && canExport()}>
         <div class="header-dropdown-menu" role="menu">
