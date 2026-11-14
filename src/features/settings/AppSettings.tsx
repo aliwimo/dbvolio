@@ -4,6 +4,10 @@ import { createSignal, onCleanup, onMount, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import { useAppSettingsStore } from "./app-settings-store";
 import {
+  EDITOR_FONT_FAMILY_OPTIONS,
+  type EditorFontFamily,
+} from "../editor/editor-settings";
+import {
   useDiagramViewStore,
   type DiagramViewOptions,
 } from "../diagram/diagram-view-store";
@@ -171,30 +175,70 @@ export function AppSettings() {
 
                 <Show when={section() === "editor"}>
                   <div class="settings-group">
+                    <Label class="settings-label">Font Family</Label>
+                    <select
+                      class="settings-input"
+                      value={editor().fontFamily}
+                      onChange={(e) =>
+                        patchEditor({
+                          fontFamily: e.currentTarget.value as EditorFontFamily,
+                        })
+                      }
+                    >
+                      <For each={EDITOR_FONT_FAMILY_OPTIONS}>
+                        {(opt) => <option value={opt.value}>{opt.label}</option>}
+                      </For>
+                    </select>
+                  </div>
+                  <div class="settings-group">
                     <Label class="settings-label">Font Size</Label>
                     <Input
                       type="number"
                       class="settings-input"
                       value={editor().fontSize}
                       min={10}
-                      max={32}
+                      max={24}
                       onChange={(e) =>
                         patchEditor({ fontSize: Number(e.currentTarget.value) })
                       }
                     />
                   </div>
                   <div class="settings-group">
-                    <Label class="settings-checkbox-row">
-                      <Checkbox
-                        checked={editor().minimap}
-                        onChange={(e) =>
-                          patchEditor({ minimap: e.currentTarget.checked })
-                        }
-                      />
-                      <span>Minimap</span>
-                    </Label>
+                    <Label class="settings-label">Line Height</Label>
+                    <Input
+                      type="number"
+                      class="settings-input"
+                      value={editor().lineHeight}
+                      min={16}
+                      max={40}
+                      onChange={(e) =>
+                        patchEditor({ lineHeight: Number(e.currentTarget.value) })
+                      }
+                    />
                   </div>
                   <div class="settings-group">
+                    <Label class="settings-label">Tab Size</Label>
+                    <Input
+                      type="number"
+                      class="settings-input"
+                      value={editor().tabSize}
+                      min={2}
+                      max={8}
+                      onChange={(e) =>
+                        patchEditor({ tabSize: Number(e.currentTarget.value) })
+                      }
+                    />
+                  </div>
+                  <div class="settings-group">
+                    <Label class="settings-checkbox-row">
+                      <Checkbox
+                        checked={editor().insertSpaces}
+                        onChange={(e) =>
+                          patchEditor({ insertSpaces: e.currentTarget.checked })
+                        }
+                      />
+                      <span>Insert spaces</span>
+                    </Label>
                     <Label class="settings-checkbox-row">
                       <Checkbox
                         checked={editor().wordWrap === "on"}
@@ -205,6 +249,70 @@ export function AppSettings() {
                         }
                       />
                       <span>Word wrap</span>
+                    </Label>
+                    <Label class="settings-checkbox-row">
+                      <Checkbox
+                        checked={editor().lineNumbers === "on"}
+                        onChange={(e) =>
+                          patchEditor({
+                            lineNumbers: e.currentTarget.checked ? "on" : "off",
+                          })
+                        }
+                      />
+                      <span>Line numbers</span>
+                    </Label>
+                    <Label class="settings-checkbox-row">
+                      <Checkbox
+                        checked={editor().folding}
+                        onChange={(e) =>
+                          patchEditor({ folding: e.currentTarget.checked })
+                        }
+                      />
+                      <span>Code folding</span>
+                    </Label>
+                    <Label class="settings-checkbox-row">
+                      <Checkbox
+                        checked={editor().highlightActiveLine}
+                        onChange={(e) =>
+                          patchEditor({
+                            highlightActiveLine: e.currentTarget.checked,
+                          })
+                        }
+                      />
+                      <span>Highlight active line</span>
+                    </Label>
+                    <Label class="settings-checkbox-row">
+                      <Checkbox
+                        checked={editor().bracketMatching}
+                        onChange={(e) =>
+                          patchEditor({
+                            bracketMatching: e.currentTarget.checked,
+                          })
+                        }
+                      />
+                      <span>Bracket matching</span>
+                    </Label>
+                    <Label class="settings-checkbox-row">
+                      <Checkbox
+                        checked={editor().autocompletion}
+                        onChange={(e) =>
+                          patchEditor({
+                            autocompletion: e.currentTarget.checked,
+                          })
+                        }
+                      />
+                      <span>Autocompletion</span>
+                    </Label>
+                    <Label class="settings-checkbox-row">
+                      <Checkbox
+                        checked={editor().highlightSelectionMatches}
+                        onChange={(e) =>
+                          patchEditor({
+                            highlightSelectionMatches: e.currentTarget.checked,
+                          })
+                        }
+                      />
+                      <span>Highlight selection matches</span>
                     </Label>
                   </div>
                 </Show>
