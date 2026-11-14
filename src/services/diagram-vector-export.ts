@@ -1,3 +1,5 @@
+import { invoke, isTauri } from "@tauri-apps/api/core";
+import type { jsPDF } from "jspdf";
 import type { Edge, Node } from "../types/flow";
 import {
   TABLE_COLUMNS_PADDING,
@@ -43,6 +45,44 @@ const COLOR_FALLBACKS = {
   edge: "#a7a7b0",
 };
 
+function channelByte(value: string, unit: "byte" | "unit"): number {
+  const n = Number(value);
+  const byte = unit === "unit" ? n * 255 : n;
+  return Math.max(0, Math.min(255, Math.round(byte)));
+}
+
+function hexColor(r: number, g: number, b: number): string {
+  return `#${[r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("")}`;
+}
+
+/** svg2pdf only strokes `#rrggbb` and `rgb()`. Computed `color(srgb …)` is dropped. */
+function svgPaintColor(resolved: string, fallback: string): string {
+  const rgb = resolved.match(
+    /rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+))?/,
+  );
+  if (rgb) {
+    if (rgb[4] !== undefined && Number(rgb[4]) === 0) return "transparent";
+    return hexColor(
+      channelByte(rgb[1], "byte"),
+      channelByte(rgb[2], "byte"),
+      channelByte(rgb[3], "byte"),
+    );
+  }
+  const srgb = resolved.match(
+    /color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+))?/,
+  );
+  if (srgb) {
+    if (srgb[4] !== undefined && Number(srgb[4]) === 0) return "transparent";
+    return hexColor(
+      channelByte(srgb[1], "unit"),
+      channelByte(srgb[2], "unit"),
+      channelByte(srgb[3], "unit"),
+    );
+  }
+  if (/^#[0-9a-fA-F]{6}$/.test(resolved)) return resolved.toLowerCase();
+  return fallback;
+}
+
 function paintedColor(css: string, fallback: string): string {
   if (typeof document === "undefined") return fallback;
   const probe = document.createElement("span");
@@ -53,7 +93,7 @@ function paintedColor(css: string, fallback: string): string {
   if (!resolved || resolved === "rgba(0, 0, 0, 0)") {
     return css.includes("transparent") ? "transparent" : fallback;
   }
-  return resolved;
+  return svgPaintColor(resolved, fallback);
 }
 
 function exportColors() {
@@ -175,7 +215,7 @@ function renderTableGroupNode(
   const x = origin.x;
   const y = origin.y;
   const noteLine = group.note
-    ? `<text x="${x + 14}" y="${y + 42}" font-size="11" fill="${colors.muted}">${escapeXml(group.note.split("\n")[0])}</text>`
+    ? `<text x="${x + 14}" y="${y + 42}" font-size="11" font-weight="400" fill="${colors.muted}">${escapeXml(group.note.split("\n")[0])}</text>`
     : "";
 
   return `<g>
@@ -225,8 +265,8 @@ function renderTableNode(
         COLUMNS_PADDING +
         index * ROW_HEIGHT +
         ROW_HEIGHT * 0.68;
-      return `<text x="${x + 14}" y="${rowY}" font-size="12" fill="${colors.text}">${escapeXml(col.name)}${badges}</text>
-<text x="${x + width - 14}" y="${rowY}" font-size="12" fill="${colors.muted}" text-anchor="end">${escapeXml(col.type)}</text>`;
+      return `<text x="${x + 14}" y="${rowY}" font-size="12" font-weight="400" fill="${colors.text}">${escapeXml(col.name)}${badges}</text>
+<text x="${x + width - 14}" y="${rowY}" font-size="12" font-weight="400" fill="${colors.muted}" text-anchor="end">${escapeXml(col.type)}</text>`;
     })
     .join("\n");
 
@@ -381,6 +421,70 @@ export async function svgStringToPngBlob(
   });
 }
 
+type UiFontFile = { family: string; base64: string };
+
+let uiFontLoad: Promise<UiFontFile | null> | null = null;
+
+function loadUiFont(): Promise<UiFontFile | null> {
+  if (!isTauri()) return Promise.resolve(null);
+  if (!uiFontLoad) {
+    uiFontLoad = invoke<UiFontFile | null>("read_ui_font").catch(() => null);
+  }
+  return uiFontLoad;
+}
+
+function svgTextSample(svg: string): string {
+  const chars = new Set<string>();
+  for (const ch of "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,_-()[]/→") {
+    chars.add(ch);
+  }
+  for (const match of svg.matchAll(/>([^<]+)</g)) {
+    const text = match[1]
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"');
+    for (const ch of text) chars.add(ch);
+  }
+  return [...chars].join("");
+}
+
+function bytesToBase64(data: Uint8Array): string {
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < data.length; i += chunk) {
+    binary += String.fromCharCode(...data.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+/** Table headers are weight 600 at UI size. The system file is a variable font whose default is regular display. */
+async function useUiFont(pdf: jsPDF, font: UiFontFile, svg: string): Promise<void> {
+  const source = Uint8Array.from(atob(font.base64), (ch) => ch.charCodeAt(0));
+  const sample = svgTextSample(svg);
+  let regular = source;
+  let semibold = source;
+  try {
+    const { default: subsetFont } = await import("subset-font");
+    const instance = (wght: number) =>
+      subsetFont(source, sample, {
+        targetFormat: "sfnt",
+        variationAxes: { wght, opsz: 17 },
+      });
+    regular = new Uint8Array(await instance(400));
+    semibold = new Uint8Array(await instance(600));
+  } catch {
+    regular = source;
+    semibold = source;
+  }
+  pdf.addFileToVFS("ui-regular.ttf", bytesToBase64(regular));
+  pdf.addFileToVFS("ui-semibold.ttf", bytesToBase64(semibold));
+  pdf.addFont("ui-regular.ttf", font.family, "normal");
+  for (const style of ["600", "600normal", "bold"]) {
+    pdf.addFont("ui-semibold.ttf", font.family, style);
+  }
+}
+
 export async function svgStringToPdfBlob(svg: string): Promise<Blob> {
   const parser = new DOMParser();
   const doc = parser.parseFromString(svg, "image/svg+xml");
@@ -409,6 +513,11 @@ export async function svgStringToPdfBlob(svg: string): Promise<Blob> {
     unit: "pt",
     format: [width, height],
   });
+
+  const uiFont = await loadUiFont();
+  if (uiFont) {
+    await useUiFont(pdf, uiFont, svg);
+  }
 
   try {
     await svg2pdf(svgEl, pdf, { x: 0, y: 0, width, height });

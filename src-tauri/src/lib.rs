@@ -44,6 +44,7 @@ pub fn run() {
             commands::layout::read_layout_metadata,
             commands::layout::write_layout_metadata,
             commands::export::write_export_file,
+            commands::export::read_ui_font,
             commands::open::take_pending_dbml_opens,
         ])
         .build(tauri::generate_context!())

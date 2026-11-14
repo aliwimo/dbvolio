@@ -28,6 +28,7 @@
     "lucide-solid": "^1.72.0",
     "monaco-editor": "^0.57.0",
     "solid-js": "^1.9.19",
+    "subset-font": "^2.9.0",
     "svg2pdf.js": "^2.8.1",
     "vite-plugin-solid": "^2.11.16"
   },
