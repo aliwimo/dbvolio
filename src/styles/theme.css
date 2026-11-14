@@ -63,12 +63,12 @@ body,
   background: var(--bg-app);
   color: var(--text);
   font-family:
+    "Inter Variable",
+    "Inter",
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
     Roboto,
-    Helvetica,
-    Arial,
     sans-serif;
   font-size: 13px;
   line-height: 1.45;
