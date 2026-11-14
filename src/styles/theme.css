@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root,
 [data-theme="light"] {
   --bg-app: #f7f7f8;
