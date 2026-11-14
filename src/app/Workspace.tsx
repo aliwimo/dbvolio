@@ -18,7 +18,7 @@ import {
   useUiStore,
 } from "../shared/stores/ui-store";
 import { ExternalConflictBanner } from "../features/layout/ExternalConflictBanner";
-import { Header } from "../features/layout/Header";
+import { AppHeader } from "../features/app-header/AppHeader";
 import { ResizableRail } from "../features/layout/ResizableRail";
 import { StatusBar } from "../features/layout/StatusBar";
 import { WorkspaceMain } from "../features/layout/WorkspaceMain";
@@ -49,7 +49,7 @@ export function Workspace() {
 
   return (
     <div class="workspace">
-      <Header />
+      <AppHeader />
       <ExternalConflictBanner />
 
       <div class="workspace-body">
