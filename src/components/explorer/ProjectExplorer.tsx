@@ -37,7 +37,7 @@ import {
 function absolutePath(root: string, relative: string): string {
   const sep = root.includes("\\") ? "\\" : "/";
   const rootClean = root.replace(/[/\\]+$/, "");
-  return `${rootClean}${sep}${relative.replaceAll("\\", "/").split("/").join(sep)}`;
+  return `${rootClean}${sep}${relative.split("\\").join("/").split("/").join(sep)}`;
 }
 
 function TreeItems(props: {
