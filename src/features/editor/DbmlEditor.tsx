@@ -386,7 +386,11 @@ export function DbmlEditor() {
   };
 
   const initOrUpdateEditor = (el: HTMLDivElement) => {
-    if (editorView) return;
+    if (editorView) {
+      if (editorView.dom.parentElement === el) return;
+      editorView.destroy();
+      editorView = null;
+    }
 
     const state = EditorState.create({
       doc: activeTab()?.content ?? "",
@@ -439,6 +443,13 @@ export function DbmlEditor() {
       });
     }
   };
+
+  createEffect(() => {
+    if (!activePath() && editorView) {
+      editorView.destroy();
+      editorView = null;
+    }
+  });
 
   onCleanup(() => {
     editorView?.destroy();
