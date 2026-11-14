@@ -1,5 +1,3 @@
-import { editor } from "monaco-editor";
-
 export type EditorWordWrap = "on" | "off" | "bounded";
 
 export type EditorLineNumbers = "on" | "off" | "relative";
@@ -257,7 +255,7 @@ export function mergeEditorSettings(
 
 export function buildMonacoEditorOptions(
   settings: EditorSettings,
-): editor.IStandaloneEditorConstructionOptions {
+) {
   const fontFamily = resolveEditorFontFamily(settings.fontFamily);
 
   return {
@@ -304,9 +302,7 @@ export function buildMonacoEditorOptions(
       highlightActiveBracketPair: false,
     },
     lightbulb: {
-      enabled: settings.lightbulb
-        ? editor.ShowLightbulbIconMode.OnCode
-        : editor.ShowLightbulbIconMode.Off,
+      enabled: settings.lightbulb ? "onCode" : "off",
     },
     quickSuggestions: {
       other: true,
