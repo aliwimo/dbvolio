@@ -1,8 +1,8 @@
-import { useEffect } from "react";
+import { createEffect, onCleanup } from "solid-js";
 
-export function useModalEscape(open: boolean, onClose: () => void): void {
-  useEffect(() => {
-    if (!open) {
+export function useModalEscape(open: () => boolean, onClose: () => void): void {
+  createEffect(() => {
+    if (!open()) {
       return;
     }
     const onKeyDown = (event: KeyboardEvent) => {
@@ -12,6 +12,6 @@ export function useModalEscape(open: boolean, onClose: () => void): void {
       }
     };
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
+    onCleanup(() => window.removeEventListener("keydown", onKeyDown));
+  });
 }

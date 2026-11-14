@@ -5,11 +5,12 @@ import {
   Layers,
   Plus,
   Trash2,
-} from "lucide-react";
-import { useEffect, useState } from "react";
+} from "lucide-solid";
+import { createSignal, createEffect, For, Show } from "solid-js";
 import type { AddColumnPlacement } from "../../../features/schema/dbml-edit";
 import type { SchemaColumn } from "../../../types/schema";
 import { columnsEqual, emptyColumn } from "./column-defaults";
+import { Button, Input } from "../../ui";
 import {
   findDuplicateColumnName,
   moveColumnInList,
@@ -42,129 +43,146 @@ type LiveProps = {
 
 export type ColumnsSectionProps = DraftProps | LiveProps;
 
-export function ColumnsSection(props: ColumnsSectionProps) {
-  const { columns, disabled, error, onError } = props;
-  const [newColumn, setNewColumn] = useState<SchemaColumn>(emptyColumn);
-  const [insertPlacement, setInsertPlacement] = useState<string>("__end__");
+function resolveInsertPlacement(value: string): AddColumnPlacement {
+  if (value === "__start__") {
+    return { position: "start" };
+  }
+  if (value === "__end__") {
+    return { position: "end" };
+  }
+  return { afterColumn: value };
+}
 
-  useEffect(() => {
+export function ColumnsSection(props: ColumnsSectionProps) {
+  const [newColumn, setNewColumn] = createSignal<SchemaColumn>(emptyColumn());
+  const [insertPlacement, setInsertPlacement] = createSignal<string>("__end__");
+
+  createEffect(() => {
     if (props.mode === "live") {
       setNewColumn(emptyColumn());
       setInsertPlacement("__end__");
     }
-  }, [props.mode, columns.length]);
+  });
 
   const tryAddColumn = () => {
-    const trimmed = newColumn.name.trim();
+    const cur = newColumn();
+    const trimmed = cur.name.trim();
     const candidate: SchemaColumn = {
-      ...newColumn,
+      ...cur,
       name: trimmed,
-      type: newColumn.type.trim() || "varchar",
+      type: cur.type.trim() || "varchar",
     };
-    const dup = findDuplicateColumnName(columns, candidate.name);
+    const dup = findDuplicateColumnName(props.columns, candidate.name);
     if (dup) {
-      onError(dup);
+      props.onError(dup);
       return;
     }
-    onError(null);
+    props.onError(null);
 
     if (props.mode === "draft") {
-      props.onChange([...columns, candidate]);
+      props.onChange([...props.columns, candidate]);
       setNewColumn(emptyColumn());
       return;
     }
 
-    props.onAdd(candidate, resolveInsertPlacement(insertPlacement));
+    props.onAdd(candidate, resolveInsertPlacement(insertPlacement()));
     setNewColumn(emptyColumn());
   };
 
   return (
-    <section className="inspector-section table-form-section">
-      <div className="inspector-section-header">
-        <h3 className="inspector-section-title">
+    <section class="inspector-section table-form-section">
+      <PgTypeDatalist />
+
+      <div class="inspector-section-header">
+        <h3 class="inspector-section-title">
           <Layers size={13} aria-hidden />
           Fields
         </h3>
-        <span className="inspector-section-count">{columns.length}</span>
+        <span class="inspector-section-count">{props.columns.length}</span>
       </div>
 
-      <div className="table-form-columns-shell">
-        <table className="inspector-columns table-form-columns">
+      <div class="table-form-columns-shell">
+        <table class="inspector-columns table-form-columns">
           <thead>
             <tr>
-              <th className="table-form-col-order" aria-label="Order" />
+              <th class="table-form-col-order" aria-label="Order" />
               <th>Name</th>
               <th>Type</th>
-              <th className="table-form-col-flags">Constraints</th>
-              {props.mode === "live" && <th className="table-form-col-actions" />}
-              {props.mode === "draft" && (
-                <th className="table-form-col-actions" aria-label="Remove" />
-              )}
+              <th class="table-form-col-flags">Constraints</th>
+              <Show when={props.mode === "live"}>
+                <th class="table-form-col-actions" />
+              </Show>
+              <Show when={props.mode === "draft"}>
+                <th class="table-form-col-actions" aria-label="Remove" />
+              </Show>
             </tr>
           </thead>
           <tbody>
-            {columns.map((col, index) =>
-              props.mode === "draft" ? (
-                <DraftColumnRow
-                  key={`draft-col-${index}`}
-                  column={col}
-                  index={index}
-                  total={columns.length}
-                  disabled={disabled}
-                  onChange={(next) => {
-                    const updated = updateColumnInList(
-                      columns,
-                      col.name,
-                      next,
-                    );
-                    if (!updated) {
-                      onError(
-                        findDuplicateColumnName(columns, next.name, col.name),
+            <For each={props.columns}>
+              {(col, index) =>
+                props.mode === "draft" ? (
+                  <DraftColumnRow
+                    column={col}
+                    index={index()}
+                    total={props.columns.length}
+                    disabled={props.disabled}
+                    onChange={(next) => {
+                      const updated = updateColumnInList(
+                        props.columns,
+                        col.name,
+                        next,
                       );
-                      return;
+                      if (!updated) {
+                        props.onError(
+                          findDuplicateColumnName(props.columns, next.name, col.name),
+                        );
+                        return;
+                      }
+                      props.onError(null);
+                      props.onChange(updated);
+                    }}
+                    onMove={(direction) =>
+                      props.onChange(
+                        moveColumnInList(props.columns, col.name, direction) ??
+                          props.columns,
+                      )
                     }
-                    onError(null);
-                    props.onChange(updated);
-                  }}
-                  onMove={(direction) =>
-                    props.onChange(moveColumnInList(columns, col.name, direction))
-                  }
-                  onRemove={() => {
-                    if (columns.length <= 1) {
-                      return;
-                    }
-                    props.onChange(columns.filter((c) => c.name !== col.name));
-                  }}
-                  canRemove={columns.length > 1}
-                />
-              ) : (
-                <LiveColumnRow
-                  key={col.name}
-                  column={col}
-                  index={index}
-                  total={columns.length}
-                  disabled={disabled}
-                  onSave={(next) => props.onUpdate(col.name, next)}
-                  onDelete={() => props.onRemove(col.name)}
-                  onMoveUp={() => props.onMove(col.name, "up")}
-                  onMoveDown={() => props.onMove(col.name, "down")}
-                />
-              ),
-            )}
+                    onRemove={() => {
+                      if (props.columns.length <= 1) {
+                        return;
+                      }
+                      props.onChange(props.columns.filter((c) => c.name !== col.name));
+                    }}
+                    canRemove={props.columns.length > 1}
+                  />
+                ) : (
+                  <LiveColumnRow
+                    column={col}
+                    index={index()}
+                    total={props.columns.length}
+                    disabled={props.disabled}
+                    onSave={(next) => props.onUpdate(col.name, next)}
+                    onDelete={() => props.onRemove(col.name)}
+                    onMoveUp={() => props.onMove(col.name, "up")}
+                    onMoveDown={() => props.onMove(col.name, "down")}
+                  />
+                )
+              }
+            </For>
           </tbody>
         </table>
 
-        <div className="table-form-add-panel">
-          <p className="table-form-add-label">Add field</p>
-          <div className="table-form-add-grid">
+        <div class="table-form-add-panel">
+          <p class="table-form-add-label">Add field</p>
+          <div class="table-form-add-grid">
             <label>
               Name
-              <input
-                value={newColumn.name}
+              <Input
+                value={newColumn().name}
                 placeholder="column_name"
-                disabled={disabled}
-                onChange={(e) =>
-                  setNewColumn({ ...newColumn, name: e.target.value })
+                disabled={props.disabled}
+                onInput={(e) =>
+                  setNewColumn({ ...newColumn(), name: e.currentTarget.value })
                 }
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -176,12 +194,12 @@ export function ColumnsSection(props: ColumnsSectionProps) {
             </label>
             <label>
               Type
-              <input
+              <Input
                 list={PG_TYPES_DATALIST_ID}
-                value={newColumn.type}
-                disabled={disabled}
-                onChange={(e) =>
-                  setNewColumn({ ...newColumn, type: e.target.value })
+                value={newColumn().type}
+                disabled={props.disabled}
+                onInput={(e) =>
+                  setNewColumn({ ...newColumn(), type: e.currentTarget.value })
                 }
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -192,59 +210,48 @@ export function ColumnsSection(props: ColumnsSectionProps) {
               />
             </label>
             <ColumnConstraintToggles
-              column={newColumn}
-              disabled={disabled}
+              column={newColumn()}
+              disabled={props.disabled}
               onChange={setNewColumn}
             />
           </div>
 
-          {props.mode === "live" && (
-            <label className="table-form-insert-after">
+          <Show when={props.mode === "live"}>
+            <label class="table-form-insert-after">
               Insert
               <select
-                value={insertPlacement}
-                disabled={disabled}
-                onChange={(e) => setInsertPlacement(e.target.value)}
+                value={insertPlacement()}
+                disabled={props.disabled}
+                onChange={(e) => setInsertPlacement(e.currentTarget.value)}
               >
                 <option value="__start__">At start</option>
-                {columns.map((col) => (
-                  <option key={col.name} value={col.name}>
-                    After {col.name}
-                  </option>
-                ))}
+                <For each={props.columns}>
+                  {(col) => (
+                    <option value={col.name}>After {col.name}</option>
+                  )}
+                </For>
                 <option value="__end__">At end</option>
               </select>
             </label>
-          )}
+          </Show>
 
-          <button
-            type="button"
-            className="btn btn-sm btn-ghost table-form-add-btn"
-            disabled={disabled || !newColumn.name.trim()}
+          <Button
+            variant="outline"
+            size="sm"
+            class="table-form-add-btn"
+            disabled={props.disabled || !newColumn().name.trim()}
             onClick={tryAddColumn}
           >
             <Plus size={13} />
             Add field
-          </button>
+          </Button>
         </div>
       </div>
-
-      {error && <p className="inspector-error">{error}</p>}
-      <PgTypeDatalist />
     </section>
   );
 }
 
-function DraftColumnRow({
-  column,
-  index,
-  total,
-  disabled,
-  onChange,
-  onMove,
-  onRemove,
-  canRemove,
-}: {
+function DraftColumnRow(props: {
   column: SchemaColumn;
   index: number;
   total: number;
@@ -255,59 +262,63 @@ function DraftColumnRow({
   canRemove: boolean;
 }) {
   return (
-    <tr className={column.isPrimaryKey ? "table-form-row-pk" : undefined}>
-      <td className="inspector-order-cell">
+    <tr class={props.column.isPrimaryKey ? "table-form-row-pk" : undefined}>
+      <td class="inspector-order-cell">
         <button
           type="button"
-          className="btn-icon btn-icon-xs"
-          disabled={disabled || index === 0}
+          class="btn-icon btn-icon-xs"
+          disabled={props.disabled || props.index === 0}
           title="Move up"
-          onClick={() => onMove("up")}
+          onClick={() => props.onMove("up")}
         >
           <ChevronUp size={14} />
         </button>
         <button
           type="button"
-          className="btn-icon btn-icon-xs"
-          disabled={disabled || index >= total - 1}
+          class="btn-icon btn-icon-xs"
+          disabled={props.disabled || props.index >= props.total - 1}
           title="Move down"
-          onClick={() => onMove("down")}
+          onClick={() => props.onMove("down")}
         >
           <ChevronDown size={14} />
         </button>
       </td>
       <td>
         <input
-          className="inspector-inline-input"
-          value={column.name}
-          disabled={disabled}
-          onChange={(e) => onChange({ ...column, name: e.target.value })}
+          class="inspector-inline-input"
+          value={props.column.name}
+          disabled={props.disabled}
+          onInput={(e) =>
+            props.onChange({ ...props.column, name: e.currentTarget.value })
+          }
         />
       </td>
       <td>
         <input
-          className="inspector-inline-input"
+          class="inspector-inline-input"
           list={PG_TYPES_DATALIST_ID}
-          value={column.type}
-          disabled={disabled}
-          onChange={(e) => onChange({ ...column, type: e.target.value })}
+          value={props.column.type}
+          disabled={props.disabled}
+          onInput={(e) =>
+            props.onChange({ ...props.column, type: e.currentTarget.value })
+          }
         />
       </td>
       <td>
         <ColumnConstraintToggles
-          column={column}
+          column={props.column}
           compact
-          disabled={disabled}
-          onChange={onChange}
+          disabled={props.disabled}
+          onChange={props.onChange}
         />
       </td>
-      <td className="inspector-row-actions">
+      <td class="inspector-row-actions">
         <button
           type="button"
-          className="btn-icon btn-icon-xs"
+          class="btn-icon btn-icon-xs"
           title="Remove column"
-          disabled={disabled || !canRemove}
-          onClick={onRemove}
+          disabled={props.disabled || !props.canRemove}
+          onClick={props.onRemove}
         >
           <Trash2 size={13} />
         </button>
@@ -316,16 +327,7 @@ function DraftColumnRow({
   );
 }
 
-function LiveColumnRow({
-  column,
-  index,
-  total,
-  disabled,
-  onSave,
-  onDelete,
-  onMoveUp,
-  onMoveDown,
-}: {
+function LiveColumnRow(props: {
   column: SchemaColumn;
   index: number;
   total: number;
@@ -335,95 +337,89 @@ function LiveColumnRow({
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
-  const [draft, setDraft] = useState(column);
+  const [draft, setDraft] = createSignal<SchemaColumn>(props.column);
 
-  useEffect(() => {
-    setDraft(column);
-  }, [column]);
+  createEffect(() => {
+    setDraft(props.column);
+  });
 
-  const dirty = !columnsEqual(draft, column);
-  const draftName = draft.name.trim();
-  const canSave = dirty && draftName.length > 0;
+  const dirty = () => !columnsEqual(draft(), props.column);
+  const draftName = () => draft().name.trim();
+  const canSave = () => dirty() && draftName().length > 0;
 
   return (
     <tr
-      className={`${column.isPrimaryKey ? "table-form-row-pk" : ""} ${dirty ? "table-form-row-dirty" : ""}`}
+      class={`${props.column.isPrimaryKey ? "table-form-row-pk" : ""} ${dirty() ? "table-form-row-dirty" : ""}`}
     >
-      <td className="inspector-order-cell">
+      <td class="inspector-order-cell">
         <button
           type="button"
-          className="btn-icon btn-icon-xs"
-          disabled={disabled || index === 0}
+          class="btn-icon btn-icon-xs"
+          disabled={props.disabled || props.index === 0}
           title="Move up"
-          onClick={onMoveUp}
+          onClick={props.onMoveUp}
         >
           <ChevronUp size={14} />
         </button>
         <button
           type="button"
-          className="btn-icon btn-icon-xs"
-          disabled={disabled || index >= total - 1}
+          class="btn-icon btn-icon-xs"
+          disabled={props.disabled || props.index >= props.total - 1}
           title="Move down"
-          onClick={onMoveDown}
+          onClick={props.onMoveDown}
         >
           <ChevronDown size={14} />
         </button>
       </td>
       <td>
         <input
-          className="inspector-inline-input"
-          value={draft.name}
-          disabled={disabled}
-          onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+          class="inspector-inline-input"
+          value={draft().name}
+          disabled={props.disabled}
+          onInput={(e) =>
+            setDraft({ ...draft(), name: e.currentTarget.value })
+          }
         />
       </td>
       <td>
         <input
-          className="inspector-inline-input"
+          class="inspector-inline-input"
           list={PG_TYPES_DATALIST_ID}
-          value={draft.type}
-          disabled={disabled}
-          onChange={(e) => setDraft({ ...draft, type: e.target.value })}
+          value={draft().type}
+          disabled={props.disabled}
+          onInput={(e) =>
+            setDraft({ ...draft(), type: e.currentTarget.value })
+          }
         />
       </td>
       <td>
         <ColumnConstraintToggles
-          column={draft}
+          column={draft()}
           compact
-          disabled={disabled}
+          disabled={props.disabled}
           onChange={setDraft}
         />
       </td>
-      <td className="inspector-row-actions">
+      <td class="inspector-row-actions">
         <button
           type="button"
-          className={`btn-icon btn-icon-xs ${canSave ? "table-form-save-active" : ""}`}
-          disabled={disabled || !canSave}
-          title={dirty ? "Save column changes" : "No changes"}
-          onClick={() => onSave({ ...draft, name: draftName })}
+          class={`btn-icon btn-icon-xs ${canSave() ? "table-form-save-active" : ""}`}
+          disabled={props.disabled || !canSave()}
+          title={dirty() ? "Save column changes" : "No changes"}
+          onClick={() => props.onSave({ ...draft(), name: draftName() })}
         >
           <Check size={14} />
         </button>
         <button
           type="button"
-          className="btn-icon btn-icon-xs table-form-delete-btn"
-          disabled={disabled}
+          class="btn-icon btn-icon-xs table-form-delete-btn"
+          disabled={props.disabled}
           title="Delete column"
-          onClick={onDelete}
+          onClick={props.onDelete}
         >
           <Trash2 size={13} />
         </button>
       </td>
     </tr>
   );
-}
-
-function resolveInsertPlacement(value: string): AddColumnPlacement {
-  if (value === "__start__") {
-    return { position: "start" };
-  }
-  if (value === "__end__") {
-    return { position: "end" };
-  }
-  return { afterColumn: value };
 }

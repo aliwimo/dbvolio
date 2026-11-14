@@ -1,4 +1,4 @@
-import type { Node } from "@xyflow/react";
+import type { Node } from "../../types/flow";
 import type { TableNodeData } from "../../components/diagram/TableNode";
 import type { TableGroupNodeData } from "../../components/diagram/TableGroupNode";
 import { isGroupNode } from "../diagram-layout/table-group-bounds";

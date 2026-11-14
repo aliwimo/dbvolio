@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { createStoreFactory } from "./create-store";
 import { keybindingToString } from "../features/keymap/default-keybindings";
 import type { CommandId, Keybinding, KeybindingOverrides } from "../features/keymap/types";
 
@@ -31,7 +31,7 @@ function persist(overrides: KeybindingOverrides) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides));
 }
 
-export const useKeymapStore = create<KeymapState>((set) => ({
+export const useKeymapStore = createStoreFactory<KeymapState>((set) => ({
   overrides: loadOverrides(),
   recordingCommandId: null,
 

@@ -1,47 +1,43 @@
 import {
-  Background,
-  BackgroundVariant,
-  Controls,
-  MiniMap,
-  ReactFlow,
-  ReactFlowProvider,
-  useEdgesState,
-  useNodesState,
-  useReactFlow,
-  type Edge,
-  type Node,
-  type NodeChange,
-} from "@xyflow/react";
-import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { applyAssignTableToGroup } from "../../features/schema/apply-schema-edits";
-import { registerDiagramExportApi } from "../../services/diagram-export";
+  createSignal,
+  createEffect,
+  createMemo,
+  For,
+  Show,
+  onMount,
+  onCleanup,
+} from "solid-js";
+import type { Node, Edge } from "../../types/flow";
 import {
   layoutFromNodes,
   saveDiagramLayout,
 } from "../../services/layout-service";
+import { registerDiagramExportApi } from "../../services/diagram-export";
 import { useDiagramStore } from "../../stores/diagram-store";
 import { useDiagramViewStore } from "../../stores/diagram-view-store";
 import { useProjectStore } from "../../stores/project-store";
 import { useUiStore } from "../../stores/ui-store";
-import { isLargeDiagram } from "../../features/diagram/diagram-performance";
 import {
+  groupNodeId,
   isGroupNode,
   syncTableGroupBounds,
 } from "../../features/diagram-layout/table-group-bounds";
 import { useDiagramAutoLayout } from "../../features/diagram-layout/useDiagramAutoLayout";
+import { applyAssignTableToGroup } from "../../features/schema/apply-schema-edits";
 import {
   DiagramContextMenu,
-  type AddToGroupTarget,
   type DiagramContextMenuState,
 } from "./DiagramContextMenu";
 import { DiagramToolbar } from "./DiagramToolbar";
-import { RelationshipEdge, RelationshipEdgeMarkers } from "./RelationshipEdge";
+import { DiagramEdges } from "./DiagramEdges";
+import {
+  getRelationshipEdgePoints,
+  TABLE_NODE_WIDTH,
+} from "../../features/diagram/relationship-edge-geometry";
+import { computeOrthogonalPath } from "./RelationshipEdge";
 import { TableGroupNode, type TableGroupNodeData } from "./TableGroupNode";
-import { TableNode } from "./TableNode";
-
-const nodeTypes = { tableNode: TableNode, tableGroupNode: TableGroupNode };
-const edgeTypes = { relationshipEdge: RelationshipEdge };
+import { TableNode, type TableNodeData } from "./TableNode";
+import { setCanvasContext, type ViewportTransform } from "./canvas-context";
 
 function nodeMatchesSearch(node: Node, query: string): boolean {
   if (isGroupNode(node)) {
@@ -63,11 +59,9 @@ function nodeMatchesSearch(node: Node, query: string): boolean {
 
 function buildRelatedTableIds(
   selectedId: string | null,
-  edges: Edge[],
+  edges: Edge[]
 ): Set<string> | null {
-  if (!selectedId) {
-    return null;
-  }
+  if (!selectedId) return null;
   const related = new Set<string>([selectedId]);
   for (const edge of edges) {
     if (edge.source === selectedId || edge.target === selectedId) {
@@ -78,637 +72,817 @@ function buildRelatedTableIds(
   return related;
 }
 
-function DiagramFlow() {
-  const storeNodes = useDiagramStore((s) => s.nodes);
-  const storeEdges = useDiagramStore((s) => s.edges);
-  const isStale = useDiagramStore((s) => s.isStale);
-  const searchQuery = useDiagramStore((s) => s.searchQuery);
-  const selectTable = useDiagramStore((s) => s.selectTable);
-  const setHoveredTable = useDiagramStore((s) => s.setHoveredTable);
-  const selectedTableId = useDiagramStore((s) => s.selectedTableId);
-  const hoveredTableId = useDiagramStore((s) => s.hoveredTableId);
-  const projectRoot = useProjectStore((s) => s.projectRoot);
-  const entryPoint = useProjectStore((s) => s.entryPoint);
-  const projectScope = useProjectStore((s) => s.projectScope);
-  const projectFiles = useProjectStore((s) => s.files);
-  const openTableEdit = useUiStore((s) => s.openTableEdit);
-  const openTableCreate = useUiStore((s) => s.openTableCreate);
-  const setFlow = useDiagramStore((s) => s.setFlow);
-  const initialFitDone = useRef(false);
-  const layoutEntryRef = useRef<string | null>(null);
-  const nodesRef = useRef(storeNodes);
+export function SchemaDiagram() {
+  const storeNodes = () => useDiagramStore((s) => s.nodes);
+  const storeEdges = () => useDiagramStore((s) => s.edges);
+  const isStale = () => useDiagramStore((s) => s.isStale);
+  const searchQuery = () => useDiagramStore((s) => s.searchQuery);
+  const selectedTableId = () => useDiagramStore((s) => s.selectedTableId);
+  const hoveredTableId = () => useDiagramStore((s) => s.hoveredTableId);
+  const setHoveredTable = useDiagramStore.getState().setHoveredTable;
+  const selectTable = useDiagramStore.getState().selectTable;
+  const entryPoint = () => useProjectStore((s) => s.entryPoint);
+  const projectScope = () => useProjectStore((s) => s.projectScope);
+  const projectFiles = () => useProjectStore((s) => s.files);
 
-  useEffect(() => {
-    initialFitDone.current = false;
-  }, [projectRoot]);
+  const showGrid = () => useDiagramViewStore((s) => s.showGrid);
+  const showControls = () => useDiagramViewStore((s) => s.showControls);
+  const showEdgeLabels = () => useDiagramViewStore((s) => s.showEdgeLabels);
+  const hideUnmatchedSearch = () => useDiagramViewStore((s) => s.hideUnmatchedSearch);
+  const emphasizeRelated = () => useDiagramViewStore((s) => s.emphasizeRelated);
+  const snapToGrid = () => useDiagramViewStore((s) => s.snapToGrid);
+  const pendingViewport = () => useDiagramViewStore((s) => s.pendingViewport);
+  const setPendingViewport = useDiagramViewStore.getState().setPendingViewport;
 
-  const showMinimap = useDiagramViewStore((s) => s.showMinimap);
-  const showGrid = useDiagramViewStore((s) => s.showGrid);
-  const showEdgeLabels = useDiagramViewStore((s) => s.showEdgeLabels);
-  const showControls = useDiagramViewStore((s) => s.showControls);
-  const hideUnmatchedSearch = useDiagramViewStore((s) => s.hideUnmatchedSearch);
-  const emphasizeRelated = useDiagramViewStore((s) => s.emphasizeRelated);
-  const snapToGrid = useDiagramViewStore((s) => s.snapToGrid);
-  const animateRelationships = useDiagramViewStore(
-    (s) => s.animateRelationships,
-  );
-  const pendingViewport = useDiagramViewStore((s) => s.pendingViewport);
-  const setPendingViewport = useDiagramViewStore((s) => s.setPendingViewport);
-
-  const { fitView, setViewport, getViewport, getNodes, getInternalNode } =
-    useReactFlow();
-
-  const [nodes, setNodes, onNodesChange] = useNodesState(storeNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(storeEdges);
-  const saveTimer = useRef<number | null>(null);
-  const viewportTimer = useRef<number | null>(null);
+  const [nodes, setNodes] = createSignal<Node[]>([]);
+  const [edges, setEdges] = createSignal<Edge[]>([]);
+  const [transform, setTransform] = createSignal<ViewportTransform>({
+    x: 40,
+    y: 40,
+    zoom: 1,
+  });
   const [contextMenu, setContextMenu] =
-    useState<DiagramContextMenuState | null>(null);
+    createSignal<DiagramContextMenuState | null>(null);
 
-  const handleNodesChange = useCallback(
-    (changes: NodeChange[]) => {
-      onNodesChange(changes);
-      const hasPositionOrDimensionChange = changes.some(
-        (c) => c.type === "position" || c.type === "dimensions",
-      );
-      if (!hasPositionOrDimensionChange) {
-        return;
-      }
-      setNodes((current) => {
-        if (!current.some(isGroupNode)) {
-          return current;
-        }
-        for (const change of changes) {
-          if (
-            change.type === "position" &&
-            change.position &&
-            isGroupNode({ id: change.id } as Node)
-          ) {
-            const prevGroup = nodesRef.current.find((n) => n.id === change.id);
-            const groupData = prevGroup?.data as TableGroupNodeData | undefined;
-            const memberIds = new Set(groupData?.group?.tableIds ?? []);
-            if (prevGroup && memberIds.size > 0) {
-              const dx = change.position.x - prevGroup.position.x;
-              const dy = change.position.y - prevGroup.position.y;
-              if (dx !== 0 || dy !== 0) {
-                const shifted = current.map((n) =>
-                  memberIds.has(n.id)
-                    ? {
-                        ...n,
-                        position: {
-                          x: n.position.x + dx,
-                          y: n.position.y + dy,
-                        },
-                      }
-                    : n,
-                );
-                return syncTableGroupBounds(shifted);
-              }
-            }
-          }
-        }
-        return syncTableGroupBounds(current);
-      });
-    },
-    [onNodesChange, setNodes],
-  );
+  let containerRef: HTMLDivElement | undefined;
+  let layerEl: HTMLDivElement | undefined;
+  let gridEl: HTMLDivElement | undefined;
+  let isPanning = false;
+  let panStart = { x: 0, y: 0 };
+  let startTransform = { x: 0, y: 0 };
+
+  let draggingNodeId: string | null = null;
+  let dragCaptureTarget: HTMLElement | null = null;
+  let dragPointerId: number | null = null;
+  let dragStartPointer = { x: 0, y: 0 };
+  let dragStartNodePos = { x: 0, y: 0 };
+  let didDrag = false;
+  let dragRafId: number | null = null;
+  let pendingPointerPos: { x: number; y: number } | null = null;
+  let dragEl: HTMLElement | null = null;
+  let dragCompanions: {
+    id: string;
+    el: HTMLElement;
+    startX: number;
+    startY: number;
+  }[] = [];
+  let dragGroupEl: HTMLElement | null = null;
+  let dragGroupInner: HTMLElement | null = null;
+  let dragGroupNodeId: string | null = null;
+  let dragLinks: {
+    group: SVGGElement;
+    edge: Edge;
+    source: Node;
+    target: Node;
+  }[] = [];
+  let viewportDirty = false;
+  let liveViewport: ViewportTransform = { x: 40, y: 40, zoom: 1 };
+  let wheelRafId: number | null = null;
+  let pendingWheel: { mouseX: number; mouseY: number; factor: number } | null = null;
+
+  let initialFitDone = false;
+
+  createEffect(() => {
+    const nextNodes = storeNodes();
+    const nextEdges = storeEdges();
+    if (draggingNodeId) {
+      setEdges(nextEdges);
+      return;
+    }
+    setNodes(nextNodes);
+    setEdges(nextEdges);
+  });
+
+  const zoomIn = () => {
+    setTransform((prev) => {
+      const zoom = Math.min(2.5, prev.zoom * 1.2);
+      return { ...prev, zoom };
+    });
+  };
+
+  const zoomOut = () => {
+    setTransform((prev) => {
+      const zoom = Math.max(0.1, prev.zoom / 1.2);
+      return { ...prev, zoom };
+    });
+  };
+
+  const fitView = (options?: { padding?: number; duration?: number }) => {
+    const currentNodes = nodes();
+    if (currentNodes.length === 0 || !containerRef) return;
+    const rect = containerRef.getBoundingClientRect();
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    for (const node of currentNodes) {
+      const x = node.position.x;
+      const y = node.position.y;
+      const w = node.width ?? TABLE_NODE_WIDTH;
+      const h = node.height ?? 200;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + w);
+      maxY = Math.max(maxY, y + h);
+    }
+
+    const padding = (options?.padding ?? 0.15) * Math.min(rect.width, rect.height);
+    const graphWidth = maxX - minX + padding * 2;
+    const graphHeight = maxY - minY + padding * 2;
+    const scaleX = rect.width / graphWidth;
+    const scaleY = rect.height / graphHeight;
+    const zoom = Math.max(0.15, Math.min(1.2, Math.min(scaleX, scaleY)));
+
+    const x = (rect.width - (maxX - minX) * zoom) / 2 - minX * zoom;
+    const y = (rect.height - (maxY - minY) * zoom) / 2 - minY * zoom;
+
+    setTransform({ x, y, zoom });
+  };
+
+  const applyViewport = (tf: ViewportTransform) => {
+    liveViewport = tf;
+    if (layerEl) {
+      layerEl.style.transform = `translate(${tf.x}px, ${tf.y}px) scale(${tf.zoom})`;
+    }
+    if (gridEl) {
+      const step = tf.zoom < 0.45 ? 80 : tf.zoom < 0.8 ? 40 : 20;
+      const size = step * tf.zoom;
+      const opacity = Math.min(1, Math.max(0.2, (tf.zoom - 0.2) / 0.6));
+      gridEl.style.backgroundSize = `${size}px ${size}px`;
+      gridEl.style.backgroundPosition = `${tf.x}px ${tf.y}px`;
+      gridEl.style.opacity = String(opacity);
+    }
+  };
+
+  createEffect(() => {
+    showGrid();
+    if (viewportDirty) return;
+    applyViewport(transform());
+  });
+
+  createEffect(() => {
+    const vp = pendingViewport();
+    if (vp) {
+      setTransform({ x: vp.x, y: vp.y, zoom: vp.zoom });
+      setPendingViewport(null);
+      initialFitDone = true;
+    } else if (!initialFitDone && nodes().length > 0) {
+      initialFitDone = true;
+      requestAnimationFrame(() => fitView());
+    }
+  });
 
   const layout = useDiagramAutoLayout({
-    nodes: storeNodes,
-    edges: storeEdges,
+    nodes: () => nodes(),
+    edges: () => edges(),
     fitView,
   });
-  const { runLayout, isRunning, canRun, canRunSelection } = layout;
 
-  const largeDiagram = isLargeDiagram(storeNodes.length, storeEdges.length);
+  setCanvasContext({
+    transform,
+    setTransform,
+    zoomIn,
+    zoomOut,
+    fitView,
+    setPendingFitView: () => fitView(),
+  });
 
-  useEffect(() => {
-    nodesRef.current = nodes;
-  }, [nodes]);
-
-  useEffect(() => {
-    setNodes(storeNodes);
-    setEdges(storeEdges);
-  }, [storeNodes, storeEdges, setNodes, setEdges]);
-
-  useEffect(() => {
+  onMount(() => {
     registerDiagramExportApi({
-      getNodes,
-      getEdges: () => edges,
-      getInternalNode,
+      getNodes: () => nodes(),
+      getEdges: () => edges(),
+      getInternalNode: (id: string) => {
+        const n = nodes().find((node) => node.id === id);
+        return n
+          ? {
+              ...n,
+              internals: {
+                positionAbsolute: n.position,
+              },
+            }
+          : undefined;
+      },
     });
-    return () => registerDiagramExportApi(null);
-  }, [getNodes, getInternalNode, edges]);
 
-  useEffect(() => {
-    if (!pendingViewport || storeNodes.length === 0) {
-      return;
-    }
-    void setViewport(pendingViewport, { duration: 0 });
-    setPendingViewport(null);
-    initialFitDone.current = true;
-  }, [pendingViewport, storeNodes.length, setViewport, setPendingViewport]);
+    onCleanup(() => {
+      registerDiagramExportApi(null);
+    });
+  });
 
-  useEffect(() => {
+  const onPointerDown = (e: PointerEvent) => {
+    if (e.button === 2) return;
+    const target = e.target as HTMLElement;
     if (
-      initialFitDone.current ||
-      pendingViewport ||
-      storeNodes.length === 0
+      target.closest(".table-node") ||
+      target.closest(".table-group-node") ||
+      target.closest(".diagram-canvas-controls")
     ) {
       return;
     }
-    initialFitDone.current = true;
-    requestAnimationFrame(() => {
-      void fitView({ padding: 0.12, duration: largeDiagram ? 0 : 200 });
-    });
-  }, [
-    storeNodes.length,
-    pendingViewport,
-    fitView,
-    largeDiagram,
-  ]);
-
-  const highlightTableId = largeDiagram
-    ? selectedTableId
-    : (hoveredTableId ?? selectedTableId);
-  /** Flow animation and labels are selection-only — hover highlight is cheaper. */
-  const flowTableId = selectedTableId;
-
-  const query = searchQuery.trim().toLowerCase();
-  const relationFocusActive =
-    emphasizeRelated && selectedTableId !== null;
-
-  const relatedIds = useMemo(
-    () =>
-      selectedTableId
-        ? buildRelatedTableIds(selectedTableId, edges)
-        : null,
-    [selectedTableId, edges],
-  );
-
-  const searchVisibleIds = useMemo(() => {
-    if (!query || !hideUnmatchedSearch) {
-      return null;
-    }
-    const ids = new Set<string>();
-    for (const node of nodes) {
-      if (nodeMatchesSearch(node, query)) {
-        ids.add(node.id);
-      }
-    }
-    return ids;
-  }, [nodes, query, hideUnmatchedSearch]);
-
-  const displayNodes = useMemo(() => {
-    const needsSearchStyling = Boolean(query);
-    const needsRelationDimming =
-      relationFocusActive && relatedIds !== null;
-
-    if (!needsSearchStyling && !needsRelationDimming) {
-      return nodes;
-    }
-
-    let visibleNodes: Node[] = nodes;
-
-    if (query) {
-      const matchedTableIds = new Set(
-        nodes
-          .filter((n) => !isGroupNode(n) && nodeMatchesSearch(n, query))
-          .map((n) => n.id),
-      );
-      const nodeMatchesOrHasMember = (node: Node) => {
-        if (!isGroupNode(node)) {
-          return matchedTableIds.has(node.id);
-        }
-        const group = (node.data as TableGroupNodeData).group;
-        return (
-          nodeMatchesSearch(node, query) ||
-          (group?.tableIds ?? []).some((id) => matchedTableIds.has(id))
-        );
-      };
-      if (hideUnmatchedSearch) {
-        visibleNodes = nodes.filter(nodeMatchesOrHasMember);
-      } else {
-        visibleNodes = nodes.map((node) => ({
-          ...node,
-          data: {
-            ...node.data,
-            dimmed: !nodeMatchesOrHasMember(node),
-          },
-        }));
-      }
-    } else {
-      visibleNodes = nodes.map((node) => ({
-        ...node,
-        data: {
-          ...node.data,
-          dimmed: false,
-        },
-      }));
-    }
-
-    if (needsRelationDimming) {
-      visibleNodes = visibleNodes.map((node) => {
-        const inRelated = isGroupNode(node)
-          ? ((node.data as TableGroupNodeData).group?.tableIds ?? []).some(
-              (id) => relatedIds.has(id),
-            )
-          : relatedIds.has(node.id);
-        const prevDimmed = (node.data as { dimmed?: boolean }).dimmed ?? false;
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            dimmed: prevDimmed || !inRelated,
-          },
-        };
-      });
-    }
-
-    return visibleNodes;
-  }, [
-    nodes,
-    query,
-    hideUnmatchedSearch,
-    relatedIds,
-    relationFocusActive,
-  ]);
-
-  const displayEdges = useMemo(() => {
-    const needsEdgeDecor =
-      searchVisibleIds !== null ||
-      relationFocusActive ||
-      highlightTableId !== null ||
-      (showEdgeLabels && flowTableId !== null) ||
-      animateRelationships;
-    if (!needsEdgeDecor) {
-      return edges;
-    }
-
-    return edges.map((edge) => {
-      const hiddenBySearch =
-        searchVisibleIds !== null &&
-        (!searchVisibleIds.has(edge.source) ||
-          !searchVisibleIds.has(edge.target));
-      const dimmedByRelation =
-        relationFocusActive &&
-        relatedIds !== null &&
-        (!relatedIds.has(edge.source) || !relatedIds.has(edge.target));
-      const isHighlightedEdge =
-        highlightTableId !== null &&
-        (edge.source === highlightTableId || edge.target === highlightTableId);
-      const isFlowEdge =
-        flowTableId !== null &&
-        (edge.source === flowTableId || edge.target === flowTableId);
-      return {
-        ...edge,
-        hidden: Boolean(hiddenBySearch),
-        data: {
-          ...edge.data,
-          showLabels: showEdgeLabels && isFlowEdge,
-          dimmed: Boolean(dimmedByRelation),
-          highlighted: isHighlightedEdge,
-          animate:
-            animateRelationships && isFlowEdge && !dimmedByRelation,
-        },
-      };
-    });
-  }, [
-    edges,
-    searchVisibleIds,
-    relatedIds,
-    selectedTableId,
-    highlightTableId,
-    flowTableId,
-    showEdgeLabels,
-    animateRelationships,
-    relationFocusActive,
-  ]);
-
-  const onNodeClick = useCallback(
-    (_: unknown, node: Node) => {
-      if (isGroupNode(node)) {
-        const group = (node.data as TableGroupNodeData).group;
-        if (group && group.tableIds.length > 0) {
-          void fitView({
-            nodes: group.tableIds.map((id) => ({ id })),
-            padding: 0.3,
-            duration: 280,
-          });
-        }
-        return;
-      }
-      if (selectedTableId === node.id) {
-        selectTable(null);
-        return;
-      }
-      selectTable(node.id);
-    },
-    [selectTable, selectedTableId, fitView],
-  );
-
-  const onPaneClick = useCallback(() => {
     selectTable(null);
     setHoveredTable(null);
-  }, [selectTable, setHoveredTable]);
+    isPanning = true;
+    panStart = { x: e.clientX, y: e.clientY };
+    startTransform = { x: transform().x, y: transform().y };
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+  };
 
-  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+  const flushPointerMove = () => {
+    dragRafId = null;
+    if (!pendingPointerPos) return;
+    const { x: clientX, y: clientY } = pendingPointerPos;
+    pendingPointerPos = null;
 
-  const onPaneContextMenu = useCallback(
-    (event: MouseEvent | React.MouseEvent) => {
-      event.preventDefault();
-      setContextMenu({ x: event.clientX, y: event.clientY, tableId: null });
-    },
-    [],
-  );
-
-  const onNodeContextMenu = useCallback(
-    (event: React.MouseEvent, node: Node) => {
-      event.preventDefault();
-      if (isGroupNode(node)) {
-        setContextMenu({ x: event.clientX, y: event.clientY, tableId: null });
-        return;
-      }
-      selectTable(node.id);
-      setContextMenu({ x: event.clientX, y: event.clientY, tableId: node.id });
-    },
-    [selectTable],
-  );
-
-  const focusTable = useCallback(
-    (tableId: string) => {
-      void fitView({
-        nodes: [{ id: tableId }],
-        padding: 0.5,
-        duration: 300,
+    if (isPanning) {
+      const dx = clientX - panStart.x;
+      const dy = clientY - panStart.y;
+      viewportDirty = true;
+      applyViewport({
+        x: startTransform.x + dx,
+        y: startTransform.y + dy,
+        zoom: transform().zoom,
       });
-    },
-    [fitView],
-  );
-
-  const editTable = useCallback(
-    (tableId: string) => {
-      selectTable(tableId);
-      openTableEdit();
-    },
-    [selectTable, openTableEdit],
-  );
-
-  const newTable = useCallback(() => openTableCreate(), [openTableCreate]);
-
-  const addTableToGroup = useCallback(
-    (tableId: string, target: AddToGroupTarget) => {
-      const { model } = useDiagramStore.getState();
-      const table = model?.tables.find((t) => t.id === tableId);
-      if (!table) {
-        return;
+    } else if (draggingNodeId && dragEl) {
+      const rawDx = clientX - dragStartPointer.x;
+      const rawDy = clientY - dragStartPointer.y;
+      if (!didDrag && (Math.abs(rawDx) > 3 || Math.abs(rawDy) > 3)) {
+        didDrag = true;
       }
-      const scope = { entryPoint, projectScope };
-      if (target.kind === "existing") {
-        const group = model?.tableGroups?.find((g) => g.id === target.groupId);
-        if (!group) {
-          return;
-        }
-        void applyAssignTableToGroup(table, group, projectFiles, scope);
-        return;
+
+      const tf = transform();
+      const dx = rawDx / tf.zoom;
+      const dy = rawDy / tf.zoom;
+      let newX = dragStartNodePos.x + dx;
+      let newY = dragStartNodePos.y + dy;
+
+      if (snapToGrid()) {
+        newX = Math.round(newX / 20) * 20;
+        newY = Math.round(newY / 20) * 20;
       }
-      void applyAssignTableToGroup(
-        table,
-        { name: target.name, schema: table.schema },
-        projectFiles,
-        scope,
-      );
-    },
-    [entryPoint, projectFiles, projectScope],
-  );
 
-  const removeTableFromGroup = useCallback(
-    (tableId: string) => {
-      const table = useDiagramStore
-        .getState()
-        .model?.tables.find((t) => t.id === tableId);
-      if (!table) {
-        return;
+      dragEl.style.left = `${newX}px`;
+      dragEl.style.top = `${newY}px`;
+      const movedX = newX - dragStartNodePos.x;
+      const movedY = newY - dragStartNodePos.y;
+      const positions = new Map<string, { x: number; y: number }>([
+        [draggingNodeId, { x: newX, y: newY }],
+      ]);
+      for (const companion of dragCompanions) {
+        const x = companion.startX + movedX;
+        const y = companion.startY + movedY;
+        companion.el.style.left = `${x}px`;
+        companion.el.style.top = `${y}px`;
+        positions.set(companion.id, { x, y });
       }
-      void applyAssignTableToGroup(table, null, projectFiles, {
-        entryPoint,
-        projectScope,
-      });
-    },
-    [entryPoint, projectFiles, projectScope],
-  );
-
-  const hoverFrame = useRef<number | null>(null);
-  const hoveredRef = useRef<string | null>(null);
-
-  const onNodeMouseEnter = useCallback(
-    (_: unknown, node: Node) => {
-      if (largeDiagram || isGroupNode(node)) {
-        return;
-      }
-      if (hoveredRef.current === node.id) {
-        return;
-      }
-      hoveredRef.current = node.id;
-      if (hoverFrame.current !== null) {
-        cancelAnimationFrame(hoverFrame.current);
-      }
-      hoverFrame.current = requestAnimationFrame(() => {
-        hoverFrame.current = null;
-        setHoveredTable(node.id);
-      });
-    },
-    [setHoveredTable, largeDiagram],
-  );
-
-  const onNodeMouseLeave = useCallback(() => {
-    if (largeDiagram) {
-      return;
+      paintDraggedEdges(positions);
+      paintDraggedGroup(positions);
     }
-    hoveredRef.current = null;
-    if (hoverFrame.current !== null) {
-      cancelAnimationFrame(hoverFrame.current);
-      hoverFrame.current = null;
-    }
-    setHoveredTable(null);
-  }, [setHoveredTable, largeDiagram]);
+  };
 
-  const persistLayoutForEntry = useCallback(
-    (relativeEntry: string, snapshot: Node[]) => {
-      if (!projectRoot) {
-        return;
-      }
-      const viewport = getViewport();
-      void saveDiagramLayout(
-        relativeEntry,
-        layoutFromNodes(snapshot, viewport),
-      );
-    },
-    [projectRoot, getViewport],
-  );
-
-  useEffect(() => {
-    const previousEntry = layoutEntryRef.current;
-    if (
-      previousEntry &&
-      entryPoint &&
-      previousEntry !== entryPoint &&
-      projectRoot
-    ) {
-      if (saveTimer.current) {
-        window.clearTimeout(saveTimer.current);
-        saveTimer.current = null;
-      }
-      persistLayoutForEntry(previousEntry, nodesRef.current);
-    }
-    layoutEntryRef.current = entryPoint ?? null;
-    initialFitDone.current = false;
-  }, [entryPoint, projectRoot, persistLayoutForEntry]);
-
-  const persistLayout = useCallback(() => {
-    const relativeEntry = layoutEntryRef.current ?? entryPoint;
-    if (!relativeEntry || !projectRoot) {
-      return;
-    }
-    persistLayoutForEntry(relativeEntry, nodes);
-  }, [entryPoint, projectRoot, nodes, persistLayoutForEntry]);
-
-  const onNodeDragStop = useCallback(() => {
-    setFlow(nodes, edges);
-    if (saveTimer.current) {
-      window.clearTimeout(saveTimer.current);
-    }
-    saveTimer.current = window.setTimeout(persistLayout, 400);
-  }, [nodes, edges, setFlow, persistLayout]);
-
-  const onMoveEnd = useCallback(() => {
-    if (!projectRoot) {
-      return;
-    }
-    if (viewportTimer.current) {
-      window.clearTimeout(viewportTimer.current);
-    }
-    viewportTimer.current = window.setTimeout(persistLayout, 500);
-  }, [projectRoot, persistLayout]);
-
-  const focusSearch = useCallback(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) {
-      return;
-    }
-    const matching = nodes.filter((n) => nodeMatchesSearch(n, q)).map((n) => n.id);
-    if (matching.length === 0) {
-      return;
-    }
-    void fitView({
-      nodes: matching.map((id) => ({ id })),
-      padding: 0.25,
-      duration: 300,
+  const paintDraggedGroup = (positions: Map<string, { x: number; y: number }>) => {
+    if (!dragGroupEl || !dragGroupNodeId) return;
+    const preview = nodes().map((node) => {
+      const next = positions.get(node.id);
+      return next ? { ...node, position: next } : node;
     });
-  }, [searchQuery, nodes, fitView]);
-
-  const focusSelection = useCallback(() => {
-    if (!selectedTableId) {
-      return;
+    const group = syncTableGroupBounds(preview).find(
+      (node) => node.id === dragGroupNodeId,
+    );
+    if (!group) return;
+    dragGroupEl.style.left = `${group.position.x}px`;
+    dragGroupEl.style.top = `${group.position.y}px`;
+    if (dragGroupInner) {
+      dragGroupInner.style.width = `${group.width}px`;
+      dragGroupInner.style.height = `${group.height}px`;
     }
-    void fitView({
-      nodes: [{ id: selectedTableId }],
-      padding: 0.5,
-      duration: 300,
+  };
+
+  const paintDraggedEdges = (positions: Map<string, { x: number; y: number }>) => {
+    for (const link of dragLinks) {
+      const sourcePos = positions.get(link.edge.source);
+      const targetPos = positions.get(link.edge.target);
+      const source = sourcePos
+        ? { ...link.source, position: sourcePos }
+        : link.source;
+      const target = targetPos
+        ? { ...link.target, position: targetPos }
+        : link.target;
+      const [d, labelX, labelY, arrow] = computeOrthogonalPath({
+        ...getRelationshipEdgePoints(link.edge, source, target),
+        channel: Number(link.group.dataset.channel ?? 0),
+      });
+      const paths = link.group.querySelectorAll("path");
+      for (const path of paths) {
+        path.setAttribute(
+          "d",
+          path.classList.contains("relationship-edge-arrow") ? arrow : d,
+        );
+      }
+      const label = link.group.querySelector("foreignObject");
+      if (label) {
+        label.setAttribute("x", String(labelX - 80));
+        label.setAttribute("y", String(labelY - 14));
+      }
+    }
+  };
+
+  const onPointerMove = (e: PointerEvent) => {
+    pendingPointerPos = { x: e.clientX, y: e.clientY };
+    if (dragRafId === null) {
+      dragRafId = requestAnimationFrame(flushPointerMove);
+    }
+  };
+
+  const onPointerUp = () => {
+    if (dragRafId !== null) {
+      cancelAnimationFrame(dragRafId);
+      dragRafId = null;
+    }
+    if (pendingPointerPos) {
+      flushPointerMove();
+    }
+    if (isPanning) {
+      isPanning = false;
+      viewportDirty = false;
+      setTransform({ ...liveViewport });
+    }
+    if (dragCaptureTarget && dragPointerId !== null) {
+      try {
+        dragCaptureTarget.releasePointerCapture(dragPointerId);
+      } catch {
+        /* already released */
+      }
+      dragCaptureTarget = null;
+      dragPointerId = null;
+    }
+    if (draggingNodeId) {
+      const id = draggingNodeId;
+      const left = dragEl ? Number.parseFloat(dragEl.style.left) : dragStartNodePos.x;
+      const top = dragEl ? Number.parseFloat(dragEl.style.top) : dragStartNodePos.y;
+      const positions = new Map<string, { x: number; y: number }>([
+        [id, { x: left, y: top }],
+      ]);
+      for (const companion of dragCompanions) {
+        positions.set(companion.id, {
+          x: Number.parseFloat(companion.el.style.left),
+          y: Number.parseFloat(companion.el.style.top),
+        });
+      }
+      draggingNodeId = null;
+      dragEl = null;
+      dragCompanions = [];
+      dragGroupEl = null;
+      dragGroupInner = null;
+      dragGroupNodeId = null;
+      dragLinks = [];
+      if (didDrag) {
+        setNodes((current) =>
+          syncTableGroupBounds(
+            current.map((n) => {
+              const next = positions.get(n.id);
+              return next ? { ...n, position: next } : n;
+            }),
+          ),
+        );
+      }
+      useDiagramStore.getState().setFlow(nodes(), edges());
+      const entry = entryPoint();
+      if (entry) {
+        saveDiagramLayout(entry, layoutFromNodes(nodes(), transform()));
+      }
+    }
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", onPointerUp);
+  };
+
+  const flushWheel = () => {
+    wheelRafId = null;
+    const pending = pendingWheel;
+    pendingWheel = null;
+    if (!pending) return;
+    const { mouseX, mouseY, factor } = pending;
+    setTransform((prev) => {
+      const newZoom = Math.max(0.1, Math.min(2.5, prev.zoom * factor));
+      const newX = mouseX - (mouseX - prev.x) * (newZoom / prev.zoom);
+      const newY = mouseY - (mouseY - prev.y) * (newZoom / prev.zoom);
+      return { x: newX, y: newY, zoom: newZoom };
     });
-  }, [selectedTableId, fitView]);
+  };
+
+  const onWheel = (e: WheelEvent) => {
+    e.preventDefault();
+    if (!containerRef) return;
+    const rect = containerRef.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+    if (pendingWheel) {
+      pendingWheel.mouseX = mouseX;
+      pendingWheel.mouseY = mouseY;
+      pendingWheel.factor *= zoomFactor;
+    } else {
+      pendingWheel = { mouseX, mouseY, factor: zoomFactor };
+    }
+    if (wheelRafId === null) {
+      wheelRafId = requestAnimationFrame(flushWheel);
+    }
+  };
+
+  const startDragNode = (id: string, e: PointerEvent) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    e.preventDefault();
+    draggingNodeId = id;
+    didDrag = false;
+    dragStartPointer = { x: e.clientX, y: e.clientY };
+    const n = nodes().find((node) => node.id === id);
+    if (n) {
+      dragStartNodePos = { x: n.position.x, y: n.position.y };
+    }
+    dragCaptureTarget = (e.currentTarget as HTMLElement | undefined) ?? null;
+    dragPointerId = e.pointerId;
+    dragCaptureTarget?.setPointerCapture(e.pointerId);
+    dragEl = containerRef?.querySelector(
+      `.diagram-node-wrapper[data-node-id="${CSS.escape(id)}"]`,
+    ) as HTMLElement | null;
+    const currentNodes = nodes();
+    const byId = new Map(currentNodes.map((node) => [node.id, node]));
+    dragCompanions = [];
+    dragGroupEl = null;
+    dragGroupInner = null;
+    dragGroupNodeId = null;
+    const dragged = byId.get(id);
+    const memberIds =
+      dragged && isGroupNode(dragged)
+        ? ((dragged.data as TableGroupNodeData).group?.tableIds ?? [])
+        : [];
+    if (containerRef && memberIds.length > 0) {
+      for (const memberId of memberIds) {
+        const member = byId.get(memberId);
+        const el = containerRef.querySelector(
+          `.diagram-node-wrapper[data-node-id="${CSS.escape(memberId)}"]`,
+        ) as HTMLElement | null;
+        if (!member || !el) continue;
+        dragCompanions.push({
+          id: memberId,
+          el,
+          startX: member.position.x,
+          startY: member.position.y,
+        });
+      }
+    } else if (containerRef && dragged && !isGroupNode(dragged)) {
+      const groupId = (dragged.data as TableNodeData | undefined)?.table?.groupId;
+      if (groupId) {
+        dragGroupNodeId = groupNodeId(groupId);
+        dragGroupEl = containerRef.querySelector(
+          `.diagram-node-wrapper[data-node-id="${CSS.escape(dragGroupNodeId)}"]`,
+        ) as HTMLElement | null;
+        dragGroupInner = dragGroupEl?.querySelector(
+          ".table-group-node",
+        ) as HTMLElement | null;
+      }
+    }
+    const movingIds = new Set([id, ...memberIds]);
+    dragLinks = [];
+    if (containerRef) {
+      const selector = [...movingIds]
+        .flatMap((movingId) => [
+          `g.relationship-edge-group[data-source="${CSS.escape(movingId)}"]`,
+          `g.relationship-edge-group[data-target="${CSS.escape(movingId)}"]`,
+        ])
+        .join(", ");
+      const groups = selector
+        ? containerRef.querySelectorAll<SVGGElement>(selector)
+        : [];
+      for (const group of groups) {
+        const edge = edges().find((item) => item.id === group.dataset.edgeId);
+        if (!edge) continue;
+        const source = byId.get(edge.source);
+        const target = byId.get(edge.target);
+        if (!source || !target) continue;
+        dragLinks.push({ group, edge, source, target });
+      }
+    }
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+  };
+
+  const onContextMenu = (e: MouseEvent) => {
+    e.preventDefault();
+    const target = e.target as HTMLElement;
+    const nodeEl = target.closest(".table-node") as HTMLElement | null;
+    const tableId = nodeEl?.getAttribute("data-node-id") ?? null;
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      tableId,
+    });
+  };
+
+  const query = () => searchQuery().trim().toLowerCase();
+
+  const visibleEdges = () => {
+    const list = edges();
+    const q = query();
+    if (!q || !hideUnmatchedSearch()) return list;
+    const ids = new Set(
+      nodes()
+        .filter((node) => nodeMatchesSearch(node, q))
+        .map((node) => node.id),
+    );
+    return list.filter((edge) => ids.has(edge.source) && ids.has(edge.target));
+  };
+
+  const relatedIds = createMemo(() => {
+    const sel = selectedTableId();
+    return sel ? buildRelatedTableIds(sel, edges()) : null;
+  });
+
+  const focusSearch = () => {
+    const q = query();
+    if (!q || !containerRef) return;
+    const matching = nodes().filter((n) => nodeMatchesSearch(n, q));
+    if (matching.length === 0) return;
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const n of matching) {
+      minX = Math.min(minX, n.position.x);
+      minY = Math.min(minY, n.position.y);
+      maxX = Math.max(maxX, n.position.x + (n.width ?? TABLE_NODE_WIDTH));
+      maxY = Math.max(maxY, n.position.y + (n.height ?? 200));
+    }
+    const rect = containerRef.getBoundingClientRect();
+    const pad = 80;
+    const zoom = Math.max(0.2, Math.min(1.2, Math.min(rect.width / (maxX - minX + pad), rect.height / (maxY - minY + pad))));
+    const x = (rect.width - (maxX - minX) * zoom) / 2 - minX * zoom;
+    const y = (rect.height - (maxY - minY) * zoom) / 2 - minY * zoom;
+    setTransform({ x, y, zoom });
+  };
+
+  const focusSelection = () => {
+    const selId = selectedTableId();
+    if (!selId || !containerRef) return;
+    const node = nodes().find((n) => n.id === selId);
+    if (!node) return;
+    const rect = containerRef.getBoundingClientRect();
+    const targetZoom = 1;
+    const x = rect.width / 2 - (node.position.x + 130) * targetZoom;
+    const y = rect.height / 2 - (node.position.y + 80) * targetZoom;
+    setTransform({ x, y, zoom: targetZoom });
+  };
 
   return (
-    <>
-      {isStale && (
-        <div className="stale-banner">Showing last valid schema — fix parse errors to refresh.</div>
-      )}
+    <div class="panel panel-fill panel-flush" style={{ display: "flex", "flex-direction": "column" }}>
+      <Show when={isStale()}>
+        <div class="stale-banner">
+          Showing last valid schema — fix parse errors to refresh.
+        </div>
+      </Show>
+
       <DiagramToolbar
         onFocusSearch={focusSearch}
         onFocusSelection={focusSelection}
         layout={layout}
       />
-      <div className="diagram-canvas">
-        <ReactFlow
-          nodes={displayNodes}
-          edges={displayEdges}
-          onNodesChange={handleNodesChange}
-          onEdgesChange={onEdgesChange}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          onPaneClick={onPaneClick}
-          onPaneContextMenu={onPaneContextMenu}
-          onNodeClick={onNodeClick}
-          onNodeContextMenu={onNodeContextMenu}
-          onNodeMouseEnter={onNodeMouseEnter}
-          onNodeMouseLeave={onNodeMouseLeave}
-          onNodeDragStop={onNodeDragStop}
-          onMoveEnd={onMoveEnd}
-          nodesDraggable
-          snapToGrid={snapToGrid}
-          snapGrid={[16, 16]}
-          minZoom={0.08}
-          maxZoom={2}
-          onlyRenderVisibleElements
-          elevateNodesOnSelect={false}
-          autoPanOnNodeFocus={false}
-          proOptions={{ hideAttribution: true }}
+
+      <div
+        ref={containerRef}
+        class="diagram-canvas"
+        onPointerDown={onPointerDown}
+        onWheel={onWheel}
+        onContextMenu={onContextMenu}
+        style={{
+          position: "relative",
+          width: "100%",
+          height: "100%",
+          overflow: "hidden",
+          "user-select": "none",
+        }}
+      >
+        <Show when={showGrid()}>
+          <div
+            ref={gridEl}
+            class="diagram-grid-overlay"
+            style={{
+              position: "absolute",
+              inset: 0,
+              "pointer-events": "none",
+            }}
+          />
+        </Show>
+
+        <div
+          ref={layerEl}
+          class="diagram-canvas-layer"
+          style={{
+            "transform-origin": "0 0",
+            position: "absolute",
+            inset: 0,
+            "pointer-events": "auto",
+          }}
         >
-          <RelationshipEdgeMarkers />
-          {showGrid && (
-            <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
-          )}
-          {showMinimap && (
-            <MiniMap
-              pannable
-              zoomable
-              className="diagram-minimap"
-              maskColor="color-mix(in srgb, var(--bg-app) 65%, transparent)"
+          <DiagramEdges
+            nodes={nodes}
+            edges={visibleEdges}
+            showLabels={showEdgeLabels}
+            emphasizeRelated={emphasizeRelated}
+            selectedId={selectedTableId}
+            hoveredId={hoveredTableId}
+          />
+
+          <For each={nodes()}>
+            {(node) => {
+              const isGroup = () => isGroupNode(node);
+              const isSelected = () => node.id === selectedTableId();
+              const isDimmed = () => {
+                if (emphasizeRelated() && relatedIds()) {
+                  const rel = relatedIds()!;
+                  if (isGroup()) {
+                    const g = (node.data as TableGroupNodeData).group;
+                    const hasTable = (g?.tableIds ?? []).some((id) => rel.has(id));
+                    if (!hasTable) return true;
+                  } else if (!rel.has(node.id)) {
+                    return true;
+                  }
+                }
+                const q = query();
+                if (q && !nodeMatchesSearch(node, q)) {
+                  return true;
+                }
+                return false;
+              };
+
+              const isHidden = () => {
+                const q = query();
+                if (q && hideUnmatchedSearch() && !nodeMatchesSearch(node, q)) {
+                  return true;
+                }
+                return false;
+              };
+
+              return (
+                <Show when={!isHidden()}>
+                  <div
+                    class={`diagram-node-wrapper ${isGroup() ? "group-wrapper" : "table-wrapper"}${isDimmed() ? " is-dimmed" : ""}`}
+                    data-node-id={node.id}
+                    style={{
+                      position: "absolute",
+                      left: `${node.position.x}px`,
+                      top: `${node.position.y}px`,
+                      "z-index": isGroup() ? 1 : isSelected() ? 10 : 2,
+                      cursor: "grab",
+                      "touch-action": "none",
+                    }}
+                    onPointerDown={(e) => startDragNode(node.id, e)}
+                    onMouseEnter={() => {
+                      if (!isGroup()) {
+                        setHoveredTable(node.id);
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      if (!isGroup()) {
+                        setHoveredTable(null);
+                      }
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (didDrag) return;
+                      if (!isGroup()) {
+                        if (selectedTableId() === node.id) {
+                          selectTable(null);
+                        } else {
+                          selectTable(node.id);
+                        }
+                      } else {
+                        const group = (node.data as TableGroupNodeData).group;
+                        if (group && group.tableIds.length > 0) {
+                          const memberNodes = nodes().filter((n) => group.tableIds.includes(n.id));
+                          if (memberNodes.length > 0 && containerRef) {
+                            let minX = Infinity;
+                            let minY = Infinity;
+                            let maxX = -Infinity;
+                            let maxY = -Infinity;
+                            for (const n of memberNodes) {
+                              minX = Math.min(minX, n.position.x);
+                              minY = Math.min(minY, n.position.y);
+                              maxX = Math.max(maxX, n.position.x + (n.width ?? TABLE_NODE_WIDTH));
+                              maxY = Math.max(maxY, n.position.y + (n.height ?? 200));
+                            }
+                            const rect = containerRef.getBoundingClientRect();
+                            const pad = 100;
+                            const zoom = Math.max(0.2, Math.min(1.2, Math.min(rect.width / (maxX - minX + pad), rect.height / (maxY - minY + pad))));
+                            const x = (rect.width - (maxX - minX) * zoom) / 2 - minX * zoom;
+                            const y = (rect.height - (maxY - minY) * zoom) / 2 - minY * zoom;
+                            setTransform({ x, y, zoom });
+                          }
+                        }
+                      }
+                    }}
+                  >
+                    <Show
+                      when={isGroup()}
+                      fallback={
+                        <TableNode
+                          id={node.id}
+                          selected={isSelected()}
+                          data={node.data as TableNodeData}
+                        />
+                      }
+                    >
+                      <TableGroupNode
+                        id={node.id}
+                        selected={isSelected()}
+                        data={node.data as TableGroupNodeData}
+                      />
+                    </Show>
+                  </div>
+                </Show>
+              );
+            }}
+          </For>
+        </div>
+
+        <Show when={showControls()}>
+          <div
+            class="diagram-canvas-controls"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <button type="button" title="Zoom in" onClick={zoomIn}>
+              +
+            </button>
+            <button type="button" title="Zoom out" onClick={zoomOut}>
+              −
+            </button>
+            <button type="button" title="Fit view" onClick={() => fitView()}>
+              ⌂
+            </button>
+          </div>
+        </Show>
+
+        <Show when={contextMenu()}>
+          {(menu) => (
+            <DiagramContextMenu
+              state={menu()}
+              isRunning={layout.isRunning}
+              canRun={layout.canRun}
+              canRunSelection={layout.canRunSelection}
+              onRunLayout={layout.runLayout}
+              onFitView={() => fitView()}
+              onFocusTable={(id) => {
+                selectTable(id);
+                focusSelection();
+              }}
+              onEditTable={(id) => {
+                selectTable(id);
+                useUiStore.getState().openTableEdit();
+              }}
+              onNewTable={() => useUiStore.getState().openTableCreate()}
+              onAddToGroup={(tableId, target) => {
+                const table = useDiagramStore
+                  .getState()
+                  .lastValidModel?.tables.find((t) => t.id === tableId);
+                if (!table) return;
+                const groupTarget =
+                  target.kind === "existing"
+                    ? {
+                        name:
+                          useDiagramStore
+                            .getState()
+                            .model?.tableGroups?.find(
+                              (g) => g.id === target.groupId
+                            )?.name ?? target.groupId,
+                      }
+                    : { name: target.name };
+                void applyAssignTableToGroup(
+                  table,
+                  groupTarget,
+                  projectFiles(),
+                  {
+                    entryPoint: entryPoint(),
+                    projectScope: projectScope(),
+                  }
+                );
+              }}
+              onRemoveFromGroup={(tableId) => {
+                const table = useDiagramStore
+                  .getState()
+                  .lastValidModel?.tables.find((t) => t.id === tableId);
+                if (!table) return;
+                void applyAssignTableToGroup(table, null, projectFiles(), {
+                  entryPoint: entryPoint(),
+                  projectScope: projectScope(),
+                });
+              }}
+              onClose={() => setContextMenu(null)}
             />
           )}
-          {showControls && <Controls showInteractive={false} />}
-        </ReactFlow>
+        </Show>
       </div>
-      {contextMenu && (
-        <DiagramContextMenu
-          state={contextMenu}
-          isRunning={isRunning}
-          canRun={canRun}
-          canRunSelection={canRunSelection}
-          onRunLayout={runLayout}
-          onFitView={() => fitView({ padding: 0.15, duration: 280 })}
-          onFocusTable={focusTable}
-          onEditTable={editTable}
-          onNewTable={newTable}
-          onAddToGroup={addTableToGroup}
-          onRemoveFromGroup={removeTableFromGroup}
-          onClose={closeContextMenu}
-        />
-      )}
-    </>
-  );
-}
-
-export function SchemaDiagram() {
-  const projectRoot = useProjectStore((s) => s.projectRoot);
-
-  if (!projectRoot) {
-    return (
-      <div className="panel panel-fill panel-flush">
-        <div className="diagram-canvas workspace-empty">
-          <p className="empty-hint">
-            Diagram preview appears when a project is open.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="panel panel-fill panel-flush">
-      <ReactFlowProvider>
-        <DiagramFlow />
-      </ReactFlowProvider>
     </div>
   );
 }

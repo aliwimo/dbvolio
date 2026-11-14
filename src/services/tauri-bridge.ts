@@ -102,6 +102,10 @@ export interface DbmlOpenPayload {
   relativePath?: string;
 }
 
+export async function fileExplorerName(): Promise<string> {
+  return invoke<string>("file_explorer_name");
+}
+
 export async function takePendingDbmlOpens(): Promise<DbmlOpenPayload[]> {
   return invoke<DbmlOpenPayload[]>("take_pending_dbml_opens");
 }

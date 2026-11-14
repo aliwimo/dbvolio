@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { createStoreFactory } from "./create-store";
 import {
   type EditorSettings,
   editorSettingsDefaults,
@@ -83,7 +83,7 @@ function snapshot(state: AppSettingsState): StoredSettings {
 
 const initial = loadSettings();
 
-export const useAppSettingsStore = create<AppSettingsState>((set) => ({
+export const useAppSettingsStore = createStoreFactory<AppSettingsState>((set) => ({
   ...initial,
 
   patchEditorSettings: (patch) => {

@@ -1,6 +1,6 @@
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { isTauri } from "@tauri-apps/api/core";
-import { useEffect } from "react";
+import { onCleanup, onMount } from "solid-js";
 import { normalizePendingOpens } from "./normalize-pending-opens";
 import {
   takePendingDbmlOpens,
@@ -18,7 +18,7 @@ async function openPayload(payload: DbmlOpenPayload): Promise<void> {
 }
 
 export function useExternalDbmlOpen(): void {
-  useEffect(() => {
+  onMount(() => {
     if (!isTauri()) {
       return;
     }
@@ -47,9 +47,9 @@ export function useExternalDbmlOpen(): void {
       }
     })();
 
-    return () => {
+    onCleanup(() => {
       cancelled = true;
       unlisten?.();
-    };
-  }, []);
+    });
+  });
 }

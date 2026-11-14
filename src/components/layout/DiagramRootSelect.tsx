@@ -1,46 +1,45 @@
-import { ChevronDown, FileCode } from "lucide-react";
-import { useMemo } from "react";
+import { ChevronDown, FileCode } from "lucide-solid";
+import { For, Show } from "solid-js";
 import { useProjectStore } from "../../stores/project-store";
 
 export function DiagramRootSelect() {
-  const projectRoot = useProjectStore((s) => s.projectRoot);
-  const files = useProjectStore((s) => s.files);
-  const entryPoint = useProjectStore((s) => s.entryPoint);
-  const setEntryPoint = useProjectStore((s) => s.setEntryPoint);
+  const projectRoot = () => useProjectStore((s) => s.projectRoot);
+  const files = () => useProjectStore((s) => s.files);
+  const entryPoint = () => useProjectStore((s) => s.entryPoint);
+  const setEntryPoint = useProjectStore.getState().setEntryPoint;
 
-  const dbmlPaths = useMemo(
-    () =>
-      files
-        .filter(
-          (f) => !f.isDirectory && f.relativePath.endsWith(".dbml"),
-        )
-        .map((f) => f.relativePath)
-        .sort((a, b) => a.localeCompare(b)),
-    [files],
-  );
+  const dbmlPaths = () =>
+    files()
+      .filter((f) => !f.isDirectory && f.relativePath.endsWith(".dbml"))
+      .map((f) => f.relativePath)
+      .sort((a, b) => a.localeCompare(b));
 
-  if (!projectRoot || dbmlPaths.length === 0) {
-    return null;
-  }
-
-  const value = entryPoint && dbmlPaths.includes(entryPoint) ? entryPoint : dbmlPaths[0];
+  const value = () => {
+    const ep = entryPoint();
+    const paths = dbmlPaths();
+    return ep && paths.includes(ep) ? ep : paths[0];
+  };
 
   return (
-    <label className="header-diagram-root" title="DBML file used to build the diagram">
-      <FileCode size={13} strokeWidth={2} aria-hidden />
-      <select
-        className="select-compact header-entry-select"
-        value={value}
-        onChange={(e) => setEntryPoint(e.target.value)}
-        aria-label="Diagram root DBML file"
-      >
-        {dbmlPaths.map((path) => (
-          <option key={path} value={path} title={path}>
-            {path}
-          </option>
-        ))}
-      </select>
-      <ChevronDown size={13} className="header-diagram-chevron" aria-hidden />
-    </label>
+    <Show when={projectRoot() && dbmlPaths().length > 0}>
+      <label class="header-diagram-root" title="DBML file used to build the diagram">
+        <FileCode size={13} strokeWidth={2} aria-hidden />
+        <select
+          class="select-compact header-entry-select"
+          value={value()}
+          onChange={(e) => setEntryPoint(e.currentTarget.value)}
+          aria-label="Diagram root DBML file"
+        >
+          <For each={dbmlPaths()}>
+            {(path) => (
+              <option value={path} title={path}>
+                {path}
+              </option>
+            )}
+          </For>
+        </select>
+        <ChevronDown size={13} class="header-diagram-chevron" aria-hidden />
+      </label>
+    </Show>
   );
 }

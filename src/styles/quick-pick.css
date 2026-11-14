@@ -39,6 +39,8 @@
 }
 
 .quick-pick-input {
+  box-sizing: border-box;
+  width: calc(100% - 20px);
   margin: 8px 10px 6px;
   padding: 8px 10px;
   border-radius: 8px;

@@ -1,10 +1,10 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@solidjs/testing-library";
 import userEvent from "@testing-library/user-event";
-import type { Node } from "@xyflow/react";
-import type { ComponentProps } from "react";
+import type { ComponentProps } from "solid-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DiagramContextMenu } from "../../src/components/diagram/DiagramContextMenu";
 import { useDiagramStore } from "../../src/stores/diagram-store";
+import type { Node } from "../../src/types/flow";
 
 function renderMenu(
   overrides: Partial<ComponentProps<typeof DiagramContextMenu>> = {},
@@ -24,7 +24,7 @@ function renderMenu(
     onClose: vi.fn(),
     ...overrides,
   };
-  render(<DiagramContextMenu {...props} />);
+  render(() => <DiagramContextMenu {...props} />);
   return props;
 }
 

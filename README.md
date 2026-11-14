@@ -2,7 +2,7 @@
 
 **DB-Volio** is a local-first desktop app for working with [DBML](https://dbml.dbdiagram.io/home/) (Database Markup Language). Open a project folder or a single `.dbml` file, edit schema source in Monaco, and keep an interactive ER diagram in sync—without sending your schema to a cloud service.
 
-Built with **Tauri 2** and **React**, it targets multi-file DBML projects: split tables across files, resolve `use … from '…'` imports, diagnose parse errors inline, and export SQL or diagram images when you are ready to share.
+Built with **Tauri 2** and **SolidJS**, it targets multi-file DBML projects: split tables across files, resolve `use … from '…'` imports, diagnose parse errors inline, and export SQL or diagram images when you are ready to share.
 
 ## Features
 
@@ -27,7 +27,7 @@ Filesystem access stays on your machine: the Rust backend validates paths so rea
 
 ### ER diagram
 
-- **React Flow** canvas with table nodes, relationship edges, zoom, fit, and search.
+- Diagram canvas with table nodes, relationship edges, zoom, fit, and search.
 - **Drag** nodes; positions persist per entry file under `.dbvolio/layout.json` (layout metadata only—not DBML source).
 - **Auto-layout** presets (relationship flow, dependency lanes, hub & orbit, tile grid) with direction and spacing options.
 - **Diagram options**: grid, minimap, edge labels, relationship animation, selection emphasis, snap-to-grid, and more (toolbar or Settings → Diagram).
@@ -58,10 +58,10 @@ When the project parses cleanly, use **Export** in the header:
 | Layer | Technology |
 |-------|------------|
 | Shell | **Tauri 2** (Rust)—dialogs, filesystem, path guards, layout file I/O |
-| UI | **React 19**, **TypeScript**, **Vite** |
+| UI | **SolidJS**, **TypeScript**, **Vite** |
 | Parsing | **`@dbml/core`**—multi-file projects via DBML v10 `use … from '…'` |
-| Editor | **Monaco** (`@monaco-editor/react`) |
-| Diagram | **React Flow** (`@xyflow/react`), **Dagre**, **Zustand** |
+| Editor | **Monaco** (`monaco-editor`) |
+| Diagram | Custom canvas, **Dagre** |
 | Export | **jsPDF**, **svg2pdf.js** |
 
 ## Development

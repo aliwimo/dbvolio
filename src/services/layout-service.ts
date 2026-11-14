@@ -1,4 +1,4 @@
-import type { Node } from "@xyflow/react";
+import type { Node } from "../types/flow";
 import {
   EMPTY_LAYOUT,
   LEGACY_LAYOUT_KEY,

@@ -1,5 +1,5 @@
-import type { Edge, Node } from "@xyflow/react";
-import type { InternalNode } from "@xyflow/react";
+import type { Edge, Node } from "../types/flow";
+import type { InternalNode } from "../types/flow";
 import {
   buildDiagramSvg,
   svgStringToPdfBlob,
@@ -36,18 +36,18 @@ function requireExportInput() {
 
 export async function captureDiagramSvgBlob(): Promise<Blob> {
   const input = requireExportInput();
-  const svg = buildDiagramSvg(input);
+  const svg = buildDiagramSvg(input as any);
   return new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
 }
 
 export async function captureDiagramPngBlob(): Promise<Blob> {
   const input = requireExportInput();
-  const svg = buildDiagramSvg(input);
+  const svg = buildDiagramSvg(input as any);
   return svgStringToPngBlob(svg, 2);
 }
 
 export async function captureDiagramPdfBlob(): Promise<Blob> {
   const input = requireExportInput();
-  const svg = buildDiagramSvg(input);
+  const svg = buildDiagramSvg(input as any);
   return svgStringToPdfBlob(svg);
 }

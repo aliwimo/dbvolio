@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Edge, Node } from "@xyflow/react";
+import type { Edge, Node } from "../../src/types/flow";
 import { applyDagreLayoutWithOptions } from "../../src/features/diagram-layout/dagre-layout";
 import { applyAlgorithmLayout } from "../../src/features/diagram-layout/layout-algorithms";
 import type { AutoLayoutOptions } from "../../src/features/diagram-layout/layout-options";

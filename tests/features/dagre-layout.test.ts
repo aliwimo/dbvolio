@@ -3,7 +3,7 @@ import {
   computeDagreLayout,
 } from "../../src/features/diagram-layout/dagre-layout-core";
 import { uniqueLayoutEdges } from "../../src/features/diagram-layout/dagre-layout";
-import type { Edge } from "@xyflow/react";
+import type { Edge } from "../../src/types/flow";
 
 describe("dagre layout", () => {
   it("deduplicates parallel edges between the same tables", () => {

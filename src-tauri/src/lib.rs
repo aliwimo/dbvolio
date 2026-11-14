@@ -40,9 +40,11 @@ pub fn run() {
             commands::files::create_project_file,
             commands::files::rename_project_file,
             commands::files::delete_project_file,
+            commands::files::file_explorer_name,
             commands::layout::read_layout_metadata,
             commands::layout::write_layout_metadata,
             commands::export::write_export_file,
+            commands::export::read_ui_font,
             commands::open::take_pending_dbml_opens,
         ])
         .build(tauri::generate_context!())

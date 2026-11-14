@@ -1,4 +1,4 @@
-import type { Node } from "@xyflow/react";
+import type { Node } from "../../types/flow";
 import {
   GROUP_PADDING_BOTTOM,
   GROUP_PADDING_X,

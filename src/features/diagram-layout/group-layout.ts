@@ -1,4 +1,4 @@
-import type { Edge, Node } from "@xyflow/react";
+import type { Edge, Node } from "../../types/flow";
 import type { TableGroupNodeData } from "../../components/diagram/TableGroupNode";
 import { uniqueLayoutEdges } from "./dagre-layout";
 import {

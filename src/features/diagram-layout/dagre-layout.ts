@@ -1,4 +1,4 @@
-import type { Edge, Node } from "@xyflow/react";
+import type { Edge, Node } from "../../types/flow";
 import type { LayoutDirection, LayoutSpacing } from "../../stores/diagram-view-store";
 import type { TableNodeData } from "../../components/diagram/TableNode";
 import {

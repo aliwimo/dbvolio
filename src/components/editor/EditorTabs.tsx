@@ -1,5 +1,5 @@
-import { X } from "lucide-react";
-import { useMemo } from "react";
+import { X } from "lucide-solid";
+import { For, Show } from "solid-js";
 import { useEditorStore } from "../../stores/editor-store";
 import { useProjectStore } from "../../stores/project-store";
 
@@ -8,10 +8,9 @@ function basename(relativePath: string): string {
   return parts[parts.length - 1] ?? relativePath;
 }
 
-/** When several tabs share a filename, include parent folder(s) in the label. */
 export function formatEditorTabLabel(
   relativePath: string,
-  openPaths: string[],
+  openPaths: string[]
 ): string {
   const base = basename(relativePath);
   const sameName = openPaths.filter((p) => basename(p) === base);
@@ -26,58 +25,50 @@ export function formatEditorTabLabel(
 }
 
 export function EditorTabs() {
-  const tabs = useEditorStore((s) => s.tabs);
-  const activePath = useEditorStore((s) => s.activePath);
-  const setActivePath = useEditorStore((s) => s.setActivePath);
-  const closeTab = useEditorStore((s) => s.closeTab);
+  const tabs = () => useEditorStore((s) => s.tabs);
+  const activePath = () => useEditorStore((s) => s.activePath);
+  const setActivePath = useEditorStore.getState().setActivePath;
+  const closeTab = useEditorStore.getState().closeTab;
 
-  const openPaths = useMemo(
-    () => tabs.map((tab) => tab.relativePath),
-    [tabs],
-  );
-
-  if (tabs.length === 0) {
-    return null;
-  }
+  const openPaths = () => tabs().map((tab) => tab.relativePath);
 
   return (
-    <div className="editor-tabs">
-      {tabs.map((tab) => (
-        <div
-          key={tab.relativePath}
-          className={`editor-tab ${activePath === tab.relativePath ? "active" : ""} ${tab.isDirty ? "dirty" : ""}`}
-          onClick={() => {
-            setActivePath(tab.relativePath);
-            if (tab.relativePath.endsWith(".dbml")) {
-              useProjectStore.getState().setEntryPoint(tab.relativePath);
-            }
+    <Show when={tabs().length > 0}>
+      <div class="editor-tabs">
+        <For each={tabs()}>
+          {(tab) => {
+            const isActive = () => activePath() === tab.relativePath;
+            const isDirty = () => tab.isDirty;
+            const label = () => formatEditorTabLabel(tab.relativePath, openPaths());
+
+            return (
+              <div
+                class={`editor-tab ${isActive() ? "active" : ""} ${isDirty() ? "dirty" : ""}`}
+                onClick={() => {
+                  setActivePath(tab.relativePath);
+                  const projectScope = useProjectStore.getState().projectScope;
+                  if (projectScope === "file") {
+                    useProjectStore.getState().setEntryPoint(tab.relativePath);
+                  }
+                }}
+              >
+                <span class="editor-tab-label" title={tab.relativePath}>
+                  {label()}
+                </span>
+                <span
+                  class="editor-tab-close"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeTab(tab.relativePath);
+                  }}
+                >
+                  <X size={12} />
+                </span>
+              </div>
+            );
           }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              setActivePath(tab.relativePath);
-              if (tab.relativePath.endsWith(".dbml")) {
-                useProjectStore.getState().setEntryPoint(tab.relativePath);
-              }
-            }
-          }}
-          role="tab"
-          tabIndex={0}
-          title={tab.relativePath}
-        >
-          <span>{formatEditorTabLabel(tab.relativePath, openPaths)}</span>
-          <button
-            type="button"
-            className="editor-tab-close"
-            aria-label="Close tab"
-            onClick={(e) => {
-              e.stopPropagation();
-              closeTab(tab.relativePath);
-            }}
-          >
-            <X size={12} />
-          </button>
-        </div>
-      ))}
-    </div>
+        </For>
+      </div>
+    </Show>
   );
 }

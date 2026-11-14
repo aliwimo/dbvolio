@@ -204,3 +204,36 @@ pub fn delete_project_file(
     })
 }
 
+#[tauri::command]
+pub fn file_explorer_name() -> String {
+    default_file_explorer_name()
+}
+
+#[cfg(target_os = "macos")]
+fn default_file_explorer_name() -> String {
+    let script = r#"use framework "AppKit"
+set ws to current application's NSWorkspace's sharedWorkspace()
+set folderURL to current application's NSURL's fileURLWithPath:"/"
+set appURL to ws's URLForApplicationToOpenURL:folderURL
+set bundle to current application's NSBundle's bundleWithURL:appURL
+return (bundle's objectForInfoDictionaryKey:"CFBundleName")'s description() as text"#;
+    std::process::Command::new("osascript")
+        .args(["-e", script])
+        .output()
+        .ok()
+        .and_then(|output| String::from_utf8(output.stdout).ok())
+        .map(|name| name.trim().to_string())
+        .filter(|name| !name.is_empty())
+        .unwrap_or_else(|| "Finder".to_string())
+}
+
+#[cfg(target_os = "windows")]
+fn default_file_explorer_name() -> String {
+    "File Explorer".to_string()
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn default_file_explorer_name() -> String {
+    "Files".to_string()
+}
+

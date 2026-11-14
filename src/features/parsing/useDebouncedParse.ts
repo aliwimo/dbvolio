@@ -1,4 +1,4 @@
-import { startTransition, useEffect } from "react";
+import { createEffect, onCleanup } from "solid-js";
 import { parseProject } from "../../services/dbml-parser";
 import {
   getDiagramLayout,
@@ -17,14 +17,16 @@ import { useAppSettingsStore } from "../../stores/app-settings-store";
 import { schemaToFlow } from "../schema/schemaToFlow";
 
 export function useDebouncedParse() {
-  const projectRoot = useProjectStore((s) => s.projectRoot);
-  const entryPoint = useProjectStore((s) => s.entryPoint);
-  const projectScope = useProjectStore((s) => s.projectScope);
-  const files = useProjectStore((s) => s.files);
-  const contentRevision = useEditorStore((s) => s.contentRevision);
-  const parseDebounceMs = useAppSettingsStore((s) => s.parseDebounceMs);
+  createEffect(() => {
+    const projectRoot = useProjectStore((s) => s.projectRoot);
+    const entryPoint = useProjectStore((s) => s.entryPoint);
+    const projectScope = useProjectStore((s) => s.projectScope);
+    const files = useProjectStore((s) => s.files);
+    const contentRevision = useEditorStore((s) => s.contentRevision);
+    const parseDebounceMs = useAppSettingsStore((s) => s.parseDebounceMs);
 
-  useEffect(() => {
+    void contentRevision;
+
     if (!projectRoot || !entryPoint) {
       return;
     }
@@ -84,14 +86,10 @@ export function useDebouncedParse() {
         });
       }
       if (generation === useDiagramStore.getState().parseGeneration) {
-        startTransition(() => {
-          if (generation === useDiagramStore.getState().parseGeneration) {
-            useDiagramStore.getState().setFlow(positioned, edges);
-          }
-        });
+        useDiagramStore.getState().setFlow(positioned, edges);
       }
     }, parseDebounceMs);
 
-    return () => window.clearTimeout(handle);
-  }, [projectRoot, entryPoint, projectScope, files, contentRevision, parseDebounceMs]);
+    onCleanup(() => window.clearTimeout(handle));
+  });
 }
