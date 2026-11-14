@@ -2,6 +2,7 @@ import type { Edge, Node } from "../types/flow";
 import {
   TABLE_COLUMNS_PADDING,
   TABLE_HEADER_HEIGHT,
+  TABLE_NODE_WIDTH,
   TABLE_ROW_STRIDE,
 } from "../features/diagram/relationship-edge-geometry";
 import { diagramEdgeGeometry } from "../components/diagram/DiagramEdges";
@@ -12,7 +13,7 @@ import {
 } from "../components/diagram/TableGroupNode";
 import { isGroupNode } from "../features/diagram-layout/table-group-bounds";
 
-const TABLE_MIN_WIDTH = 220;
+const TABLE_MIN_WIDTH = TABLE_NODE_WIDTH;
 const HEADER_HEIGHT = TABLE_HEADER_HEIGHT;
 const ROW_HEIGHT = TABLE_ROW_STRIDE;
 const COLUMNS_PADDING = TABLE_COLUMNS_PADDING;
@@ -293,7 +294,7 @@ export function buildDiagramSvg(input: DiagramVectorInput): string {
     .items.map((item) => {
       const line = item.d.replace(
         /Q\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)/g,
-        "L $3 $4",
+        "L $1 $2 L $3 $4",
       );
       const marker = item.arrow.match(/M\s+([-\d.]+)\s+([-\d.]+)/);
       const dot = marker
