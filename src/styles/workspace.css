@@ -1170,15 +1170,6 @@
 }
 
 /* Static, export-friendly diagram styling (html-to-image cannot render color-mix / wide hit paths) */
-.diagram-export-capture .react-flow__controls {
-  display: none !important;
-}
-
-.diagram-export-capture .react-flow__edge-path,
-.diagram-export-capture .react-flow__edge-interaction {
-  display: none !important;
-}
-
 .diagram-export-capture .relationship-edge-track {
   stroke: #c5cad3;
   opacity: 0.9;
@@ -1210,31 +1201,6 @@
 .diagram-export-capture .relationship-edge-marker-soft {
   fill: #64748b;
   opacity: 0.7;
-}
-
-.react-flow {
-  background: var(--bg-app) !important;
-}
-
-.react-flow__background {
-  opacity: 0.7;
-}
-
-.react-flow__background pattern circle {
-  fill: var(--border-strong);
-}
-
-.react-flow__controls {
-  border: 1px solid var(--border) !important;
-  border-radius: 8px !important;
-  box-shadow: none !important;
-  overflow: hidden;
-}
-
-.react-flow__controls-button {
-  background: var(--bg-panel) !important;
-  border-bottom-color: var(--border) !important;
-  fill: var(--text-muted) !important;
 }
 
 .stale-banner {

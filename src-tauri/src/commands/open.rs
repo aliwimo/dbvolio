@@ -109,7 +109,7 @@ impl PendingDbmlOpens {
         let win_clone = new_window.clone();
         let payload_clone = payload;
         std::thread::spawn(move || {
-            // Brief delay to allow frontend React app to mount if needed
+            // Brief delay to allow frontend app to mount if needed
             std::thread::sleep(std::time::Duration::from_millis(500));
             let _ = win_clone.emit("dbml-open", &payload_clone);
         });
