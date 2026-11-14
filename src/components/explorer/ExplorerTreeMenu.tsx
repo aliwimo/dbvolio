@@ -8,8 +8,9 @@ import {
   SearchX,
   Target,
   Trash2,
-} from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+} from "lucide-solid";
+import { createSignal, onCleanup, onMount, Show } from "solid-js";
+import { Portal } from "solid-js/web";
 
 export interface ExplorerTreeMenuProps {
   disabled?: boolean;
@@ -30,49 +31,38 @@ export interface ExplorerTreeMenuProps {
   onUseForDiagram: () => void;
 }
 
-export function ExplorerTreeMenu({
-  disabled,
-  canRevealActive,
-  canClearFilter,
-  showAllFiles,
-  canRename,
-  canDelete,
-  canUseForDiagram,
-  onExpandAll,
-  onCollapseAll,
-  onRevealActive,
-  onClearFilter,
-  onRefresh,
-  onToggleShowAllFiles,
-  onRename,
-  onDelete,
-  onUseForDiagram,
-}: ExplorerTreeMenuProps) {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const menuId = useId();
+export function ExplorerTreeMenu(props: ExplorerTreeMenuProps) {
+  const [open, setOpen] = createSignal(false);
+  const [menuPos, setMenuPos] = createSignal({ top: 0, left: 0 });
+  let rootRef: HTMLDivElement | undefined;
+  let menuRef: HTMLDivElement | undefined;
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
+  const placeMenu = () => {
+    const rect = rootRef?.getBoundingClientRect();
+    if (!rect) return;
+    setMenuPos({ top: rect.bottom + 4, left: rect.right });
+  };
+
+  onMount(() => {
     const onPointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as HTMLElement)) {
-        setOpen(false);
-      }
+      if (!open()) return;
+      const target = event.target as HTMLElement;
+      if (rootRef?.contains(target) || menuRef?.contains(target)) return;
+      setOpen(false);
     };
     const onKeyDown = (event: KeyboardEvent) => {
+      if (!open()) return;
       if (event.key === "Escape") {
         setOpen(false);
       }
     };
     document.addEventListener("mousedown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
-    return () => {
+    onCleanup(() => {
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
+    });
+  });
 
   const run = (action: () => void) => {
     action();
@@ -80,111 +70,151 @@ export function ExplorerTreeMenu({
   };
 
   return (
-    <div className="explorer-tree-menu" ref={rootRef}>
+    <div class="explorer-tree-menu" ref={rootRef}>
       <button
         type="button"
-        className="btn-icon btn-icon-xs"
-        title="Tree actions"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls={menuId}
-        disabled={disabled}
-        onClick={() => setOpen((value) => !value)}
+        class={`btn-icon btn-icon-xs ${open() ? "active" : ""}`}
+        disabled={props.disabled}
+        aria-label="Explorer actions"
+        title="Explorer actions"
+        aria-expanded={open()}
+        onClick={() => {
+          if (open()) {
+            setOpen(false);
+            return;
+          }
+          placeMenu();
+          setOpen(true);
+        }}
       >
         <Ellipsis size={14} />
       </button>
-      {open && (
-        <div className="explorer-tree-menu-panel" id={menuId} role="menu">
+
+      <Show when={open()}>
+        <Portal>
+        <div
+          class="explorer-tree-menu-panel"
+          role="menu"
+          ref={menuRef}
+          style={{
+            position: "fixed",
+            top: `${menuPos().top}px`,
+            left: `${menuPos().left}px`,
+            right: "auto",
+            width: "220px",
+            transform: "translateX(-100%)",
+          }}
+        >
+          <Show when={props.canRevealActive}>
+            <button
+              type="button"
+              role="menuitem"
+              class="explorer-tree-menu-item"
+              onClick={() => run(props.onRevealActive)}
+            >
+              <Target size={14} />
+              <span>Reveal active file</span>
+            </button>
+          </Show>
+
           <button
             type="button"
             role="menuitem"
-            className="explorer-tree-menu-item"
-            onClick={() => run(onExpandAll)}
-          >
-            <ChevronsDownUp size={14} />
-            Expand all folders
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="explorer-tree-menu-item"
-            onClick={() => run(onCollapseAll)}
+            class="explorer-tree-menu-item"
+            onClick={() => run(props.onExpandAll)}
           >
             <ChevronsUpDown size={14} />
-            Collapse all folders
+            <span>Expand all</span>
           </button>
+
           <button
             type="button"
             role="menuitem"
-            className="explorer-tree-menu-item"
-            disabled={!canRevealActive}
-            onClick={() => run(onRevealActive)}
+            class="explorer-tree-menu-item"
+            onClick={() => run(props.onCollapseAll)}
           >
-            <Target size={14} />
-            Reveal active file
+            <ChevronsDownUp size={14} />
+            <span>Collapse all</span>
           </button>
-          <div className="explorer-tree-menu-separator" role="separator" />
-          <label className="explorer-tree-menu-item explorer-tree-menu-check">
-            <Files size={14} />
-            <span>Show all project files</span>
-            <input
-              type="checkbox"
-              checked={showAllFiles}
-              onChange={onToggleShowAllFiles}
-            />
-          </label>
+
+          <Show when={props.canClearFilter}>
+            <button
+              type="button"
+              role="menuitem"
+              class="explorer-tree-menu-item"
+              onClick={() => run(props.onClearFilter)}
+            >
+              <SearchX size={14} />
+              <span>Clear filter</span>
+            </button>
+          </Show>
+
+          <div class="explorer-tree-menu-separator" role="separator" />
+
           <button
             type="button"
             role="menuitem"
-            className="explorer-tree-menu-item"
-            disabled={!canUseForDiagram}
-            onClick={() => run(onUseForDiagram)}
-          >
-            <Target size={14} />
-            Use for diagram
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="explorer-tree-menu-item"
-            disabled={!canRename}
-            onClick={() => run(onRename)}
-          >
-            <Pencil size={14} />
-            Rename active file
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="explorer-tree-menu-item explorer-tree-menu-danger"
-            disabled={!canDelete}
-            onClick={() => run(onDelete)}
-          >
-            <Trash2 size={14} />
-            Delete active file
-          </button>
-          <div className="explorer-tree-menu-separator" role="separator" />
-          <button
-            type="button"
-            role="menuitem"
-            className="explorer-tree-menu-item"
-            disabled={!canClearFilter}
-            onClick={() => run(onClearFilter)}
-          >
-            <SearchX size={14} />
-            Clear filter
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="explorer-tree-menu-item"
-            onClick={() => run(onRefresh)}
+            class="explorer-tree-menu-item"
+            onClick={() => run(props.onRefresh)}
           >
             <FolderSync size={14} />
-            Refresh file list
+            <span>Refresh files</span>
           </button>
+
+          <button
+            type="button"
+            role="menuitem"
+            class="explorer-tree-menu-item"
+            onClick={() => run(props.onToggleShowAllFiles)}
+          >
+            <Files size={14} />
+            <span>
+              {props.showAllFiles ? "Show only DBML files" : "Show all files"}
+            </span>
+          </button>
+
+          <Show when={props.canUseForDiagram || props.canRename || props.canDelete}>
+            <div class="explorer-tree-menu-separator" role="separator" />
+          </Show>
+
+          <Show when={props.canUseForDiagram}>
+            <button
+              type="button"
+              role="menuitem"
+              class="explorer-tree-menu-item"
+              onClick={() => run(props.onUseForDiagram)}
+            >
+              <Target size={14} />
+              <span>Use as diagram root</span>
+            </button>
+          </Show>
+
+          <Show when={props.canRename}>
+            <button
+              type="button"
+              role="menuitem"
+              class="explorer-tree-menu-item"
+              onClick={() => run(props.onRename)}
+            >
+              <Pencil size={14} />
+              <span>Rename</span>
+            </button>
+          </Show>
+
+          <Show when={props.canDelete}>
+            <button
+              type="button"
+              role="menuitem"
+              class="explorer-tree-menu-item explorer-tree-menu-danger"
+              onClick={() => run(props.onDelete)}
+            >
+              <Trash2 size={14} />
+              <span>Delete</span>
+            </button>
+          </Show>
         </div>
-      )}
+        </Portal>
+      </Show>
     </div>
   );
 }

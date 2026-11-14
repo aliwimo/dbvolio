@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { createStoreFactory } from "./create-store";
 
 export type QuickPickKind = "recent" | "files";
 
@@ -12,7 +12,7 @@ interface QuickPickState {
   setSelectedIndex: (index: number) => void;
 }
 
-export const useQuickPickStore = create<QuickPickState>((set, get) => ({
+export const useQuickPickStore = createStoreFactory<QuickPickState>((set, get) => ({
   kind: null,
   query: "",
   selectedIndex: 0,

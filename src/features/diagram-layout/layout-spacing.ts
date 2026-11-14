@@ -1,4 +1,4 @@
-import type { Node } from "@xyflow/react";
+import type { Node } from "../../types/flow";
 import type { LayoutSpacing } from "../../stores/diagram-view-store";
 import { layoutNodeSize } from "./layout-node-bounds";
 

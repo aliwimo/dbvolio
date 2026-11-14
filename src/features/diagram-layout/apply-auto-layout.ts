@@ -1,4 +1,4 @@
-import type { Edge, Node } from "@xyflow/react";
+import type { Edge, Node } from "../../types/flow";
 import { applyAlgorithmLayout } from "./layout-algorithms";
 import { applyDagreLayoutAsync } from "./dagre-layout-async";
 import type { AutoLayoutOptions } from "./layout-options";

@@ -1,7 +1,6 @@
-import { useEffect } from "react";
+import { createEffect, onCleanup } from "solid-js";
 import { useKeymapStore } from "../../stores/keymap-store";
 import { useQuickPickStore } from "../../stores/quick-pick-store";
-import { useUiStore } from "../../stores/ui-store";
 import { executeCommand } from "./execute-command";
 import { findCommandForKeyboardEvent } from "./resolve-keybindings";
 
@@ -35,9 +34,9 @@ function shouldIgnoreGlobalKeymap(event: KeyboardEvent): boolean {
 }
 
 export function useAppKeymap() {
-  const overrides = useKeymapStore((s) => s.overrides);
+  createEffect(() => {
+    const overrides = useKeymapStore((s) => s.overrides);
 
-  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (shouldIgnoreGlobalKeymap(event)) {
         return;
@@ -48,17 +47,11 @@ export function useAppKeymap() {
         return;
       }
 
-      if (commandId === "settings.open" && useUiStore.getState().settingsOpen) {
-        useUiStore.getState().closeSettings();
-        event.preventDefault();
-        return;
-      }
-
       event.preventDefault();
       executeCommand(commandId);
     };
 
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [overrides]);
+    onCleanup(() => window.removeEventListener("keydown", onKeyDown));
+  });
 }

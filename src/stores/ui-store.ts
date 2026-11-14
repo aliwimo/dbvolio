@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { createStoreFactory } from "./create-store";
 
 export type Theme = "dark" | "light";
 export type PanelId = "explorer" | "editor" | "diagram" | "inspector";
@@ -90,7 +90,7 @@ function loadInspectorWidth(): number {
   return DEFAULT_INSPECTOR_WIDTH;
 }
 
-export const useUiStore = create<UiState>((set, get) => ({
+export const useUiStore = createStoreFactory<UiState>((set, get) => ({
   theme: initialTheme,
   panels: loadPanels(),
   explorerShowAllFiles: loadExplorerShowAllFiles(),

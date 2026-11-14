@@ -9,12 +9,13 @@ import {
   Pencil,
   Plus,
   Table2,
-} from "lucide-react";
-import { useMemo } from "react";
+} from "lucide-solid";
+import { createMemo, For, Show } from "solid-js";
 import { resolveGroupColor } from "../diagram/TableGroupNode";
 import { useDiagramStore } from "../../stores/diagram-store";
 import { useUiStore } from "../../stores/ui-store";
 import type { SchemaEnum, SchemaModel, SchemaTable } from "../../types/schema";
+import { Button } from "../ui";
 
 function findMatchingEnum(
   colType: string,
@@ -50,88 +51,90 @@ function formatTableDisplayName(
 }
 
 export function SchemaInspector() {
-  const table = useDiagramStore((s) => s.selectedTable());
-  const model = useDiagramStore((s) => s.lastValidModel);
-  const selectTable = useDiagramStore((s) => s.selectTable);
-  const openTableEdit = useUiStore((s) => s.openTableEdit);
-  const openTableCreate = useUiStore((s) => s.openTableCreate);
+  const table = () => useDiagramStore((s) => s.selectedTable());
+  const model = () => useDiagramStore((s) => s.lastValidModel);
+  const selectTable = useDiagramStore.getState().selectTable;
+  const openTableEdit = useUiStore.getState().openTableEdit;
+  const openTableCreate = useUiStore.getState().openTableCreate;
 
   return (
-    <div className="panel panel-fill inspector-panel">
-      {!table ? (
-        <>
-          <div className="inspector-header">
-            <div className="inspector-header-top">
-              <div className="inspector-title-group">
-                <Table2 size={14} className="inspector-panel-icon" aria-hidden />
-                <span className="inspector-panel-title">Properties</span>
-              </div>
-              <div className="inspector-header-actions">
-                <button
-                  type="button"
-                  className="btn btn-sm btn-ghost inspector-new-btn"
-                  onClick={openTableCreate}
-                  title="Create new table"
-                >
-                  <Plus size={13} aria-hidden />
-                  New table
-                </button>
+    <div class="panel panel-fill inspector-panel">
+      <Show
+        when={table()}
+        fallback={
+          <>
+            <div class="inspector-header">
+              <div class="inspector-header-top">
+                <div class="inspector-title-group">
+                  <Table2 size={14} class="inspector-panel-icon" aria-hidden />
+                  <span class="inspector-panel-title">Properties</span>
+                </div>
+                <div class="inspector-header-actions">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-ghost inspector-new-btn"
+                    onClick={openTableCreate}
+                    title="Create new table"
+                  >
+                    <Plus size={13} aria-hidden />
+                    New table
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="inspector-body inspector-empty">
-            <div className="inspector-empty-state">
-              <Table2 size={24} className="inspector-empty-icon" aria-hidden />
-              <p className="inspector-empty-title">No table selected</p>
-              <p className="empty-hint">
-                Select a table in the diagram to inspect its fields, relationships,
-                and indexes.
-              </p>
+            <div class="inspector-body inspector-empty">
+              <div class="inspector-empty-state">
+                <Table2 size={24} class="inspector-empty-icon" aria-hidden />
+                <p class="inspector-empty-title">No table selected</p>
+                <p class="empty-hint">
+                  Select a table in the diagram to inspect its fields, relationships,
+                  and indexes.
+                </p>
+              </div>
             </div>
-          </div>
-        </>
-      ) : (
-        <TableInspectorView
-          table={table}
-          model={model}
-          onEdit={openTableEdit}
-          onSelectTable={selectTable}
-        />
-      )}
+          </>
+        }
+      >
+        {(t) => (
+          <TableInspectorView
+            table={t()}
+            model={model()}
+            onEdit={openTableEdit}
+            onSelectTable={selectTable}
+          />
+        )}
+      </Show>
     </div>
   );
 }
 
-function TableInspectorView({
-  table,
-  model,
-  onEdit,
-  onSelectTable,
-}: {
+function TableInspectorView(props: {
   table: SchemaTable;
   model: SchemaModel | null;
   onEdit: () => void;
   onSelectTable: (tableId: string) => void;
 }) {
-  const enums = model?.enums ?? [];
-  const references = model?.references ?? [];
+  const enums = () => props.model?.enums ?? [];
+  const references = () => props.model?.references ?? [];
 
-  const outgoingRefs = useMemo(
-    () => references.filter((r) => r.sourceTableId === table.id),
-    [references, table.id],
+  const outgoingRefs = createMemo(() =>
+    references().filter((r) => r.sourceTableId === props.table.id),
   );
 
-  const incomingRefs = useMemo(
-    () =>
-      references.filter(
-        (r) => r.targetTableId === table.id && r.sourceTableId !== table.id,
-      ),
-    [references, table.id],
+  const incomingRefs = createMemo(() =>
+    references().filter(
+      (r) =>
+        r.targetTableId === props.table.id &&
+        r.sourceTableId !== props.table.id,
+    ),
   );
 
-  const fkColumnTargets = useMemo(() => {
-    const map = new Map<string, { targetTableId: string; targetColumn: string }>();
-    for (const ref of outgoingRefs) {
+  const fkColumnTargets = createMemo(() => {
+    const map = new Map<
+      string,
+      { targetTableId: string; targetColumn: string }
+    >();
+    for (const ref of outgoingRefs()) {
       ref.sourceColumns.forEach((colName, idx) => {
         const targetCol = ref.targetColumns[idx] ?? ref.targetColumns[0] ?? "";
         map.set(colName, {
@@ -141,347 +144,377 @@ function TableInspectorView({
       });
     }
     return map;
-  }, [outgoingRefs]);
+  });
 
-  const totalRelations = outgoingRefs.length + incomingRefs.length;
-  const tableGroup = useMemo(
-    () =>
-      table.groupId
-        ? model?.tableGroups?.find((g) => g.id === table.groupId)
-        : undefined,
-    [model?.tableGroups, table.groupId],
+  const totalRelations = () => outgoingRefs().length + incomingRefs().length;
+  const tableGroup = createMemo(() =>
+    props.table.groupId
+      ? props.model?.tableGroups?.find((g) => g.id === props.table.groupId)
+      : undefined,
   );
-  const effectiveHeaderColor =
-    table.headerColor ??
-    (tableGroup ? resolveGroupColor(tableGroup) : undefined);
+  const effectiveHeaderColor = () =>
+    props.table.headerColor ??
+    (tableGroup() ? resolveGroupColor(tableGroup()!) : undefined);
 
   return (
     <>
-      <div className="inspector-header">
-        <div className="inspector-header-top">
-          <div className="inspector-title-group">
-            {effectiveHeaderColor && (
-              <span
-                className="inspector-header-color-dot"
-                style={{ background: effectiveHeaderColor }}
-                title={`Header color ${effectiveHeaderColor}`}
-              />
-            )}
-            <div className="inspector-title-text">
-              {table.schema && (
-                <span className="inspector-schema-badge">{table.schema}</span>
+      <div class="inspector-header">
+        <div class="inspector-header-top">
+          <div class="inspector-title-group">
+            <Show when={effectiveHeaderColor()}>
+              {(color) => (
+                <span
+                  class="inspector-header-color-dot"
+                  style={{ background: color() }}
+                  title={`Header color ${color()}`}
+                />
               )}
-              <h3 className="inspector-table-name" title={table.name}>
-                {table.name}
+            </Show>
+            <div class="inspector-title-text">
+              <Show when={props.table.schema}>
+                {(schema) => (
+                  <span class="inspector-schema-badge">{schema()}</span>
+                )}
+              </Show>
+              <h3 class="inspector-table-name" title={props.table.name}>
+                {props.table.name}
               </h3>
             </div>
           </div>
-          <div className="inspector-header-actions">
-            <button
-              type="button"
-              className="btn btn-sm btn-ghost inspector-edit-btn"
-              onClick={onEdit}
+          <div class="inspector-header-actions">
+            <Button
+              variant="outline"
+              size="sm"
+              class="inspector-edit-btn"
+              onClick={props.onEdit}
             >
               <Pencil size={13} aria-hidden />
               Edit
-            </button>
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className="inspector-body inspector-body-scroll">
-        <div className="inspector-overview-section">
-          <div className="inspector-meta-pills">
-            {tableGroup && (
-              <span
-                className="inspector-meta-pill"
-                title={
-                  tableGroup.note
-                    ? `Group: ${tableGroup.name} — ${tableGroup.note}`
-                    : `Group: ${tableGroup.name}`
-                }
-              >
-                Group: {tableGroup.name}
-              </span>
-            )}
-            <span className="inspector-meta-pill">
-              {table.columns.length} {table.columns.length === 1 ? "field" : "fields"}
+      <div class="inspector-body inspector-body-scroll">
+        <div class="inspector-overview-section">
+          <div class="inspector-meta-pills">
+            <Show when={tableGroup()}>
+              {(g) => (
+                <span
+                  class="inspector-meta-pill"
+                  title={
+                    g().note
+                      ? `Group: ${g().name} — ${g().note}`
+                      : `Group: ${g().name}`
+                  }
+                >
+                  Group: {g().name}
+                </span>
+              )}
+            </Show>
+            <span class="inspector-meta-pill">
+              {props.table.columns.length}{" "}
+              {props.table.columns.length === 1 ? "field" : "fields"}
             </span>
-            {totalRelations > 0 && (
-              <span className="inspector-meta-pill">
-                {totalRelations} {totalRelations === 1 ? "relation" : "relations"}
+            <Show when={totalRelations() > 0}>
+              <span class="inspector-meta-pill">
+                {totalRelations()}{" "}
+                {totalRelations() === 1 ? "relation" : "relations"}
               </span>
-            )}
-            {table.indexes.length > 0 && (
-              <span className="inspector-meta-pill">
-                {table.indexes.length} {table.indexes.length === 1 ? "index" : "indexes"}
+            </Show>
+            <Show when={props.table.indexes.length > 0}>
+              <span class="inspector-meta-pill">
+                {props.table.indexes.length}{" "}
+                {props.table.indexes.length === 1 ? "index" : "indexes"}
               </span>
-            )}
+            </Show>
           </div>
-          {table.note && <p className="inspector-table-note">{table.note}</p>}
+          <Show when={props.table.note}>
+            {(note) => <p class="inspector-table-note">{note()}</p>}
+          </Show>
         </div>
-        <div className="inspector-section">
-          <div className="inspector-section-header">
-            <h4 className="inspector-section-title">
+
+        <div class="inspector-section">
+          <div class="inspector-section-header">
+            <h4 class="inspector-section-title">
               <Layers size={13} aria-hidden />
               Fields
             </h4>
-            <span className="inspector-section-count">{table.columns.length}</span>
+            <span class="inspector-section-count">
+              {props.table.columns.length}
+            </span>
           </div>
 
-          <div className="inspector-fields-list">
-            {table.columns.map((col) => {
-              const fkTarget = fkColumnTargets.get(col.name);
-              const matchedEnum = findMatchingEnum(
-                col.type,
-                table.schema,
-                enums,
-              );
-              const hasDetails =
-                Boolean(col.note) ||
-                Boolean(col.defaultValue) ||
-                Boolean(matchedEnum) ||
-                Boolean(fkTarget);
+          <div class="inspector-fields-list">
+            <For each={props.table.columns}>
+              {(col) => {
+                const fkTarget = () => fkColumnTargets().get(col.name);
+                const matchedEnum = () =>
+                  findMatchingEnum(col.type, props.table.schema, enums());
+                const hasDetails = () =>
+                  Boolean(col.note) ||
+                  Boolean(col.defaultValue) ||
+                  Boolean(matchedEnum()) ||
+                  Boolean(fkTarget());
 
-              return (
-                <div key={col.name} className="inspector-field-item">
-                  <div className="inspector-field-main">
-                    <div className="inspector-field-name-wrap">
-                      <span
-                        className={`inspector-field-name ${col.isPrimaryKey ? "is-pk" : ""}`}
-                        title={col.name}
-                      >
-                        {col.name}
-                      </span>
-                      <div className="inspector-field-badges">
-                        {col.isPrimaryKey && (
-                          <span
-                            className="inspector-badge pk"
-                            title="Primary key"
-                          >
-                            <KeyRound size={10} aria-hidden />
-                            PK
-                          </span>
-                        )}
-                        {fkTarget && (
-                          <button
-                            type="button"
-                            className="inspector-badge fk inspector-badge-btn"
-                            title={`Foreign key → ${formatTableDisplayName(fkTarget.targetTableId, model)}.${fkTarget.targetColumn}`}
-                            onClick={() => onSelectTable(fkTarget.targetTableId)}
-                          >
-                            FK
-                          </button>
-                        )}
-                        {!col.isNullable && !col.isPrimaryKey && (
-                          <span className="inspector-badge nn" title="Not null">
-                            NN
-                          </span>
-                        )}
-                        {col.isUnique && !col.isPrimaryKey && (
-                          <span className="inspector-badge uq" title="Unique">
-                            UQ
-                          </span>
-                        )}
-                        {col.isAutoIncrement && (
-                          <span
-                            className="inspector-badge ai"
-                            title="Auto increment"
-                          >
-                            AI
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <span className="inspector-field-type" title={col.type}>
-                      {col.type}
-                    </span>
-                  </div>
-
-                  {hasDetails && (
-                    <div className="inspector-field-details">
-                      {fkTarget && (
-                        <div className="inspector-field-detail-row">
-                          <span className="inspector-detail-label">Ref</span>
-                          <button
-                            type="button"
-                            className="inspector-ref-link"
-                            onClick={() => onSelectTable(fkTarget.targetTableId)}
-                          >
-                            <ArrowRight size={11} aria-hidden />
-                            <span>
-                              {formatTableDisplayName(
-                                fkTarget.targetTableId,
-                                model,
-                              )}
-                              .{fkTarget.targetColumn}
+                return (
+                  <div class="inspector-field-item">
+                    <div class="inspector-field-main">
+                      <div class="inspector-field-name-wrap">
+                        <span
+                          class={`inspector-field-name ${col.isPrimaryKey ? "is-pk" : ""}`}
+                          title={col.name}
+                        >
+                          {col.name}
+                        </span>
+                        <div class="inspector-field-badges">
+                          <Show when={col.isPrimaryKey}>
+                            <span
+                              class="inspector-badge pk"
+                              title="Primary key"
+                            >
+                              <KeyRound size={10} aria-hidden />
+                              PK
                             </span>
-                          </button>
+                          </Show>
+                          <Show when={fkTarget()}>
+                            {(fk) => (
+                              <button
+                                type="button"
+                                class="inspector-badge fk inspector-badge-btn"
+                                title={`Foreign key → ${formatTableDisplayName(fk().targetTableId, props.model)}.${fk().targetColumn}`}
+                                onClick={() =>
+                                  props.onSelectTable(fk().targetTableId)
+                                }
+                              >
+                                FK
+                              </button>
+                            )}
+                          </Show>
+                          <Show when={!col.isNullable && !col.isPrimaryKey}>
+                            <span class="inspector-badge nn" title="Not null">
+                              NN
+                            </span>
+                          </Show>
+                          <Show when={col.isUnique && !col.isPrimaryKey}>
+                            <span class="inspector-badge uq" title="Unique">
+                              UQ
+                            </span>
+                          </Show>
+                          <Show when={col.isAutoIncrement}>
+                            <span
+                              class="inspector-badge ai"
+                              title="Auto increment"
+                            >
+                              AI
+                            </span>
+                          </Show>
                         </div>
-                      )}
+                      </div>
 
-                      {col.defaultValue !== undefined && (
-                        <div className="inspector-field-detail-row">
-                          <span className="inspector-detail-label">Default</span>
-                          <code className="inspector-default-code">
-                            {col.defaultValue}
-                          </code>
-                        </div>
-                      )}
-
-                      {matchedEnum && matchedEnum.values.length > 0 && (
-                        <div className="inspector-field-detail-row inspector-enum-row">
-                          <span className="inspector-detail-label">Values</span>
-                          <div className="inspector-enum-chips">
-                            {matchedEnum.values.map((val) => (
-                              <span key={val} className="inspector-enum-chip">
-                                {val}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {col.note && (
-                        <p className="inspector-field-note">{col.note}</p>
-                      )}
+                      <span class="inspector-field-type" title={col.type}>
+                        {col.type}
+                      </span>
                     </div>
-                  )}
-                </div>
-              );
-            })}
+
+                    <Show when={hasDetails()}>
+                      <div class="inspector-field-details">
+                        <Show when={fkTarget()}>
+                          {(fk) => (
+                            <div class="inspector-field-detail-row">
+                              <span class="inspector-detail-label">Ref</span>
+                              <button
+                                type="button"
+                                class="inspector-ref-link"
+                                onClick={() =>
+                                  props.onSelectTable(fk().targetTableId)
+                                }
+                              >
+                                <ArrowRight size={11} aria-hidden />
+                                <span>
+                                  {formatTableDisplayName(
+                                    fk().targetTableId,
+                                    props.model,
+                                  )}
+                                  .{fk().targetColumn}
+                                </span>
+                              </button>
+                            </div>
+                          )}
+                        </Show>
+
+                        <Show when={col.defaultValue !== undefined}>
+                          <div class="inspector-field-detail-row">
+                            <span class="inspector-detail-label">Default</span>
+                            <code class="inspector-default-code">
+                              {col.defaultValue}
+                            </code>
+                          </div>
+                        </Show>
+
+                        <Show when={matchedEnum()}>
+                          {(e) => (
+                            <Show when={e().values.length > 0}>
+                              <div class="inspector-field-detail-row inspector-enum-row">
+                                <span class="inspector-detail-label">Values</span>
+                                <div class="inspector-enum-chips">
+                                  <For each={e().values}>
+                                    {(val) => (
+                                      <span class="inspector-enum-chip">
+                                        {val}
+                                      </span>
+                                    )}
+                                  </For>
+                                </div>
+                              </div>
+                            </Show>
+                          )}
+                        </Show>
+
+                        <Show when={col.note}>
+                          {(note) => (
+                            <p class="inspector-field-note">{note()}</p>
+                          )}
+                        </Show>
+                      </div>
+                    </Show>
+                  </div>
+                );
+              }}
+            </For>
           </div>
         </div>
 
-        {totalRelations > 0 && (
-          <div className="inspector-section">
-            <div className="inspector-section-header">
-              <h4 className="inspector-section-title">
+        <Show when={totalRelations() > 0}>
+          <div class="inspector-section">
+            <div class="inspector-section-header">
+              <h4 class="inspector-section-title">
                 <Link2 size={13} aria-hidden />
                 Relationships
               </h4>
-              <span className="inspector-section-count">{totalRelations}</span>
+              <span class="inspector-section-count">{totalRelations()}</span>
             </div>
 
-            <div className="inspector-relations-list">
-              {outgoingRefs.map((ref) => {
-                const targetName = formatTableDisplayName(
-                  ref.targetTableId,
-                  model,
-                );
-                return (
-                  <button
-                    key={`out-${ref.id}-${ref.sourceColumns.join(",")}`}
-                    type="button"
-                    className="inspector-relation-card"
-                    onClick={() => onSelectTable(ref.targetTableId)}
-                    title={`Select ${targetName}`}
-                  >
-                    <span className="inspector-relation-dir outgoing">
-                      <ArrowRight size={12} aria-hidden />
-                    </span>
-                    <div className="inspector-relation-body">
-                      <div className="inspector-relation-cols">
-                        <span className="inspector-relation-local">
-                          {ref.sourceColumns.join(", ")}
-                        </span>
-                        <span className="inspector-relation-arrow">→</span>
-                        <span className="inspector-relation-remote">
-                          {targetName}.{ref.targetColumns.join(", ")}
+            <div class="inspector-relations-list">
+              <For each={outgoingRefs()}>
+                {(ref) => {
+                  const targetName = () =>
+                    formatTableDisplayName(ref.targetTableId, props.model);
+                  return (
+                    <button
+                      type="button"
+                      class="inspector-relation-card"
+                      onClick={() => props.onSelectTable(ref.targetTableId)}
+                      title={`Select ${targetName()}`}
+                    >
+                      <span class="inspector-relation-dir outgoing">
+                        <ArrowRight size={12} aria-hidden />
+                      </span>
+                      <div class="inspector-relation-body">
+                        <div class="inspector-relation-cols">
+                          <span class="inspector-relation-local">
+                            {ref.sourceColumns.join(", ")}
+                          </span>
+                          <span class="inspector-relation-arrow">→</span>
+                          <span class="inspector-relation-remote">
+                            {targetName()}.{ref.targetColumns.join(", ")}
+                          </span>
+                        </div>
+                        <span class="inspector-relation-subtitle">
+                          References {targetName()}
                         </span>
                       </div>
-                      <span className="inspector-relation-subtitle">
-                        References {targetName}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                }}
+              </For>
 
-              {incomingRefs.map((ref) => {
-                const sourceName = formatTableDisplayName(
-                  ref.sourceTableId,
-                  model,
-                );
-                return (
-                  <button
-                    key={`in-${ref.id}-${ref.sourceTableId}-${ref.sourceColumns.join(",")}`}
-                    type="button"
-                    className="inspector-relation-card"
-                    onClick={() => onSelectTable(ref.sourceTableId)}
-                    title={`Select ${sourceName}`}
-                  >
-                    <span className="inspector-relation-dir incoming">
-                      <ArrowLeft size={12} aria-hidden />
-                    </span>
-                    <div className="inspector-relation-body">
-                      <div className="inspector-relation-cols">
-                        <span className="inspector-relation-remote">
-                          {sourceName}.{ref.sourceColumns.join(", ")}
-                        </span>
-                        <span className="inspector-relation-arrow">→</span>
-                        <span className="inspector-relation-local">
-                          {ref.targetColumns.join(", ")}
+              <For each={incomingRefs()}>
+                {(ref) => {
+                  const sourceName = () =>
+                    formatTableDisplayName(ref.sourceTableId, props.model);
+                  return (
+                    <button
+                      type="button"
+                      class="inspector-relation-card"
+                      onClick={() => props.onSelectTable(ref.sourceTableId)}
+                      title={`Select ${sourceName()}`}
+                    >
+                      <span class="inspector-relation-dir incoming">
+                        <ArrowLeft size={12} aria-hidden />
+                      </span>
+                      <div class="inspector-relation-body">
+                        <div class="inspector-relation-cols">
+                          <span class="inspector-relation-remote">
+                            {sourceName()}.{ref.sourceColumns.join(", ")}
+                          </span>
+                          <span class="inspector-relation-arrow">→</span>
+                          <span class="inspector-relation-local">
+                            {ref.targetColumns.join(", ")}
+                          </span>
+                        </div>
+                        <span class="inspector-relation-subtitle">
+                          Referenced by {sourceName()}
                         </span>
                       </div>
-                      <span className="inspector-relation-subtitle">
-                        Referenced by {sourceName}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                }}
+              </For>
             </div>
           </div>
-        )}
+        </Show>
 
-        {table.indexes.length > 0 && (
-          <div className="inspector-section">
-            <div className="inspector-section-header">
-              <h4 className="inspector-section-title">
+        <Show when={props.table.indexes.length > 0}>
+          <div class="inspector-section">
+            <div class="inspector-section-header">
+              <h4 class="inspector-section-title">
                 <ListChecks size={13} aria-hidden />
                 Indexes
               </h4>
-              <span className="inspector-section-count">
-                {table.indexes.length}
+              <span class="inspector-section-count">
+                {props.table.indexes.length}
               </span>
             </div>
 
-            <div className="inspector-indexes-list">
-              {table.indexes.map((idx, i) => (
-                <div
-                  key={idx.name ?? `${idx.columns.join("-")}-${i}`}
-                  className="inspector-index-card"
-                >
-                  <div className="inspector-index-top">
-                    <span className="inspector-index-cols">
-                      <Hash size={12} className="inspector-index-icon" aria-hidden />
-                      ({idx.columns.join(", ")})
-                    </span>
-                    <div className="inspector-field-badges">
-                      {idx.pk && <span className="inspector-badge pk">PK</span>}
-                      {idx.unique && (
-                        <span className="inspector-badge uq">UNIQUE</span>
-                      )}
-                      {idx.type && (
-                        <span className="inspector-badge">{idx.type}</span>
-                      )}
+            <div class="inspector-indexes-list">
+              <For each={props.table.indexes}>
+                {(idx) => (
+                  <div class="inspector-index-card">
+                    <div class="inspector-index-top">
+                      <span class="inspector-index-cols">
+                        <Hash size={12} class="inspector-index-icon" aria-hidden />
+                        ({idx.columns.join(", ")})
+                      </span>
+                      <div class="inspector-field-badges">
+                        <Show when={idx.pk}>
+                          <span class="inspector-badge pk">PK</span>
+                        </Show>
+                        <Show when={idx.unique}>
+                          <span class="inspector-badge uq">UNIQUE</span>
+                        </Show>
+                        <Show when={idx.type}>
+                          <span class="inspector-badge">{idx.type}</span>
+                        </Show>
+                      </div>
                     </div>
+                    <Show when={idx.name}>
+                      {(name) => (
+                        <span class="inspector-index-name">{name()}</span>
+                      )}
+                    </Show>
+                    <Show when={idx.note}>
+                      {(note) => (
+                        <p class="inspector-field-note">{note()}</p>
+                      )}
+                    </Show>
                   </div>
-                  {idx.name && (
-                    <span className="inspector-index-name">{idx.name}</span>
-                  )}
-                  {idx.note && (
-                    <p className="inspector-field-note">{idx.note}</p>
-                  )}
-                </div>
-              ))}
+                )}
+              </For>
             </div>
           </div>
-        )}
+        </Show>
       </div>
     </>
   );
 }
-

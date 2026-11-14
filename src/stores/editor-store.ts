@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { createStoreFactory } from "./create-store";
 import {
   createProjectFile,
   deleteProjectFile,
@@ -55,7 +55,7 @@ function markDirty(tab: EditorTab, content: string): EditorTab {
 /** Coalesces concurrent openFile calls (e.g. Strict Mode + entry-point effect). */
 const openFileInFlight = new Map<string, Promise<void>>();
 
-export const useEditorStore = create<EditorState>((set, get) => ({
+export const useEditorStore = createStoreFactory<EditorState>((set, get) => ({
   tabs: [],
   activePath: null,
   externalConflict: null,

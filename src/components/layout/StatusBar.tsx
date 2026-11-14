@@ -1,54 +1,63 @@
+import { Show } from "solid-js";
 import { useDiagramStore } from "../../stores/diagram-store";
 import { useEditorStore } from "../../stores/editor-store";
 import { useProjectStore } from "../../stores/project-store";
 
 export function StatusBar() {
-  const activePath = useEditorStore((s) => s.activePath);
-  const activeTab = useEditorStore((s) =>
-    s.tabs.find((t) => t.relativePath === s.activePath),
-  );
-  const model = useDiagramStore((s) => s.lastValidModel);
-  const isStale = useDiagramStore((s) => s.isStale);
-  const diagnostics = useDiagramStore((s) => s.diagnostics);
-  const selectedTableId = useDiagramStore((s) => s.selectedTableId);
-  const projectName = useProjectStore((s) => s.projectName);
+  const activePath = () => useEditorStore((s) => s.activePath);
+  const activeTab = () =>
+    useEditorStore((s) => s.tabs.find((t) => t.relativePath === s.activePath));
+  const model = () => useDiagramStore((s) => s.lastValidModel);
+  const isStale = () => useDiagramStore((s) => s.isStale);
+  const diagnostics = () => useDiagramStore((s) => s.diagnostics);
+  const selectedTableId = () => useDiagramStore((s) => s.selectedTableId);
+  const projectName = () => useProjectStore((s) => s.projectName);
 
-  const errors = diagnostics.filter((d) => d.severity === "error").length;
-  const parseLabel = isStale
-    ? "Diagram outdated"
-    : errors > 0
-      ? `${errors} error${errors === 1 ? "" : "s"}`
-      : model
-        ? "Schema OK"
-        : projectName
-          ? "No schema"
-          : "Open a project";
+  const errors = () => diagnostics().filter((d) => d.severity === "error").length;
+  const parseLabel = () =>
+    isStale()
+      ? "Diagram outdated"
+      : errors() > 0
+      ? `${errors()} error${errors() === 1 ? "" : "s"}`
+      : model()
+      ? "Schema OK"
+      : projectName()
+      ? "No schema"
+      : "Open a project";
 
-  const fileLabel = activePath?.split("/").pop();
+  const fileLabel = () => activePath()?.split("/").pop();
 
   return (
-    <footer className="status-bar status-bar-compact">
-      <span className={`status-pill ${errors > 0 ? "error" : isStale ? "warn" : ""}`}>
-        {parseLabel}
+    <footer class="status-bar status-bar-compact">
+      <span class={`status-pill ${errors() > 0 ? "error" : isStale() ? "warn" : ""}`}>
+        {parseLabel()}
       </span>
-      {model && (
-        <span className="status-muted">
-          {model.tables.length} tables
-          {model.tableGroups && model.tableGroups.length > 0
-            ? ` · ${model.tableGroups.length} ${model.tableGroups.length === 1 ? "group" : "groups"}`
-            : ""}{" "}
-          · {model.references.length} refs
+      <Show when={model()}>
+        {(m) => {
+          const tableCount = () => m().tables.length;
+          const groupCount = () => m().tableGroups?.length ?? 0;
+          const refCount = () => m().references.length;
+
+          return (
+            <span class="status-muted">
+              {tableCount()} tables
+              {groupCount() > 0
+                ? ` · ${groupCount()} ${groupCount() === 1 ? "group" : "groups"}`
+                : ""}{" "}
+              · {refCount()} refs
+            </span>
+          );
+        }}
+      </Show>
+      <Show when={selectedTableId()}>
+        <span class="status-muted">Selected {selectedTableId()}</span>
+      </Show>
+      <Show when={fileLabel()}>
+        <span class="status-muted status-file">
+          {fileLabel()}
+          {activeTab()?.isDirty ? " • unsaved" : ""}
         </span>
-      )}
-      {selectedTableId && (
-        <span className="status-muted">Selected {selectedTableId}</span>
-      )}
-      {fileLabel && (
-        <span className="status-muted status-file">
-          {fileLabel}
-          {activeTab?.isDirty ? " • unsaved" : ""}
-        </span>
-      )}
+      </Show>
     </footer>
   );
 }

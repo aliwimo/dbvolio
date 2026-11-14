@@ -1,4 +1,6 @@
-import { FileText, FolderOpen, Save, Settings, X } from "lucide-react";
+import { FileText, FolderOpen, Save, Settings, X } from "lucide-solid";
+import { Show } from "solid-js";
+import { Button } from "../ui";
 import { ExportMenu } from "./ExportMenu";
 import { OpenProjectMenu } from "./OpenProjectMenu";
 import { useEditorStore } from "../../stores/editor-store";
@@ -8,46 +10,53 @@ import { useCommandKeybindingLabel } from "../../features/keymap/format-command-
 import { PanelToggles } from "./PanelToggles";
 
 export function Header() {
-  const openSettings = useUiStore((s) => s.openSettings);
-  const projectRoot = useProjectStore((s) => s.projectRoot);
-  const projectName = useProjectStore((s) => s.projectName);
-  const projectScope = useProjectStore((s) => s.projectScope);
-  const closeProject = useProjectStore((s) => s.closeProject);
-  const closeShortcut = useCommandKeybindingLabel("project.close");
-  const saveActive = useEditorStore((s) => s.saveActive);
-  const activePath = useEditorStore((s) => s.activePath);
-  const activeTab = useEditorStore((s) =>
-    s.tabs.find((t) => t.relativePath === s.activePath),
-  );
-  const saveShortcut = useCommandKeybindingLabel("file.save");
-  const settingsShortcut = useCommandKeybindingLabel("settings.open");
+  const openSettings = useUiStore.getState().openSettings;
+  const projectRoot = () => useProjectStore((s) => s.projectRoot);
+  const projectName = () => useProjectStore((s) => s.projectName);
+  const projectScope = () => useProjectStore((s) => s.projectScope);
+  const closeProject = useProjectStore.getState().closeProject;
+  const closeShortcut = () => useCommandKeybindingLabel("project.close");
+  const saveActive = useEditorStore.getState().saveActive;
+  const activePath = () => useEditorStore((s) => s.activePath);
+  const activeTab = () =>
+    useEditorStore((s) => s.tabs.find((t) => t.relativePath === s.activePath));
+  const saveShortcut = () => useCommandKeybindingLabel("file.save");
+  const settingsShortcut = () => useCommandKeybindingLabel("settings.open");
 
-  const isDirty = Boolean(activeTab?.isDirty);
-  const closeLabel =
-    projectScope === "file" ? "Close file" : "Close folder";
-  const closeTitle = closeShortcut
-    ? `${closeLabel} (${closeShortcut})`
-    : closeLabel;
-  const ProjectIcon = projectScope === "file" ? FileText : FolderOpen;
+  const isDirty = () => Boolean(activeTab()?.isDirty);
+  const closeLabel = () =>
+    projectScope() === "file" ? "Close file" : "Close folder";
+  const closeTitle = () =>
+    closeShortcut() ? `${closeLabel()} (${closeShortcut()})` : closeLabel();
 
   return (
-    <header className="header header-toolbar">
-      <div className="header-toolbar-start">
-        {projectName ? (
-          <div className="header-project-wrap">
-            <ProjectIcon
-              size={14}
-              className="header-project-icon"
-              aria-hidden
-            />
-            <span className="header-project" title={projectName}>
-              {projectName}
+    <header class="header header-toolbar">
+      <div class="header-toolbar-start">
+        <Show
+          when={projectName()}
+          fallback={
+            <div class="header-app-id" aria-hidden>
+              <span class="header-mark">DB</span>
+              <span class="header-title header-app-name">dbvolio</span>
+            </div>
+          }
+        >
+          <div class="header-project-wrap">
+            <Show
+              when={projectScope() === "file"}
+              fallback={<FolderOpen size={14} class="header-project-icon" aria-hidden />}
+            >
+              <FileText size={14} class="header-project-icon" aria-hidden />
+            </Show>
+            <span class="header-project" title={projectName() ?? ""}>
+              {projectName()}
             </span>
-            <button
-              type="button"
-              className="btn-icon header-project-close"
-              aria-label={closeLabel}
-              title={closeTitle}
+            <Button
+              variant="ghost"
+              size="icon"
+              class="header-project-close"
+              aria-label={closeLabel()}
+              title={closeTitle()}
               onClick={() =>
                 void closeProject().catch((err: unknown) => {
                   const message =
@@ -57,66 +66,57 @@ export function Header() {
               }
             >
               <X size={14} />
-            </button>
+            </Button>
           </div>
-        ) : (
-          <div className="header-app-id" aria-hidden>
-            <span className="header-mark">DB</span>
-            <span className="header-title header-app-name">dbvolio</span>
-          </div>
-        )}
+        </Show>
       </div>
 
-      <div className="header-toolbar-end">
+      <div class="header-toolbar-end">
         <div
-          className="toolbar-segment header-toolbar-actions"
+          class="toolbar-segment header-toolbar-actions"
           role="toolbar"
           aria-label="Toolbar"
         >
-          {projectRoot && (
-            <>
-              <PanelToggles />
-              <span className="toolbar-segment-split" aria-hidden />
-            </>
-          )}
+          <Show when={projectRoot()}>
+            <PanelToggles />
+            <span class="toolbar-segment-split" aria-hidden />
+          </Show>
 
-          <div
-            className="header-toolbar-file-cluster"
-            role="group"
-            aria-label="File actions"
-          >
-            <OpenProjectMenu />
-            {projectName && (
-              <>
-                <ExportMenu />
-                <button
-                  type="button"
-                  className={`btn btn-sm header-toolbar-action header-toolbar-action-icon header-save ${isDirty ? "header-save-dirty btn-primary" : "btn-ghost"}`}
-                  disabled={!activePath}
-                  aria-label={isDirty ? "Save (unsaved changes)" : "Save"}
-                  data-dirty={isDirty || undefined}
-                  onClick={() => void saveActive()}
-                  title={saveShortcut ? `Save (${saveShortcut})` : "Save"}
-                >
-                  <Save size={15} />
-                </button>
-              </>
-            )}
-          </div>
+          <OpenProjectMenu />
 
-          <span className="toolbar-segment-split" aria-hidden />
-
-          <button
-            type="button"
-            className="btn-icon header-toolbar-action header-toolbar-action-icon"
-            onClick={openSettings}
+          <Button
+            variant="ghost"
+            size="icon"
+            class="header-save"
+            disabled={!activePath() || !isDirty()}
+            aria-label="Save file"
             title={
-              settingsShortcut ? `Settings (${settingsShortcut})` : "Settings"
+              saveShortcut()
+                ? `Save file (${saveShortcut()})`
+                : "Save file"
+            }
+            onClick={() => void saveActive()}
+          >
+            <Save size={15} />
+            <span class="header-btn-label">Save</span>
+          </Button>
+
+          <ExportMenu />
+
+          <Button
+            variant="ghost"
+            size="icon"
+            class="header-btn-settings"
+            title={
+              settingsShortcut()
+                ? `Settings (${settingsShortcut()})`
+                : "Settings"
             }
             aria-label="Settings"
+            onClick={openSettings}
           >
             <Settings size={15} />
-          </button>
+          </Button>
         </div>
       </div>
     </header>

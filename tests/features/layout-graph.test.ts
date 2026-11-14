@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Edge } from "@xyflow/react";
+import type { Edge } from "../../src/types/flow";
 import {
   componentForNode,
   connectedComponents,

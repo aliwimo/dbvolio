@@ -1,7 +1,7 @@
-import Editor, { loader, type OnMount } from "@monaco-editor/react";
+import * as monaco from "monaco-editor";
+import editorWorker from "monaco-editor/editor/editor.worker?worker";
 import { dbmlMonarchTokensProvider } from "@dbml/core";
-import { useCallback, useEffect, useRef } from "react";
-import { useShallow } from "zustand/react/shallow";
+import { createEffect, onCleanup, Show } from "solid-js";
 import { useDiagramStore } from "../../stores/diagram-store";
 import { useEditorStore } from "../../stores/editor-store";
 import { useProjectStore } from "../../stores/project-store";
@@ -9,7 +9,17 @@ import { buildMonacoEditorOptions } from "../../features/editor/editor-settings"
 import { useAppSettingsStore } from "../../stores/app-settings-store";
 import { useUiStore } from "../../stores/ui-store";
 
-loader.init().then((monaco) => {
+let monacoConfigured = false;
+function ensureMonacoConfigured() {
+  if (monacoConfigured) return;
+  monacoConfigured = true;
+
+  (globalThis as any).MonacoEnvironment = {
+    getWorker(_: unknown, _label: string) {
+      return new editorWorker();
+    },
+  };
+
   if (
     !monaco.languages
       .getLanguages()
@@ -18,11 +28,10 @@ loader.init().then((monaco) => {
     monaco.languages.register({ id: "dbml" });
     monaco.languages.setMonarchTokensProvider(
       "dbml",
-      dbmlMonarchTokensProvider,
+      dbmlMonarchTokensProvider as any
     );
   }
 
-  // Theme matching Dbvolio Dark (#18181b panel, #121214 app, #8d8d96 muted, #8eb0f0 accent)
   monaco.editor.defineTheme("dbvolio-dark", {
     base: "vs-dark",
     inherit: true,
@@ -39,7 +48,7 @@ loader.init().then((monaco) => {
       "editor.foreground": "#ececef",
       "editorLineNumber.foreground": "#4e4e56",
       "editorLineNumber.activeForeground": "#ececef",
-      "editorCursor.foreground": "#8eb0f0",
+      "editorCursor.foreground": "#f4f4f5",
       "editor.lineHighlightBackground": "#202024",
       "editor.lineHighlightBorder": "#00000000",
       "editor.selectionBackground": "#333b4d",
@@ -58,7 +67,6 @@ loader.init().then((monaco) => {
     },
   });
 
-  // Theme matching Dbvolio Light (#ffffff panel, #f7f7f8 app, #73737c muted, #3b6fd4 accent)
   monaco.editor.defineTheme("dbvolio-light", {
     base: "vs",
     inherit: true,
@@ -75,209 +83,163 @@ loader.init().then((monaco) => {
       "editor.foreground": "#1c1c1f",
       "editorLineNumber.foreground": "#b5b5bc",
       "editorLineNumber.activeForeground": "#1c1c1f",
-      "editorCursor.foreground": "#3b6fd4",
+      "editorCursor.foreground": "#111111",
       "editor.lineHighlightBackground": "#f8f9fc",
       "editor.lineHighlightBorder": "#00000000",
-      "editor.selectionBackground": "#dbe8fc",
-      "editor.inactiveSelectionBackground": "#ebf1fa",
-      "editorIndentGuide.background": "#efeff2",
-      "editorIndentGuide.activeBackground": "#d8d8de",
+      "editor.selectionBackground": "#dbeafe",
+      "editor.inactiveSelectionBackground": "#eef2f6",
+      "editorIndentGuide.background": "#e8e8ec",
+      "editorIndentGuide.activeBackground": "#c8c8cf",
       "editorGutter.background": "#ffffff",
       "editorOverviewRuler.border": "#00000000",
-      "editorWidget.background": "#f7f7f8",
-      "editorWidget.border": "#ececee",
+      "editorWidget.background": "#ffffff",
+      "editorWidget.border": "#e4e4e7",
       "input.background": "#ffffff",
-      "input.border": "#dcdce1",
+      "input.border": "#d4d4d8",
       "scrollbarSlider.background": "#00000010",
       "scrollbarSlider.hoverBackground": "#00000020",
       "scrollbarSlider.activeBackground": "#00000030",
     },
   });
-});
+}
 
 export function DbmlEditor() {
-  const activePath = useEditorStore((s) => s.activePath);
-  const tab = useEditorStore((s) =>
-    s.tabs.find((t) => t.relativePath === s.activePath),
-  );
-  const updateContent = useEditorStore((s) => s.updateContent);
-  const pendingEditorReveal = useEditorStore((s) => s.pendingEditorReveal);
-  const clearEditorReveal = useEditorStore((s) => s.clearEditorReveal);
-  const projectRoot = useProjectStore((s) => s.projectRoot);
-  const theme = useUiStore((s) => s.theme);
-  const editorSettings = useAppSettingsStore(
-    useShallow((s) => ({
-      fontSize: s.fontSize,
-      fontFamily: s.fontFamily,
-      lineHeight: s.lineHeight,
-      wordWrap: s.wordWrap,
-      minimap: s.minimap,
-      lineNumbers: s.lineNumbers,
-      tabSize: s.tabSize,
-      insertSpaces: s.insertSpaces,
-      renderWhitespace: s.renderWhitespace,
-      folding: s.folding,
-      foldingHighlight: s.foldingHighlight,
-      renderLineHighlight: s.renderLineHighlight,
-      renderLineHighlightOnlyWhenFocus: s.renderLineHighlightOnlyWhenFocus,
-      cursorBlinking: s.cursorBlinking,
-      cursorSmoothCaretAnimation: s.cursorSmoothCaretAnimation,
-      bracketPairColorization: s.bracketPairColorization,
-      fontLigatures: s.fontLigatures,
-      smoothScrolling: s.smoothScrolling,
-      overviewRulerBorder: s.overviewRulerBorder,
-      hideCursorInOverviewRuler: s.hideCursorInOverviewRuler,
-      contextmenu: s.contextmenu,
-      glyphMargin: s.glyphMargin,
-      lightbulb: s.lightbulb,
-      occurrencesHighlight: s.occurrencesHighlight,
-      selectionHighlight: s.selectionHighlight,
-      stickyScroll: s.stickyScroll,
-      indentationGuides: s.indentationGuides,
-    })),
-  );
-  const diagnostics = useDiagramStore((s) => s.diagnostics);
-  const monacoRef = useRef<Awaited<ReturnType<typeof loader.init>> | null>(
-    null,
-  );
-  const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
+  ensureMonacoConfigured();
 
-  const onChange = useCallback(
-    (value: string | undefined) => {
-      if (activePath && value !== undefined) {
-        updateContent(activePath, value);
-      }
-    },
-    [activePath, updateContent],
-  );
+  let editorInstance: monaco.editor.IStandaloneCodeEditor | null = null;
+  let isUpdatingModel = false;
 
-  const applyEditorReveal = useCallback(
-    (relativePath: string, line: number) => {
-      const editor = editorRef.current;
-      if (!editor || activePath !== relativePath) {
-        return false;
-      }
-      editor.revealLineInCenter(line);
-      editor.setPosition({ lineNumber: line, column: 1 });
-      editor.focus();
-      return true;
-    },
-    [activePath],
-  );
+  const activePath = () => useEditorStore((s) => s.activePath);
+  const activeTab = () =>
+    useEditorStore((s) => s.tabs.find((t) => t.relativePath === s.activePath));
+  const diagnostics = () => useDiagramStore((s) => s.diagnostics);
+  const theme = () => useUiStore((s) => s.theme);
+  const editorSettings = () => useAppSettingsStore((s) => s);
+  const projectRoot = () => useProjectStore((s) => s.projectRoot);
+  const pendingEditorReveal = () => useEditorStore((s) => s.pendingEditorReveal);
 
-  const onMount: OnMount = (editor, monaco) => {
-    editorRef.current = editor;
-    monacoRef.current = monaco;
+  const initOrUpdateEditor = (el: HTMLDivElement) => {
+    if (editorInstance) return;
+
+    editorInstance = monaco.editor.create(el, {
+      language: "dbml",
+      theme: theme() === "dark" ? "dbvolio-dark" : "dbvolio-light",
+      automaticLayout: true,
+      value: activeTab()?.content ?? "",
+      ...buildMonacoEditorOptions(editorSettings()),
+    });
+
+    editorInstance.onDidChangeModelContent(() => {
+      if (isUpdatingModel) return;
+      const currentPath = activePath();
+      if (!currentPath || !editorInstance) return;
+      const val = editorInstance.getValue();
+      useEditorStore.getState().updateContent(currentPath, val);
+    });
+
     const pending = useEditorStore.getState().pendingEditorReveal;
     const currentPath = useEditorStore.getState().activePath;
     if (pending && currentPath === pending.relativePath) {
       requestAnimationFrame(() => {
-        editor.revealLineInCenter(pending.line);
-        editor.setPosition({ lineNumber: pending.line, column: 1 });
-        editor.focus();
+        if (!editorInstance) return;
+        editorInstance.revealLineInCenter(pending.line);
+        editorInstance.setPosition({ lineNumber: pending.line, column: 1 });
         useEditorStore.getState().clearEditorReveal();
       });
     }
   };
 
-  useEffect(() => {
-    if (!pendingEditorReveal || activePath !== pendingEditorReveal.relativePath) {
-      return;
-    }
-    const handle = requestAnimationFrame(() => {
-      if (
-        applyEditorReveal(
-          pendingEditorReveal.relativePath,
-          pendingEditorReveal.line,
-        )
-      ) {
-        clearEditorReveal();
-      }
-    });
-    return () => cancelAnimationFrame(handle);
-  }, [
-    pendingEditorReveal,
-    activePath,
-    tab?.content,
-    applyEditorReveal,
-    clearEditorReveal,
-  ]);
+  onCleanup(() => {
+    editorInstance?.dispose();
+    editorInstance = null;
+  });
 
-  useEffect(() => {
-    const monacoEditor = editorRef.current;
-    const monaco = monacoRef.current;
-    if (!monacoEditor || !monaco || !activePath || !projectRoot) {
-      return;
+  // Sync content when active tab or active path changes
+  createEffect(() => {
+    const tab = activeTab();
+    if (!editorInstance) return;
+
+    isUpdatingModel = true;
+    const currentVal = editorInstance.getValue();
+    const targetVal = tab?.content ?? "";
+    if (currentVal !== targetVal) {
+      editorInstance.setValue(targetVal);
     }
-    const model = monacoEditor.getModel();
-    if (!model) {
-      return;
-    }
-    const fileDiags = diagnostics.filter(
-      (d) => !d.filepath || d.filepath === activePath,
+    isUpdatingModel = false;
+  });
+
+  // Update theme
+  createEffect(() => {
+    const t = theme();
+    monaco.editor.setTheme(t === "dark" ? "dbvolio-dark" : "dbvolio-light");
+  });
+
+  // Update settings
+  createEffect(() => {
+    if (!editorInstance) return;
+    editorInstance.updateOptions(buildMonacoEditorOptions(editorSettings()));
+  });
+
+  // Update diagnostics markers
+  createEffect(() => {
+    if (!editorInstance) return;
+    const model = editorInstance.getModel();
+    if (!model) return;
+
+    const currentPath = activePath();
+    const fileDiags = diagnostics().filter(
+      (d) => !d.filepath || d.filepath === currentPath
     );
-    const markers = fileDiags.map((d) => ({
+
+    const markers: monaco.editor.IMarkerData[] = fileDiags.map((d) => ({
+      message: d.message,
       severity:
         d.severity === "error"
           ? monaco.MarkerSeverity.Error
           : d.severity === "warning"
             ? monaco.MarkerSeverity.Warning
             : monaco.MarkerSeverity.Info,
-      message: d.message,
-      startLineNumber: d.line,
-      startColumn: d.column,
-      endLineNumber: d.endLine ?? d.line,
-      endColumn: d.endColumn ?? d.column + 1,
+      startLineNumber: d.line ?? 1,
+      startColumn: d.column ?? 1,
+      endLineNumber: d.endLine ?? d.line ?? 1,
+      endColumn: d.endColumn ?? (d.column ?? 1) + 10,
     }));
+
     monaco.editor.setModelMarkers(model, "dbml", markers);
-  }, [diagnostics, activePath, projectRoot]);
+  });
 
-  useEffect(() => {
-    const monaco = monacoRef.current;
-    if (monaco) {
-      monaco.editor.setTheme(theme === "dark" ? "dbvolio-dark" : "dbvolio-light");
+  // Handle pending editor reveals
+  createEffect(() => {
+    const pending = pendingEditorReveal();
+    const currentPath = activePath();
+    if (!pending || !editorInstance || currentPath !== pending.relativePath) {
+      return;
     }
-  }, [theme]);
-
-  if (!projectRoot) {
-    return (
-      <div
-        style={{
-          flex: 1,
-          display: "grid",
-          placeItems: "center",
-          color: "var(--text-muted)",
-        }}
-      >
-        Open a project to edit DBML files.
-      </div>
-    );
-  }
-
-  if (!tab) {
-    return (
-      <div
-        style={{
-          flex: 1,
-          display: "grid",
-          placeItems: "center",
-          color: "var(--text-muted)",
-        }}
-      >
-        Select a file from the explorer.
-      </div>
-    );
-  }
+    const handle = requestAnimationFrame(() => {
+      if (!editorInstance) return;
+      editorInstance.revealLineInCenter(pending.line);
+      editorInstance.setPosition({ lineNumber: pending.line, column: 1 });
+      useEditorStore.getState().clearEditorReveal();
+    });
+    onCleanup(() => cancelAnimationFrame(handle));
+  });
 
   return (
-    <Editor
-      height="100%"
-      language="dbml"
-      theme={theme === "dark" ? "dbvolio-dark" : "dbvolio-light"}
-      value={tab.content}
-      onChange={onChange}
-      onMount={onMount}
-      options={buildMonacoEditorOptions(editorSettings)}
-    />
+    <div class="dbml-editor-wrap" style={{ width: "100%", height: "100%", position: "relative" }}>
+      <Show
+        when={activePath()}
+        fallback={
+          <div class="dbml-editor-empty">
+            <p>
+              {projectRoot()
+                ? "Select a file from the explorer to edit."
+                : "Open a folder or DBML file to get started."}
+            </p>
+          </div>
+        }
+      >
+        <div ref={initOrUpdateEditor} style={{ width: "100%", height: "100%" }} />
+      </Show>
+    </div>
   );
 }

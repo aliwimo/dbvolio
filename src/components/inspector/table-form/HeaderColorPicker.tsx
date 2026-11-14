@@ -1,59 +1,57 @@
+import { For } from "solid-js";
 import { PRESET_HEADER_COLORS } from "./constants";
 
 function isPresetColor(value: string): boolean {
   return (PRESET_HEADER_COLORS as readonly string[]).includes(value);
 }
 
-export function HeaderColorPicker({
-  value,
-  onChange,
-  disabled,
-}: {
+export function HeaderColorPicker(props: {
   value: string;
   onChange: (color: string) => void;
   disabled?: boolean;
 }) {
   return (
-    <div className="table-form-color-picker" role="group" aria-label="Header color">
+    <div class="table-form-color-picker" role="group" aria-label="Header color">
       <button
         type="button"
-        className={`table-form-color-swatch table-form-color-none ${!value ? "active" : ""}`}
+        class={`table-form-color-swatch table-form-color-none ${!props.value ? "active" : ""}`}
         title="Default (no custom color)"
-        disabled={disabled}
-        onClick={() => onChange("")}
+        disabled={props.disabled}
+        onClick={() => props.onChange("")}
       >
-        <span className="table-form-color-none-icon" aria-hidden>
+        <span class="table-form-color-none-icon" aria-hidden>
           ∅
         </span>
       </button>
 
-      {PRESET_HEADER_COLORS.map((color) => (
-        <button
-          key={color}
-          type="button"
-          className={`table-form-color-swatch ${value === color ? "active" : ""}`}
-          style={{ background: color }}
-          title={color}
-          disabled={disabled}
-          onClick={() => onChange(color)}
-        />
-      ))}
+      <For each={PRESET_HEADER_COLORS}>
+        {(color) => (
+          <button
+            type="button"
+            class={`table-form-color-swatch ${props.value === color ? "active" : ""}`}
+            style={{ background: color }}
+            title={color}
+            disabled={props.disabled}
+            onClick={() => props.onChange(color)}
+          />
+        )}
+      </For>
 
       <label
-        className={`table-form-color-swatch table-form-color-custom ${value && !isPresetColor(value) ? "active" : ""}`}
+        class={`table-form-color-swatch table-form-color-custom ${props.value && !isPresetColor(props.value) ? "active" : ""}`}
         title="Pick custom color"
       >
         <span
-          className="table-form-color-custom-preview"
-          style={{ background: value || "#6366f1" }}
+          class="table-form-color-custom-preview"
+          style={{ background: props.value || "#6366f1" }}
           aria-hidden
         />
         <input
           type="color"
-          className="table-form-color-native"
-          value={value || "#6366f1"}
-          disabled={disabled}
-          onChange={(e) => onChange(e.target.value)}
+          class="table-form-color-custom-input"
+          value={props.value || "#6366f1"}
+          disabled={props.disabled}
+          onChange={(e) => props.onChange(e.currentTarget.value)}
         />
       </label>
     </div>

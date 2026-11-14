@@ -1,5 +1,5 @@
-import type { Edge, Node } from "@xyflow/react";
-import { create } from "zustand";
+import type { Edge, Node } from "../types/flow";
+import { createStoreFactory } from "./create-store";
 import { mergeFlowNodes } from "../features/schema/merge-flow-nodes";
 import type { Diagnostic } from "../types/diagnostics";
 import type { SchemaModel, SchemaTable } from "../types/schema";
@@ -30,7 +30,7 @@ interface DiagramState {
   selectedTable: () => SchemaTable | null;
 }
 
-export const useDiagramStore = create<DiagramState>((set, get) => ({
+export const useDiagramStore = createStoreFactory<DiagramState>((set, get) => ({
   model: null,
   lastValidModel: null,
   isStale: false,

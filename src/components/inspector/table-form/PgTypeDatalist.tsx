@@ -1,11 +1,12 @@
+import { For } from "solid-js";
 import { PG_TYPES, PG_TYPES_DATALIST_ID } from "./constants";
 
 export function PgTypeDatalist() {
   return (
     <datalist id={PG_TYPES_DATALIST_ID}>
-      {PG_TYPES.map((t) => (
-        <option key={t} value={t} />
-      ))}
+      <For each={PG_TYPES}>
+        {(type) => <option value={type} />}
+      </For>
     </datalist>
   );
 }
