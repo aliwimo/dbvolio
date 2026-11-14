@@ -1,22 +1,6 @@
-export type EditorWordWrap = "on" | "off" | "bounded";
+export type EditorWordWrap = "on" | "off";
 
-export type EditorLineNumbers = "on" | "off" | "relative";
-
-export type EditorRenderWhitespace =
-  | "none"
-  | "boundary"
-  | "selection"
-  | "trailing"
-  | "all";
-
-export type EditorRenderLineHighlight = "line" | "all" | "none" | "gutter";
-
-export type EditorCursorBlinking =
-  | "blink"
-  | "smooth"
-  | "phase"
-  | "expand"
-  | "solid";
+export type EditorLineNumbers = "on" | "off";
 
 export type EditorFontFamily =
   | "system"
@@ -30,29 +14,14 @@ export interface EditorSettings {
   fontFamily: EditorFontFamily;
   lineHeight: number;
   wordWrap: EditorWordWrap;
-  minimap: boolean;
   lineNumbers: EditorLineNumbers;
   tabSize: number;
   insertSpaces: boolean;
-  renderWhitespace: EditorRenderWhitespace;
   folding: boolean;
-  foldingHighlight: boolean;
-  renderLineHighlight: EditorRenderLineHighlight;
-  renderLineHighlightOnlyWhenFocus: boolean;
-  cursorBlinking: EditorCursorBlinking;
-  cursorSmoothCaretAnimation: boolean;
-  bracketPairColorization: boolean;
-  fontLigatures: boolean;
-  smoothScrolling: boolean;
-  overviewRulerBorder: boolean;
-  hideCursorInOverviewRuler: boolean;
-  contextmenu: boolean;
-  glyphMargin: boolean;
-  lightbulb: boolean;
-  occurrencesHighlight: boolean;
-  selectionHighlight: boolean;
-  stickyScroll: boolean;
-  indentationGuides: boolean;
+  highlightActiveLine: boolean;
+  bracketMatching: boolean;
+  autocompletion: boolean;
+  highlightSelectionMatches: boolean;
 }
 
 export const EDITOR_FONT_FAMILY_OPTIONS: {
@@ -69,7 +38,8 @@ export const EDITOR_FONT_FAMILY_OPTIONS: {
 const FONT_FAMILY_CSS: Record<EditorFontFamily, string | undefined> = {
   system: undefined,
   menlo: "Menlo, Monaco, 'Courier New', monospace",
-  jetbrains: "'JetBrains Mono', Menlo, Monaco, monospace",
+  jetbrains:
+    "'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace",
   fira: "'Fira Code', Menlo, Monaco, monospace",
   "source-code-pro": "'Source Code Pro', Menlo, Monaco, monospace",
 };
@@ -82,32 +52,17 @@ export function resolveEditorFontFamily(
 
 export const editorSettingsDefaults: EditorSettings = {
   fontSize: 13,
-  fontFamily: "system",
+  fontFamily: "jetbrains",
   lineHeight: 22,
   wordWrap: "on",
-  minimap: false,
   lineNumbers: "on",
   tabSize: 2,
   insertSpaces: true,
-  renderWhitespace: "selection",
   folding: true,
-  foldingHighlight: false,
-  renderLineHighlight: "line",
-  renderLineHighlightOnlyWhenFocus: true,
-  cursorBlinking: "blink",
-  cursorSmoothCaretAnimation: true,
-  bracketPairColorization: true,
-  fontLigatures: true,
-  smoothScrolling: true,
-  overviewRulerBorder: false,
-  hideCursorInOverviewRuler: true,
-  contextmenu: false,
-  glyphMargin: false,
-  lightbulb: false,
-  occurrencesHighlight: false,
-  selectionHighlight: true,
-  stickyScroll: false,
-  indentationGuides: false,
+  highlightActiveLine: true,
+  bracketMatching: true,
+  autocompletion: true,
+  highlightSelectionMatches: true,
 };
 
 function isOneOf<T extends string>(
@@ -122,7 +77,7 @@ export function sanitizeEditorSettings(
 ): Partial<EditorSettings> {
   const next: Partial<EditorSettings> = {};
 
-  if (partial.fontSize !== undefined) {
+  if (partial.fontSize !== undefined && Number.isFinite(partial.fontSize)) {
     next.fontSize = Math.min(24, Math.max(10, Math.round(partial.fontSize)));
   }
   if (
@@ -131,116 +86,41 @@ export function sanitizeEditorSettings(
   ) {
     next.fontFamily = partial.fontFamily;
   }
-  if (partial.lineHeight !== undefined) {
+  if (partial.lineHeight !== undefined && Number.isFinite(partial.lineHeight)) {
     next.lineHeight = Math.min(40, Math.max(0, Math.round(partial.lineHeight)));
   }
   if (
     partial.wordWrap !== undefined &&
-    isOneOf(partial.wordWrap, ["on", "off", "bounded"] as const)
+    isOneOf(partial.wordWrap, ["on", "off"] as const)
   ) {
     next.wordWrap = partial.wordWrap;
   }
-  if (partial.minimap !== undefined) {
-    next.minimap = Boolean(partial.minimap);
-  }
   if (
     partial.lineNumbers !== undefined &&
-    isOneOf(partial.lineNumbers, ["on", "off", "relative"] as const)
+    isOneOf(partial.lineNumbers, ["on", "off"] as const)
   ) {
     next.lineNumbers = partial.lineNumbers;
   }
-  if (partial.tabSize !== undefined) {
+  if (partial.tabSize !== undefined && Number.isFinite(partial.tabSize)) {
     next.tabSize = Math.min(8, Math.max(2, Math.round(partial.tabSize)));
   }
   if (partial.insertSpaces !== undefined) {
     next.insertSpaces = Boolean(partial.insertSpaces);
   }
-  if (
-    partial.renderWhitespace !== undefined &&
-    isOneOf(partial.renderWhitespace, [
-      "none",
-      "boundary",
-      "selection",
-      "trailing",
-      "all",
-    ] as const)
-  ) {
-    next.renderWhitespace = partial.renderWhitespace;
-  }
   if (partial.folding !== undefined) {
     next.folding = Boolean(partial.folding);
   }
-  if (
-    partial.renderLineHighlight !== undefined &&
-    isOneOf(partial.renderLineHighlight, [
-      "line",
-      "all",
-      "none",
-      "gutter",
-    ] as const)
-  ) {
-    next.renderLineHighlight = partial.renderLineHighlight;
+  if (partial.highlightActiveLine !== undefined) {
+    next.highlightActiveLine = Boolean(partial.highlightActiveLine);
   }
-  if (
-    partial.cursorBlinking !== undefined &&
-    isOneOf(partial.cursorBlinking, [
-      "blink",
-      "smooth",
-      "phase",
-      "expand",
-      "solid",
-    ] as const)
-  ) {
-    next.cursorBlinking = partial.cursorBlinking;
+  if (partial.bracketMatching !== undefined) {
+    next.bracketMatching = Boolean(partial.bracketMatching);
   }
-  if (partial.bracketPairColorization !== undefined) {
-    next.bracketPairColorization = Boolean(partial.bracketPairColorization);
+  if (partial.autocompletion !== undefined) {
+    next.autocompletion = Boolean(partial.autocompletion);
   }
-  if (partial.foldingHighlight !== undefined) {
-    next.foldingHighlight = Boolean(partial.foldingHighlight);
-  }
-  if (partial.renderLineHighlightOnlyWhenFocus !== undefined) {
-    next.renderLineHighlightOnlyWhenFocus = Boolean(
-      partial.renderLineHighlightOnlyWhenFocus,
-    );
-  }
-  if (partial.cursorSmoothCaretAnimation !== undefined) {
-    next.cursorSmoothCaretAnimation = Boolean(
-      partial.cursorSmoothCaretAnimation,
-    );
-  }
-  if (partial.fontLigatures !== undefined) {
-    next.fontLigatures = Boolean(partial.fontLigatures);
-  }
-  if (partial.smoothScrolling !== undefined) {
-    next.smoothScrolling = Boolean(partial.smoothScrolling);
-  }
-  if (partial.overviewRulerBorder !== undefined) {
-    next.overviewRulerBorder = Boolean(partial.overviewRulerBorder);
-  }
-  if (partial.hideCursorInOverviewRuler !== undefined) {
-    next.hideCursorInOverviewRuler = Boolean(partial.hideCursorInOverviewRuler);
-  }
-  if (partial.contextmenu !== undefined) {
-    next.contextmenu = Boolean(partial.contextmenu);
-  }
-  if (partial.glyphMargin !== undefined) {
-    next.glyphMargin = Boolean(partial.glyphMargin);
-  }
-  if (partial.lightbulb !== undefined) {
-    next.lightbulb = Boolean(partial.lightbulb);
-  }
-  if (partial.occurrencesHighlight !== undefined) {
-    next.occurrencesHighlight = Boolean(partial.occurrencesHighlight);
-  }
-  if (partial.selectionHighlight !== undefined) {
-    next.selectionHighlight = Boolean(partial.selectionHighlight);
-  }
-  if (partial.stickyScroll !== undefined) {
-    next.stickyScroll = Boolean(partial.stickyScroll);
-  }
-  if (partial.indentationGuides !== undefined) {
-    next.indentationGuides = Boolean(partial.indentationGuides);
+  if (partial.highlightSelectionMatches !== undefined) {
+    next.highlightSelectionMatches = Boolean(partial.highlightSelectionMatches);
   }
 
   return next;
@@ -251,70 +131,4 @@ export function mergeEditorSettings(
   partial: Partial<EditorSettings>,
 ): EditorSettings {
   return { ...base, ...sanitizeEditorSettings(partial) };
-}
-
-export function buildMonacoEditorOptions(
-  settings: EditorSettings,
-) {
-  const fontFamily = resolveEditorFontFamily(settings.fontFamily);
-
-  return {
-    minimap: { enabled: settings.minimap },
-    fontSize: settings.fontSize,
-    ...(fontFamily ? { fontFamily } : {}),
-    lineHeight: settings.lineHeight || 22,
-    wordWrap: settings.wordWrap,
-    lineNumbers: settings.lineNumbers,
-    tabSize: settings.tabSize,
-    insertSpaces: settings.insertSpaces,
-    renderWhitespace: settings.renderWhitespace,
-    folding: settings.folding,
-    foldingHighlight: settings.foldingHighlight,
-    renderLineHighlight: settings.renderLineHighlight,
-    renderLineHighlightOnlyWhenFocus: settings.renderLineHighlightOnlyWhenFocus,
-    cursorBlinking: settings.cursorBlinking,
-    cursorSmoothCaretAnimation: settings.cursorSmoothCaretAnimation
-      ? ("on" as const)
-      : ("off" as const),
-    bracketPairColorization: {
-      enabled: settings.bracketPairColorization,
-    },
-    scrollBeyondLastLine: false,
-    automaticLayout: true,
-    padding: { top: 14, bottom: 14 },
-    smoothScrolling: settings.smoothScrolling,
-    fontLigatures: settings.fontLigatures,
-    overviewRulerBorder: settings.overviewRulerBorder,
-    hideCursorInOverviewRuler: settings.hideCursorInOverviewRuler,
-    matchBrackets: "near" as const,
-    contextmenu: settings.contextmenu,
-    glyphMargin: settings.glyphMargin,
-    lineNumbersMinChars: 3,
-    scrollbar: {
-      verticalScrollbarSize: 8,
-      horizontalScrollbarSize: 8,
-      useShadows: false,
-      alwaysConsumeMouseWheel: false,
-    },
-    guides: {
-      indentation: settings.indentationGuides,
-      bracketPairs: false,
-      highlightActiveBracketPair: false,
-    },
-    lightbulb: {
-      enabled: settings.lightbulb ? "onCode" : "off",
-    },
-    quickSuggestions: {
-      other: true,
-      comments: false,
-      strings: false,
-    },
-    selectionHighlight: settings.selectionHighlight,
-    occurrencesHighlight: settings.occurrencesHighlight
-      ? ("singleFile" as const)
-      : ("off" as const),
-    stickyScroll: {
-      enabled: settings.stickyScroll,
-    },
-  };
 }

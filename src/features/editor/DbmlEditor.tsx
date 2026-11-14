@@ -1,4 +1,4 @@
-import { createEffect, onCleanup, Show } from "solid-js";
+import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 import {
   EditorView,
   keymap,
@@ -321,8 +321,17 @@ function buildSettingsExtensions(settings: EditorSettings): Extension[] {
   if (settings.folding) {
     exts.push(foldGutter());
   }
-  if (settings.renderLineHighlight !== "none") {
+  if (settings.highlightActiveLine) {
     exts.push(highlightActiveLine(), highlightActiveLineGutter());
+  }
+  if (settings.bracketMatching) {
+    exts.push(bracketMatching());
+  }
+  if (settings.autocompletion) {
+    exts.push(autocompletion({ override: [dbmlCompletionSource] }));
+  }
+  if (settings.highlightSelectionMatches) {
+    exts.push(highlightSelectionMatches());
   }
 
   return exts;
@@ -352,6 +361,8 @@ function lineColToOffset(doc: EditorState["doc"], line: number, col: number): nu
 export function DbmlEditor() {
   let editorView: EditorView | null = null;
   let isUpdatingDoc = false;
+
+  const [cursorPos, setCursorPos] = createSignal({ line: 1, col: 1, selected: 0 });
 
   const themeCompartment = new Compartment();
   const settingsCompartment = new Compartment();
@@ -383,10 +394,7 @@ export function DbmlEditor() {
         history(),
         drawSelection(),
         indentOnInput(),
-        bracketMatching(),
         closeBrackets(),
-        autocompletion({ override: [dbmlCompletionSource] }),
-        highlightSelectionMatches(),
         lintGutter(),
         dbmlLanguage,
         keymap.of([
@@ -400,6 +408,15 @@ export function DbmlEditor() {
         themeCompartment.of(buildThemeExtension(theme() === "dark")),
         settingsCompartment.of(buildSettingsExtensions(editorSettings())),
         EditorView.updateListener.of((update) => {
+          if (update.selectionSet || update.docChanged) {
+            const sel = update.state.selection.main;
+            const lineInfo = update.state.doc.lineAt(sel.head);
+            setCursorPos({
+              line: lineInfo.number,
+              col: sel.head - lineInfo.from + 1,
+              selected: Math.abs(sel.to - sel.from),
+            });
+          }
           if (!update.docChanged || isUpdatingDoc) return;
           const currentPath = activePath();
           if (!currentPath) return;
@@ -509,8 +526,31 @@ export function DbmlEditor() {
     onCleanup(() => cancelAnimationFrame(handle));
   });
 
+  const fileDiagCounts = () => {
+    const currentPath = activePath();
+    const fileDiags = diagnostics().filter(
+      (d) => !d.filepath || d.filepath === currentPath
+    );
+    let errors = 0;
+    let warnings = 0;
+    for (const d of fileDiags) {
+      if (d.severity === "error") errors++;
+      else if (d.severity === "warning") warnings++;
+    }
+    return { errors, warnings };
+  };
+
   return (
-    <div class="dbml-editor-wrap" style={{ width: "100%", height: "100%", position: "relative" }}>
+    <div
+      class="dbml-editor-wrap"
+      style={{
+        width: "100%",
+        height: "100%",
+        position: "relative",
+        display: "flex",
+        "flex-direction": "column",
+      }}
+    >
       <Show
         when={activePath()}
         fallback={
@@ -523,7 +563,56 @@ export function DbmlEditor() {
           </div>
         }
       >
-        <div ref={initOrUpdateEditor} style={{ width: "100%", height: "100%" }} />
+        <div
+          ref={initOrUpdateEditor}
+          style={{ flex: "1", "min-height": "0", width: "100%", overflow: "hidden" }}
+        />
+        <div
+          class="dbml-editor-statusbar"
+          style={{
+            display: "flex",
+            "align-items": "center",
+            "justify-content": "space-between",
+            padding: "2px 10px",
+            "font-size": "11px",
+            "line-height": "18px",
+            "border-top": "1px solid var(--border, rgba(128,128,128,0.2))",
+            color: "var(--muted-foreground, #888)",
+            "user-select": "none",
+            "flex-shrink": "0",
+          }}
+        >
+          <div style={{ display: "flex", gap: "12px", "align-items": "center" }}>
+            <span>
+              Ln {cursorPos().line}, Col {cursorPos().col}
+              {cursorPos().selected > 0 ? ` (${cursorPos().selected} selected)` : ""}
+            </span>
+            <Show when={fileDiagCounts().errors > 0 || fileDiagCounts().warnings > 0}>
+              <span
+                style={{
+                  color:
+                    fileDiagCounts().errors > 0
+                      ? "var(--destructive, #e5484d)"
+                      : "var(--warning, #f5a623)",
+                }}
+              >
+                {fileDiagCounts().errors > 0
+                  ? `${fileDiagCounts().errors} error${fileDiagCounts().errors === 1 ? "" : "s"}`
+                  : ""}
+                {fileDiagCounts().errors > 0 && fileDiagCounts().warnings > 0 ? ", " : ""}
+                {fileDiagCounts().warnings > 0
+                  ? `${fileDiagCounts().warnings} warning${fileDiagCounts().warnings === 1 ? "" : "s"}`
+                  : ""}
+              </span>
+            </Show>
+          </div>
+          <div style={{ display: "flex", gap: "12px", "align-items": "center" }}>
+            <span>
+              {editorSettings().insertSpaces ? "Spaces" : "Tabs"}: {editorSettings().tabSize}
+            </span>
+            <span>DBML</span>
+          </div>
+        </div>
       </Show>
     </div>
   );

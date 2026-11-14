@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildMonacoEditorOptions,
   editorSettingsDefaults,
   mergeEditorSettings,
+  resolveEditorFontFamily,
   sanitizeEditorSettings,
 } from "../../src/features/editor/editor-settings";
 
@@ -27,27 +27,19 @@ describe("editor-settings", () => {
     expect(
       mergeEditorSettings(editorSettingsDefaults, {
         fontSize: 16,
-        minimap: true,
+        folding: false,
         fontFamily: "fira",
       }),
     ).toEqual({
       ...editorSettingsDefaults,
       fontSize: 16,
-      minimap: true,
+      folding: false,
       fontFamily: "fira",
     });
   });
 
-  it("maps font family presets for Monaco", () => {
-    const options = buildMonacoEditorOptions({
-      ...editorSettingsDefaults,
-      fontFamily: "fira",
-    });
-    expect(options.fontFamily).toContain("Fira Code");
-  });
-
-  it("omits fontFamily when using system default", () => {
-    const options = buildMonacoEditorOptions(editorSettingsDefaults);
-    expect(options.fontFamily).toBeUndefined();
+  it("resolves font family presets", () => {
+    expect(resolveEditorFontFamily("fira")).toContain("Fira Code");
+    expect(resolveEditorFontFamily("system")).toBeUndefined();
   });
 });
