@@ -10,14 +10,14 @@ import {
 } from "lucide-solid";
 import { createSignal, onCleanup, onMount, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
-import type { LayoutScope } from "../../features/diagram-layout/layout-options";
-import { LAYOUT_PRESET_COPY } from "../../features/diagram-layout/layout-preset-copy";
+import type { LayoutScope } from "../diagram-layout/layout-options";
+import { LAYOUT_PRESET_COPY } from "../diagram-layout/layout-preset-copy";
 import {
   useDiagramViewStore,
   type LayoutAlgorithm,
   type LayoutSpacing,
-} from "../../stores/diagram-view-store";
-import { Checkbox } from "../ui";
+} from "./diagram-view-store";
+import { Checkbox } from "../../shared/ui";
 
 const SPACING: { value: LayoutSpacing; label: string; hint: string }[] = [
   { value: "compact", label: "Compact", hint: "Tighter gaps between tables" },

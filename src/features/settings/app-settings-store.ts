@@ -1,10 +1,10 @@
-import { createStoreFactory } from "./create-store";
+import { createStoreFactory } from "../../shared/stores/create-store";
 import {
   type EditorSettings,
   editorSettingsDefaults,
   mergeEditorSettings,
   sanitizeEditorSettings,
-} from "../features/editor/editor-settings";
+} from "../editor/editor-settings";
 
 interface AppSettingsState extends EditorSettings {
   parseDebounceMs: number;
@@ -122,4 +122,4 @@ export type {
   EditorWordWrap,
   EditorLineNumbers,
   EditorFontFamily,
-} from "../features/editor/editor-settings";
+} from "../editor/editor-settings";

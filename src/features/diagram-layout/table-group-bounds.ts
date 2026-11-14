@@ -1,5 +1,5 @@
-import type { Edge, Node } from "../../types/flow";
-import type { TableGroupNodeData } from "../../components/diagram/TableGroupNode";
+import type { Edge, Node } from "../diagram/flow";
+import type { TableGroupNodeData } from "../diagram/TableGroupNode";
 import { NODE_WIDTH, tableNodeHeight } from "./dagre-layout";
 
 export const GROUP_NODE_TYPE = "tableGroupNode";

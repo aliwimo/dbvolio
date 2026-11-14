@@ -1,4 +1,4 @@
-import type { Edge, Node } from "../../types/flow";
+import type { Edge, Node } from "../diagram/flow";
 import { uniqueLayoutEdges } from "./dagre-layout";
 
 export function connectedComponents(

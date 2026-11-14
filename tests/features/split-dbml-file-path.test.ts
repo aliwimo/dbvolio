@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { splitDbmlFilePath } from "../../src/features/open/split-dbml-file-path";
+import { splitDbmlFilePath } from "../../src/features/projects/split-dbml-file-path";
 
 describe("splitDbmlFilePath", () => {
   it("preserves leading slash on macOS paths", () => {

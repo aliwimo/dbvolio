@@ -2,7 +2,7 @@ import { X } from "lucide-solid";
 import { Show, type JSX } from "solid-js";
 import { Portal } from "solid-js/web";
 import { useModalEscape } from "./useModalEscape";
-import { Button } from "../../ui";
+import { Button } from "../../../shared/ui";
 
 export function TableFormDialog(props: {
   open: boolean;

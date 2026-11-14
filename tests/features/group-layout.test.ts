@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Edge, Node } from "../../src/types/flow";
+import type { Edge, Node } from "../../src/features/diagram/flow";
 import { applyDagreLayoutWithOptions } from "../../src/features/diagram-layout/dagre-layout";
 import { layoutNodeBounds } from "../../src/features/diagram-layout/layout-node-bounds";
 import { layoutNodeSize } from "../../src/features/diagram-layout/layout-node-bounds";

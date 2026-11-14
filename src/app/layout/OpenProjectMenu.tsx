@@ -1,9 +1,9 @@
 import { ChevronDown, FileText, FolderOpen, X } from "lucide-solid";
-import { Button } from "../ui";
+import { Button } from "../../shared/ui";
 import { createSignal, onCleanup, onMount, Show } from "solid-js";
 import { useCommandKeybindingLabel } from "../../features/keymap/format-command-keybinding";
-import { RecentProjectsList } from "../projects/RecentProjectsList";
-import { useProjectStore } from "../../stores/project-store";
+import { RecentProjectsList } from "../../features/projects/RecentProjectsList";
+import { useProjectStore } from "../../features/projects/project-store";
 
 export function OpenProjectMenu() {
   const openProjectDialog = useProjectStore.getState().openProjectDialog;

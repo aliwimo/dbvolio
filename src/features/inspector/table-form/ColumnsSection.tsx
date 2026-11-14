@@ -7,10 +7,10 @@ import {
   Trash2,
 } from "lucide-solid";
 import { createSignal, createEffect, For, Show } from "solid-js";
-import type { AddColumnPlacement } from "../../../features/schema/dbml-edit";
-import type { SchemaColumn } from "../../../types/schema";
+import type { AddColumnPlacement } from "../../schema/dbml-edit";
+import type { SchemaColumn } from "../../schema/schema";
 import { columnsEqual, emptyColumn } from "./column-defaults";
-import { Button, Input } from "../../ui";
+import { Button, Input } from "../../../shared/ui";
 import {
   findDuplicateColumnName,
   moveColumnInList,

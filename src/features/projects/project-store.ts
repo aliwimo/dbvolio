@@ -1,16 +1,16 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import { createStoreFactory } from "./create-store";
-import type { ProjectScope } from "../features/open/project-scope-files";
-import { splitDbmlFilePath } from "../features/open/split-dbml-file-path";
+import { createStoreFactory } from "../../shared/stores/create-store";
+import type { ProjectScope } from "./project-scope-files";
+import { splitDbmlFilePath } from "./split-dbml-file-path";
 import {
   clearProject,
   getProjectRoot,
   listProjectFiles,
   setProjectRoot,
-} from "../services/tauri-bridge";
-import { useDiagramStore } from "./diagram-store";
-import { useEditorStore } from "./editor-store";
-import type { ProjectFileEntry } from "../types/project";
+} from "../../shared/services/tauri-bridge";
+import { useDiagramStore } from "../diagram/diagram-store";
+import { useEditorStore } from "../editor/editor-store";
+import type { ProjectFileEntry } from "./project";
 
 const RECENT_KEY = "dbvolio-recent-projects";
 const MAX_RECENT = 8;

@@ -1,4 +1,4 @@
-import { createStoreFactory } from "./create-store";
+import { createStoreFactory } from "../../shared/stores/create-store";
 
 export type QuickPickKind = "recent" | "files";
 

@@ -2,7 +2,7 @@ import dagre from "dagre";
 import type {
   LayoutDirection,
   LayoutSpacing,
-} from "../../stores/diagram-view-store";
+} from "../diagram/diagram-view-store";
 
 export interface DagreLayoutNodeInput {
   id: string;

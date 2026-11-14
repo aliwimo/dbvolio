@@ -1,15 +1,15 @@
 import { createSignal, createMemo, onCleanup, onMount, For, Show } from "solid-js";
-import { COMMAND_DEFINITIONS } from "../../features/keymap/commands";
+import { COMMAND_DEFINITIONS } from "../keymap/commands";
 import {
   formatKeybinding,
   keybindingFromKeyboardEvent,
-} from "../../features/keymap/default-keybindings";
+} from "../keymap/default-keybindings";
 import {
   findConflictingCommand,
   getEffectiveKeybinding,
-} from "../../features/keymap/resolve-keybindings";
-import { useKeymapStore } from "../../stores/keymap-store";
-import { Button, Input } from "../ui";
+} from "../keymap/resolve-keybindings";
+import { useKeymapStore } from "../keymap/keymap-store";
+import { Button, Input } from "../../shared/ui";
 
 export function KeyboardShortcutsSection() {
   const overrides = () => useKeymapStore((s) => s.overrides);

@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { computeOrthogonalPath } from "../../src/components/diagram/RelationshipEdge";
+import { computeOrthogonalPath } from "../../src/features/diagram/RelationshipEdge";
 import {
   TABLE_HEADER_HEIGHT,
   TABLE_ROW_STRIDE,
   columnHandleOffsetY,
   getRelationshipEdgePoints,
 } from "../../src/features/diagram/relationship-edge-geometry";
-import type { Edge, Node } from "../../src/types/flow";
-import type { TableNodeData } from "../../src/components/diagram/TableNode";
+import type { Edge, Node } from "../../src/features/diagram/flow";
+import type { TableNodeData } from "../../src/features/diagram/TableNode";
 
 function tableNode(
   id: string,

@@ -1,4 +1,4 @@
-import type { ProjectFileEntry } from "../../types/project";
+import type { ProjectFileEntry } from "./project";
 
 export type ProjectScope = "folder" | "file";
 

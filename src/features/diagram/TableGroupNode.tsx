@@ -1,5 +1,5 @@
 import { Show } from "solid-js";
-import type { SchemaTableGroup } from "../../types/schema";
+import type { SchemaTableGroup } from "../schema/schema";
 
 export interface TableGroupNodeData extends Record<string, unknown> {
   group: SchemaTableGroup;

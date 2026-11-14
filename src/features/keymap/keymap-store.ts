@@ -1,6 +1,6 @@
-import { createStoreFactory } from "./create-store";
-import { keybindingToString } from "../features/keymap/default-keybindings";
-import type { CommandId, Keybinding, KeybindingOverrides } from "../features/keymap/types";
+import { createStoreFactory } from "../../shared/stores/create-store";
+import { keybindingToString } from "./default-keybindings";
+import type { CommandId, Keybinding, KeybindingOverrides } from "./types";
 
 const STORAGE_KEY = "dbvolio-keybindings";
 

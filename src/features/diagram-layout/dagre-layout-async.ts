@@ -1,4 +1,4 @@
-import type { Edge, Node } from "../../types/flow";
+import type { Edge, Node } from "../diagram/flow";
 import {
   applyDagreLayout,
   applyDagreLayoutWithOptions,
@@ -8,7 +8,7 @@ import {
 import type { AutoLayoutOptions } from "./layout-options";
 import { hasGroupedTables } from "./group-layout";
 import { resolveNodeOverlaps, spacingMetrics } from "./layout-spacing";
-import type { LayoutDirection } from "../../stores/diagram-view-store";
+import type { LayoutDirection } from "../diagram/diagram-view-store";
 import type { DagreLayoutPositions } from "./dagre-layout-core";
 import type {
   DagreLayoutWorkerRequest,

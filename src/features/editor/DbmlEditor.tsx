@@ -2,12 +2,12 @@ import * as monaco from "monaco-editor";
 import editorWorker from "monaco-editor/editor/editor.worker?worker";
 import { dbmlMonarchTokensProvider } from "@dbml/core";
 import { createEffect, onCleanup, Show } from "solid-js";
-import { useDiagramStore } from "../../stores/diagram-store";
-import { useEditorStore } from "../../stores/editor-store";
-import { useProjectStore } from "../../stores/project-store";
-import { buildMonacoEditorOptions } from "../../features/editor/editor-settings";
-import { useAppSettingsStore } from "../../stores/app-settings-store";
-import { useUiStore } from "../../stores/ui-store";
+import { useDiagramStore } from "../diagram/diagram-store";
+import { useEditorStore } from "./editor-store";
+import { useProjectStore } from "../projects/project-store";
+import { buildMonacoEditorOptions } from "./editor-settings";
+import { useAppSettingsStore } from "../settings/app-settings-store";
+import { useUiStore } from "../../shared/stores/ui-store";
 
 let monacoConfigured = false;
 function ensureMonacoConfigured() {

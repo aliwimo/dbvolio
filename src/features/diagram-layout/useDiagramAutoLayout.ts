@@ -1,15 +1,15 @@
-import type { Edge, Node } from "../../types/flow";
+import type { Edge, Node } from "../diagram/flow";
 import { createSignal } from "solid-js";
 import {
   layoutFromNodes,
   saveDiagramLayout,
-} from "../../services/layout-service";
-import { useDiagramStore } from "../../stores/diagram-store";
-import { useDiagramViewStore } from "../../stores/diagram-view-store";
-import { useProjectStore } from "../../stores/project-store";
+} from "./layout-service";
+import { useDiagramStore } from "../diagram/diagram-store";
+import { useDiagramViewStore } from "../diagram/diagram-view-store";
+import { useProjectStore } from "../projects/project-store";
 import { applyAutoLayoutAsync } from "./apply-auto-layout";
 import type { LayoutScope } from "./layout-options";
-import type { LayoutAlgorithm } from "../../stores/diagram-view-store";
+import type { LayoutAlgorithm } from "../diagram/diagram-view-store";
 
 export function useDiagramAutoLayout(params: {
   nodes: () => Node[];

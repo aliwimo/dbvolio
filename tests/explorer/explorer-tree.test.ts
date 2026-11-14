@@ -5,7 +5,7 @@ import {
   collectFolderPaths,
   filterDbmlEntries,
   filterTree,
-} from "../../src/components/explorer/explorer-tree";
+} from "../../src/features/explorer/explorer-tree";
 
 describe("explorer-tree", () => {
   it("keeps folders that contain dbml files", () => {

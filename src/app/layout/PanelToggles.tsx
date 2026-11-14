@@ -6,9 +6,9 @@ import {
 } from "lucide-solid";
 import { For } from "solid-js";
 import { panelToggleTitle } from "../../features/keymap/panel-toggle-commands";
-import { useKeymapStore } from "../../stores/keymap-store";
-import { useUiStore, type PanelId } from "../../stores/ui-store";
-import { Button } from "../ui";
+import { useKeymapStore } from "../../features/keymap/keymap-store";
+import { useUiStore, type PanelId } from "../../shared/stores/ui-store";
+import { Button } from "../../shared/ui";
 
 const PANELS: { id: PanelId; label: string; icon: typeof PanelLeft }[] = [
   { id: "explorer", label: "Files", icon: PanelLeft },

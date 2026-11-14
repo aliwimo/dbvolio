@@ -7,23 +7,23 @@ import {
   onMount,
   onCleanup,
 } from "solid-js";
-import type { Node, Edge } from "../../types/flow";
+import type { Node, Edge } from "./flow";
 import {
   layoutFromNodes,
   saveDiagramLayout,
-} from "../../services/layout-service";
-import { registerDiagramExportApi } from "../../services/diagram-export";
-import { useDiagramStore } from "../../stores/diagram-store";
-import { useDiagramViewStore } from "../../stores/diagram-view-store";
-import { useProjectStore } from "../../stores/project-store";
-import { useUiStore } from "../../stores/ui-store";
+} from "../diagram-layout/layout-service";
+import { registerDiagramExportApi } from "../export/diagram-export";
+import { useDiagramStore } from "./diagram-store";
+import { useDiagramViewStore } from "./diagram-view-store";
+import { useProjectStore } from "../projects/project-store";
+import { useUiStore } from "../../shared/stores/ui-store";
 import {
   groupNodeId,
   isGroupNode,
   syncTableGroupBounds,
-} from "../../features/diagram-layout/table-group-bounds";
-import { useDiagramAutoLayout } from "../../features/diagram-layout/useDiagramAutoLayout";
-import { applyAssignTableToGroup } from "../../features/schema/apply-schema-edits";
+} from "../diagram-layout/table-group-bounds";
+import { useDiagramAutoLayout } from "../diagram-layout/useDiagramAutoLayout";
+import { applyAssignTableToGroup } from "../schema/apply-schema-edits";
 import {
   DiagramContextMenu,
   type DiagramContextMenuState,
@@ -33,7 +33,7 @@ import { DiagramEdges } from "./DiagramEdges";
 import {
   getRelationshipEdgePoints,
   TABLE_NODE_WIDTH,
-} from "../../features/diagram/relationship-edge-geometry";
+} from "./relationship-edge-geometry";
 import { computeOrthogonalPath } from "./RelationshipEdge";
 import { TableGroupNode, type TableGroupNodeData } from "./TableGroupNode";
 import { TableNode, type TableNodeData } from "./TableNode";

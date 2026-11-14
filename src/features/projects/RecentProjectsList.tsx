@@ -1,6 +1,6 @@
 import { FileText, FolderOpen, X } from "lucide-solid";
 import { For, Show } from "solid-js";
-import { useProjectStore } from "../../stores/project-store";
+import { useProjectStore } from "./project-store";
 
 export function recentProjectLabel(path: string): {
   name: string;

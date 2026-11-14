@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { FileContent, ProjectFileEntry } from "../types/project";
+import type { FileContent, ProjectFileEntry } from "../../features/projects/project";
 
 function mapFileContent(raw: {
   content: string;

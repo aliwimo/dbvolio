@@ -1,6 +1,6 @@
 import { ChevronDown, FileCode } from "lucide-solid";
 import { For, Show } from "solid-js";
-import { useProjectStore } from "../../stores/project-store";
+import { useProjectStore } from "../../features/projects/project-store";
 
 export function DiagramRootSelect() {
   const projectRoot = () => useProjectStore((s) => s.projectRoot);

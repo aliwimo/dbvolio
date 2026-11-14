@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const disk: Record<string, string> = {};
 
-vi.mock("../../src/services/tauri-bridge", () => ({
+vi.mock("../../src/shared/services/tauri-bridge", () => ({
   readProjectFile: async (relativePath: string) => ({
     content: disk[relativePath] ?? "",
     modifiedMs: 0,
@@ -11,8 +11,8 @@ vi.mock("../../src/services/tauri-bridge", () => ({
 }));
 
 import { applyAssignTableToGroup } from "../../src/features/schema/apply-schema-edits";
-import { useEditorStore } from "../../src/stores/editor-store";
-import type { SchemaTable } from "../../src/types/schema";
+import { useEditorStore } from "../../src/features/editor/editor-store";
+import type { SchemaTable } from "../../src/features/schema/schema";
 
 function table(name: string): SchemaTable {
   return {

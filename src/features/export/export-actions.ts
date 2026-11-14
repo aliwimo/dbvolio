@@ -3,17 +3,17 @@ import {
   captureDiagramPdfBlob,
   captureDiagramPngBlob,
   captureDiagramSvgBlob,
-} from "../../services/diagram-export";
-import { parseProject } from "../../services/dbml-parser";
+} from "./diagram-export";
+import { parseProject } from "../schema/dbml-parser";
 import {
   saveExportBlob,
   saveExportText,
-} from "../../services/export-download";
-import { useDiagramStore } from "../../stores/diagram-store";
-import { useEditorStore } from "../../stores/editor-store";
-import { filesForScope } from "../open/project-scope-files";
-import { useProjectStore } from "../../stores/project-store";
-import { readProjectFile } from "../../services/tauri-bridge";
+} from "./export-download";
+import { useDiagramStore } from "../diagram/diagram-store";
+import { useEditorStore } from "../editor/editor-store";
+import { filesForScope } from "../projects/project-scope-files";
+import { useProjectStore } from "../projects/project-store";
+import { readProjectFile } from "../../shared/services/tauri-bridge";
 
 function projectAbsolutePath(projectRoot: string, relativePath: string): string {
   const root = projectRoot.replace(/\\/g, "/").replace(/\/$/, "");

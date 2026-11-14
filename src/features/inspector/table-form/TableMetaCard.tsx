@@ -2,7 +2,7 @@ import { FileCode2 } from "lucide-solid";
 import { For, Show, type JSX } from "solid-js";
 import { formatQualifiedTableName } from "./column-helpers";
 import { HeaderColorPicker } from "./HeaderColorPicker";
-import { Input } from "../../ui";
+import { Input } from "../../../shared/ui";
 
 export function TableMetaCard(props: {
   schema: string;

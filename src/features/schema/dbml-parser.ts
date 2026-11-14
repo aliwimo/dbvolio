@@ -1,5 +1,5 @@
 import { CompilerError, Parser } from "@dbml/core";
-import type { Diagnostic } from "../types/diagnostics";
+import type { Diagnostic } from "../../shared/types/diagnostics";
 import type {
   SchemaColumn,
   SchemaEnum,
@@ -8,7 +8,7 @@ import type {
   SchemaReference,
   SchemaTable,
   SchemaTableGroup,
-} from "../types/schema";
+} from "./schema";
 
 export interface ParseResult {
   model: SchemaModel | null;

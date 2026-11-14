@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatEditorTabLabel } from "../../src/components/editor/EditorTabs";
+import { formatEditorTabLabel } from "../../src/features/editor/EditorTabs";
 
 describe("formatEditorTabLabel", () => {
   it("shows basename when names are unique", () => {

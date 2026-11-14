@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseProject } from "../../src/services/dbml-parser";
+import { parseProject } from "../../src/features/schema/dbml-parser";
 
 const fixtureRoot = join(process.cwd(), "tests/fixtures/multifile");
 const projectRoot = "/fixture-project";

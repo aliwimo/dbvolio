@@ -15,13 +15,13 @@ import {
 } from "lucide-solid";
 import { createSignal, createMemo, For, onCleanup, onMount, Show } from "solid-js";
 import { Portal } from "solid-js/web";
-import { useEditorStore } from "../../stores/editor-store";
-import { filesForScope } from "../../features/open/project-scope-files";
-import { useProjectStore } from "../../stores/project-store";
-import { fileExplorerName } from "../../services/tauri-bridge";
-import { useUiStore } from "../../stores/ui-store";
+import { useEditorStore } from "../editor/editor-store";
+import { filesForScope } from "../projects/project-scope-files";
+import { useProjectStore } from "../projects/project-store";
+import { fileExplorerName } from "../../shared/services/tauri-bridge";
+import { useUiStore } from "../../shared/stores/ui-store";
 import { RecentProjectsList } from "../projects/RecentProjectsList";
-import { Button, Input, SearchField } from "../ui";
+import { Button, Input, SearchField } from "../../shared/ui";
 import { ExplorerTreeMenu } from "./ExplorerTreeMenu";
 import {
   ancestorFolderPaths,

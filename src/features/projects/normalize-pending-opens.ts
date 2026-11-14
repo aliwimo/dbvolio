@@ -1,4 +1,4 @@
-import type { DbmlOpenPayload } from "../../services/tauri-bridge";
+import type { DbmlOpenPayload } from "../../shared/services/tauri-bridge";
 
 /** Prefer explicit file opens over folder opens for the same project root. */
 export function normalizePendingOpens(

@@ -13,8 +13,8 @@ import {
   exportDiagramSvg,
   exportSql,
 } from "../../features/export/export-actions";
-import { useProjectStore } from "../../stores/project-store";
-import { Button } from "../ui";
+import { useProjectStore } from "../../features/projects/project-store";
+import { Button } from "../../shared/ui";
 
 export function ExportMenu() {
   const projectRoot = () => useProjectStore((s) => s.projectRoot);

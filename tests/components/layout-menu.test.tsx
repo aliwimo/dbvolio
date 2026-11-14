@@ -1,8 +1,8 @@
 import { cleanup, render, screen } from "@solidjs/testing-library";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { LayoutMenu } from "../../src/components/diagram/LayoutMenu";
-import { useDiagramViewStore } from "../../src/stores/diagram-view-store";
+import { LayoutMenu } from "../../src/features/diagram/LayoutMenu";
+import { useDiagramViewStore } from "../../src/features/diagram/diagram-view-store";
 
 function renderMenu() {
   const props = {

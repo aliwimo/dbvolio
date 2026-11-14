@@ -1,11 +1,11 @@
-import { createStoreFactory } from "./create-store";
+import { createStoreFactory } from "../../shared/stores/create-store";
 import {
   createProjectFile,
   deleteProjectFile,
   readProjectFile,
   renameProjectFile,
   writeProjectFile,
-} from "../services/tauri-bridge";
+} from "../../shared/services/tauri-bridge";
 
 export interface EditorTab {
   relativePath: string;

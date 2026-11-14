@@ -12,10 +12,10 @@ import {
 } from "lucide-solid";
 import { createMemo, For, Show } from "solid-js";
 import { resolveGroupColor } from "../diagram/TableGroupNode";
-import { useDiagramStore } from "../../stores/diagram-store";
-import { useUiStore } from "../../stores/ui-store";
-import type { SchemaEnum, SchemaModel, SchemaTable } from "../../types/schema";
-import { Button } from "../ui";
+import { useDiagramStore } from "../diagram/diagram-store";
+import { useUiStore } from "../../shared/stores/ui-store";
+import type { SchemaEnum, SchemaModel, SchemaTable } from "../schema/schema";
+import { Button } from "../../shared/ui";
 
 function findMatchingEnum(
   colType: string,

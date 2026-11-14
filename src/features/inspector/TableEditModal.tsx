@@ -7,14 +7,14 @@ import {
   applySetTableHeaderColor,
   applyUpdateTableMeta,
   openTableSourceFile,
-} from "../../features/schema/apply-schema-edits";
-import { useDiagramStore } from "../../stores/diagram-store";
-import { useProjectStore } from "../../stores/project-store";
-import { useUiStore } from "../../stores/ui-store";
+} from "../schema/apply-schema-edits";
+import { useDiagramStore } from "../diagram/diagram-store";
+import { useProjectStore } from "../projects/project-store";
+import { useUiStore } from "../../shared/stores/ui-store";
 import { ColumnsSection } from "./table-form/ColumnsSection";
 import { TableFormDialog } from "./table-form/TableFormDialog";
 import { TableMetaCard } from "./table-form/TableMetaCard";
-import { Button } from "../ui";
+import { Button } from "../../shared/ui";
 
 export function TableEditModal() {
   const open = () => useUiStore((s) => s.tableEditOpen);

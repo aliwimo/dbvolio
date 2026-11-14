@@ -1,4 +1,4 @@
-import type { PanelId } from "../../stores/ui-store";
+import type { PanelId } from "../../shared/stores/ui-store";
 import { formatCommandKeybinding } from "./format-command-keybinding";
 import type { CommandId, KeybindingOverrides } from "./types";
 

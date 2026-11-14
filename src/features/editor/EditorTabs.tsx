@@ -1,7 +1,7 @@
 import { X } from "lucide-solid";
 import { For, Show } from "solid-js";
-import { useEditorStore } from "../../stores/editor-store";
-import { useProjectStore } from "../../stores/project-store";
+import { useEditorStore } from "./editor-store";
+import { useProjectStore } from "../projects/project-store";
 
 function basename(relativePath: string): string {
   const parts = relativePath.split("/");

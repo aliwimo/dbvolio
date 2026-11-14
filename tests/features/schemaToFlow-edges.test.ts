@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { schemaToFlow } from "../../src/features/schema/schemaToFlow";
-import type { SchemaModel } from "../../src/types/schema";
+import type { SchemaModel } from "../../src/features/schema/schema";
 
 describe("schemaToFlow edge count", () => {
   it("creates one diagram edge per reference (not per column pair)", () => {

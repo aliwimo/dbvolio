@@ -1,5 +1,5 @@
-import { createStoreFactory } from "./create-store";
-import type { LayoutViewport } from "../types/layout";
+import { createStoreFactory } from "../../shared/stores/create-store";
+import type { LayoutViewport } from "../diagram-layout/layout";
 
 export type LayoutDirection = "LR" | "TB" | "RL" | "BT";
 export type LayoutSpacing = "compact" | "default" | "relaxed";

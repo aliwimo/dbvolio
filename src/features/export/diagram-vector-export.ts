@@ -1,19 +1,19 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import type { jsPDF } from "jspdf";
-import type { Edge, Node } from "../types/flow";
+import type { Edge, Node } from "../diagram/flow";
 import {
   TABLE_COLUMNS_PADDING,
   TABLE_HEADER_HEIGHT,
   TABLE_NODE_WIDTH,
   TABLE_ROW_STRIDE,
-} from "../features/diagram/relationship-edge-geometry";
-import { diagramEdgeGeometry } from "../components/diagram/DiagramEdges";
-import type { TableNodeData } from "../components/diagram/TableNode";
+} from "../diagram/relationship-edge-geometry";
+import { diagramEdgeGeometry } from "../diagram/DiagramEdges";
+import type { TableNodeData } from "../diagram/TableNode";
 import {
   resolveGroupColor,
   type TableGroupNodeData,
-} from "../components/diagram/TableGroupNode";
-import { isGroupNode } from "../features/diagram-layout/table-group-bounds";
+} from "../diagram/TableGroupNode";
+import { isGroupNode } from "../diagram-layout/table-group-bounds";
 
 const TABLE_MIN_WIDTH = TABLE_NODE_WIDTH;
 const HEADER_HEIGHT = TABLE_HEADER_HEIGHT;

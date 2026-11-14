@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Edge, Node } from "../../src/types/flow";
+import type { Edge, Node } from "../../src/features/diagram/flow";
 import { applyAlgorithmLayout } from "../../src/features/diagram-layout/layout-algorithms";
 import { NODE_WIDTH, tableNodeHeight } from "../../src/features/diagram-layout/dagre-layout";
 

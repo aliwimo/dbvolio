@@ -1,11 +1,11 @@
 import { FileText, FolderOpen, Save, Settings, X } from "lucide-solid";
 import { Show } from "solid-js";
-import { Button } from "../ui";
+import { Button } from "../../shared/ui";
 import { ExportMenu } from "./ExportMenu";
 import { OpenProjectMenu } from "./OpenProjectMenu";
-import { useEditorStore } from "../../stores/editor-store";
-import { useProjectStore } from "../../stores/project-store";
-import { useUiStore } from "../../stores/ui-store";
+import { useEditorStore } from "../../features/editor/editor-store";
+import { useProjectStore } from "../../features/projects/project-store";
+import { useUiStore } from "../../shared/stores/ui-store";
 import { useCommandKeybindingLabel } from "../../features/keymap/format-command-keybinding";
 import { PanelToggles } from "./PanelToggles";
 

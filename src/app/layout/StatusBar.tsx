@@ -1,7 +1,7 @@
 import { Show } from "solid-js";
-import { useDiagramStore } from "../../stores/diagram-store";
-import { useEditorStore } from "../../stores/editor-store";
-import { useProjectStore } from "../../stores/project-store";
+import { useDiagramStore } from "../../features/diagram/diagram-store";
+import { useEditorStore } from "../../features/editor/editor-store";
+import { useProjectStore } from "../../features/projects/project-store";
 
 export function StatusBar() {
   const activePath = () => useEditorStore((s) => s.activePath);

@@ -1,5 +1,5 @@
-import type { Edge, Node } from "../types/flow";
-import type { InternalNode } from "../types/flow";
+import type { Edge, Node } from "../diagram/flow";
+import type { InternalNode } from "../diagram/flow";
 import {
   buildDiagramSvg,
   svgStringToPdfBlob,

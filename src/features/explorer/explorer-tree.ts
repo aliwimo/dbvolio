@@ -1,4 +1,4 @@
-import type { ProjectFileEntry } from "../../types/project";
+import type { ProjectFileEntry } from "../projects/project";
 
 export interface TreeNode {
   name: string;

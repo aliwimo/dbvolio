@@ -1,8 +1,8 @@
-import type { Edge, Node } from "../types/flow";
-import { createStoreFactory } from "./create-store";
-import { mergeFlowNodes } from "../features/schema/merge-flow-nodes";
-import type { Diagnostic } from "../types/diagnostics";
-import type { SchemaModel, SchemaTable } from "../types/schema";
+import type { Edge, Node } from "./flow";
+import { createStoreFactory } from "../../shared/stores/create-store";
+import { mergeFlowNodes } from "../schema/merge-flow-nodes";
+import type { Diagnostic } from "../../shared/types/diagnostics";
+import type { SchemaModel, SchemaTable } from "../schema/schema";
 
 interface DiagramState {
   model: SchemaModel | null;

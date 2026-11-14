@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useEditorStore } from "../../src/stores/editor-store";
+import { useEditorStore } from "../../src/features/editor/editor-store";
 
-vi.mock("../../src/services/tauri-bridge", () => ({
+vi.mock("../../src/shared/services/tauri-bridge", () => ({
   readProjectFile: vi.fn(async (relativePath: string) => ({
     content: `content:${relativePath}`,
     modifiedMs: 1,

@@ -1,5 +1,5 @@
-import type { SchemaColumn } from "../../../types/schema";
-import { Checkbox } from "../../ui";
+import type { SchemaColumn } from "../../schema/schema";
+import { Checkbox } from "../../../shared/ui";
 
 export function ColumnConstraintToggles({
   column,

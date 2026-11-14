@@ -1,14 +1,14 @@
 import { createSignal, createEffect, Show } from "solid-js";
-import { applyCreateTable } from "../../features/schema/apply-schema-edits";
-import { useDiagramStore } from "../../stores/diagram-store";
-import { useProjectStore } from "../../stores/project-store";
-import { useUiStore } from "../../stores/ui-store";
-import type { SchemaColumn } from "../../types/schema";
+import { applyCreateTable } from "../schema/apply-schema-edits";
+import { useDiagramStore } from "../diagram/diagram-store";
+import { useProjectStore } from "../projects/project-store";
+import { useUiStore } from "../../shared/stores/ui-store";
+import type { SchemaColumn } from "../schema/schema";
 import { ColumnsSection } from "./table-form/ColumnsSection";
 import { defaultIdColumn } from "./table-form/column-defaults";
 import { TableFormDialog } from "./table-form/TableFormDialog";
 import { TableMetaCard } from "./table-form/TableMetaCard";
-import { Button } from "../ui";
+import { Button } from "../../shared/ui";
 
 export function TableCreateModal() {
   const open = () => useUiStore((s) => s.tableCreateOpen);

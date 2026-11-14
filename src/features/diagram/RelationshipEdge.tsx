@@ -1,4 +1,4 @@
-import type { RelationshipEdgePoints } from "../../features/diagram/relationship-edge-geometry";
+import type { RelationshipEdgePoints } from "./relationship-edge-geometry";
 
 export function computeOrthogonalPath(params: {
   sourceX: number;

@@ -1,4 +1,4 @@
-import type { SchemaColumn } from "../../../types/schema";
+import type { SchemaColumn } from "../../schema/schema";
 
 export function findDuplicateColumnName(
   columns: SchemaColumn[],

@@ -1,31 +1,31 @@
 import { FileText, FolderOpen } from "lucide-solid";
-import { Button } from "../components/ui";
+import { Button } from "../shared/ui";
 import { createSignal, createEffect, Show } from "solid-js";
-import { ProjectExplorer } from "../components/explorer/ProjectExplorer";
-import { DbmlEditor } from "../components/editor/DbmlEditor";
-import { EditorTabs } from "../components/editor/EditorTabs";
-import { SchemaDiagram } from "../components/diagram/SchemaDiagram";
-import { SchemaInspector } from "../components/inspector/SchemaInspector";
-import { TableCreateModal } from "../components/inspector/TableCreateModal";
-import { TableEditModal } from "../components/inspector/TableEditModal";
-import { Header } from "../components/layout/Header";
-import { SplitPane } from "../components/layout/SplitPane";
-import { StatusBar } from "../components/layout/StatusBar";
-import { QuickPickModal } from "../components/quick-pick/QuickPickModal";
-import { AppSettings } from "../components/settings/AppSettings";
+import { ProjectExplorer } from "../features/explorer/ProjectExplorer";
+import { DbmlEditor } from "../features/editor/DbmlEditor";
+import { EditorTabs } from "../features/editor/EditorTabs";
+import { SchemaDiagram } from "../features/diagram/SchemaDiagram";
+import { SchemaInspector } from "../features/inspector/SchemaInspector";
+import { TableCreateModal } from "../features/inspector/TableCreateModal";
+import { TableEditModal } from "../features/inspector/TableEditModal";
+import { Header } from "./layout/Header";
+import { SplitPane } from "./layout/SplitPane";
+import { StatusBar } from "./layout/StatusBar";
+import { QuickPickModal } from "../features/quick-pick/QuickPickModal";
+import { AppSettings } from "../features/settings/AppSettings";
 import { useRevealTableInEditor } from "../features/editor/useRevealTableInEditor";
-import { useDebouncedParse } from "../features/parsing/useDebouncedParse";
-import { useEditorStore } from "../stores/editor-store";
-import { RecentProjectsList } from "../components/projects/RecentProjectsList";
-import { useProjectStore } from "../stores/project-store";
-import { useExternalDbmlOpen } from "../features/open/useExternalDbmlOpen";
+import { useDebouncedParse } from "../features/schema/useDebouncedParse";
+import { useEditorStore } from "../features/editor/editor-store";
+import { RecentProjectsList } from "../features/projects/RecentProjectsList";
+import { useProjectStore } from "../features/projects/project-store";
+import { useExternalDbmlOpen } from "../features/projects/useExternalDbmlOpen";
 import { useAppKeymap } from "../features/keymap/use-app-keymap";
 import { useNativeAppMenu } from "../features/keymap/use-native-app-menu";
 import {
   DEFAULT_EXPLORER_WIDTH,
   DEFAULT_INSPECTOR_WIDTH,
   useUiStore,
-} from "../stores/ui-store";
+} from "../shared/stores/ui-store";
 
 function EditorPanel() {
   return (

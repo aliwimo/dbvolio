@@ -1,4 +1,4 @@
-import type { Edge, Node } from "../../types/flow";
+import type { Edge, Node } from "../diagram/flow";
 import { applyAlgorithmLayout } from "./layout-algorithms";
 import { applyDagreLayoutAsync } from "./dagre-layout-async";
 import type { AutoLayoutOptions } from "./layout-options";

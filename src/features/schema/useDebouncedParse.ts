@@ -1,20 +1,20 @@
 import { createEffect, onCleanup } from "solid-js";
-import { parseProject } from "../../services/dbml-parser";
+import { parseProject } from "./dbml-parser";
 import {
   getDiagramLayout,
   loadLayoutMetadata,
   mergeLayoutWithNodes,
-} from "../../services/layout-service";
-import { readProjectFile } from "../../services/tauri-bridge";
-import { useDiagramStore } from "../../stores/diagram-store";
-import { useEditorStore } from "../../stores/editor-store";
-import { filesForScope } from "../open/project-scope-files";
-import { useProjectStore } from "../../stores/project-store";
-import { useDiagramViewStore } from "../../stores/diagram-view-store";
+} from "../diagram-layout/layout-service";
+import { readProjectFile } from "../../shared/services/tauri-bridge";
+import { useDiagramStore } from "../diagram/diagram-store";
+import { useEditorStore } from "../editor/editor-store";
+import { filesForScope } from "../projects/project-scope-files";
+import { useProjectStore } from "../projects/project-store";
+import { useDiagramViewStore } from "../diagram/diagram-view-store";
 import { applyAutoLayoutAsync } from "../diagram-layout/apply-auto-layout";
 import { isGroupNode } from "../diagram-layout/table-group-bounds";
-import { useAppSettingsStore } from "../../stores/app-settings-store";
-import { schemaToFlow } from "../schema/schemaToFlow";
+import { useAppSettingsStore } from "../settings/app-settings-store";
+import { schemaToFlow } from "./schemaToFlow";
 
 export function useDebouncedParse() {
   createEffect(() => {

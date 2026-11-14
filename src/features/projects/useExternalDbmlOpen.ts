@@ -5,8 +5,8 @@ import { normalizePendingOpens } from "./normalize-pending-opens";
 import {
   takePendingDbmlOpens,
   type DbmlOpenPayload,
-} from "../../services/tauri-bridge";
-import { useProjectStore } from "../../stores/project-store";
+} from "../../shared/services/tauri-bridge";
+import { useProjectStore } from "./project-store";
 
 async function openPayload(payload: DbmlOpenPayload): Promise<void> {
   const store = useProjectStore.getState();

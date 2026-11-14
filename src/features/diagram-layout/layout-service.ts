@@ -1,4 +1,4 @@
-import type { Node } from "../types/flow";
+import type { Node } from "../diagram/flow";
 import {
   EMPTY_LAYOUT,
   LEGACY_LAYOUT_KEY,
@@ -6,14 +6,14 @@ import {
   type LayoutMetadata,
   type LayoutNodePosition,
   type LayoutViewport,
-} from "../types/layout";
-import { readLayoutMetadata, writeLayoutMetadata } from "./tauri-bridge";
-import { applyDagreLayout } from "../features/diagram-layout/dagre-layout";
+} from "./layout";
+import { readLayoutMetadata, writeLayoutMetadata } from "../../shared/services/tauri-bridge";
+import { applyDagreLayout } from "./dagre-layout";
 import {
   isGroupNode,
   syncTableGroupBounds,
-} from "../features/diagram-layout/table-group-bounds";
-import { useDiagramViewStore } from "../stores/diagram-view-store";
+} from "./table-group-bounds";
+import { useDiagramViewStore } from "../diagram/diagram-view-store";
 
 type ParsedLayoutFile = {
   version?: number;

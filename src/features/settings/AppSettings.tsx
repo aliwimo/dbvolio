@@ -2,15 +2,15 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { ExternalLink, X } from "lucide-solid";
 import { createSignal, onCleanup, onMount, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
-import { useAppSettingsStore } from "../../stores/app-settings-store";
+import { useAppSettingsStore } from "./app-settings-store";
 import {
   useDiagramViewStore,
   type DiagramViewOptions,
-} from "../../stores/diagram-view-store";
+} from "../diagram/diagram-view-store";
 import { RecentProjectsList } from "../projects/RecentProjectsList";
-import { useUiStore, type PanelId } from "../../stores/ui-store";
+import { useUiStore, type PanelId } from "../../shared/stores/ui-store";
 import { KeyboardShortcutsSection } from "./KeyboardShortcutsSection";
-import { Button, Checkbox, Input, Label } from "../ui";
+import { Button, Checkbox, Input, Label } from "../../shared/ui";
 
 type SettingsSection =
   | "recent"

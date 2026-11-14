@@ -12,9 +12,9 @@ import {
 } from "lucide-solid";
 import { createSignal, onCleanup, onMount, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
-import type { LayoutScope } from "../../features/diagram-layout/layout-options";
-import { useDiagramStore } from "../../stores/diagram-store";
-import type { SchemaTableGroup } from "../../types/schema";
+import type { LayoutScope } from "../diagram-layout/layout-options";
+import { useDiagramStore } from "./diagram-store";
+import type { SchemaTableGroup } from "../schema/schema";
 import { resolveGroupColor } from "./TableGroupNode";
 import type { TableNodeData } from "./TableNode";
 

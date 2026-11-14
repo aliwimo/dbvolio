@@ -2,8 +2,8 @@ import { For, Show } from "solid-js";
 import {
   sourceHandleId,
   targetHandleId,
-} from "../../features/schema/column-handles";
-import type { SchemaTable } from "../../types/schema";
+} from "../schema/column-handles";
+import type { SchemaTable } from "../schema/schema";
 
 export interface TableNodeData extends Record<string, unknown> {
   table: SchemaTable;

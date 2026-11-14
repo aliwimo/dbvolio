@@ -1,6 +1,6 @@
 import { For, Show, createMemo } from "solid-js";
-import type { Edge, Node } from "../../types/flow";
-import { getRelationshipEdgePoints } from "../../features/diagram/relationship-edge-geometry";
+import type { Edge, Node } from "./flow";
+import { getRelationshipEdgePoints } from "./relationship-edge-geometry";
 import { computeOrthogonalPath } from "./RelationshipEdge";
 
 export type DiagramEdgeItem = {

@@ -14,7 +14,7 @@ import {
   updateTableHeaderInContent,
   formatNewTableBlock,
 } from "../../src/features/schema/dbml-edit";
-import type { SchemaTable } from "../../src/types/schema";
+import type { SchemaTable } from "../../src/features/schema/schema";
 
 const usersTable: SchemaTable = {
   id: "users",

@@ -1,6 +1,6 @@
-import type { Edge, Node } from "../../types/flow";
-import type { LayoutDirection, LayoutSpacing } from "../../stores/diagram-view-store";
-import type { TableNodeData } from "../../components/diagram/TableNode";
+import type { Edge, Node } from "../diagram/flow";
+import type { LayoutDirection, LayoutSpacing } from "../diagram/diagram-view-store";
+import type { TableNodeData } from "../diagram/TableNode";
 import {
   computeDagreLayout,
   type DagreLayoutInput,

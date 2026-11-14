@@ -16,10 +16,10 @@ import {
   updateTableHeaderInContent,
   formatNewTableBlock,
 } from "./dbml-edit";
-import type { SchemaColumn, SchemaTable } from "../../types/schema";
-import type { ProjectScope } from "../open/project-scope-files";
-import { useEditorStore } from "../../stores/editor-store";
-import { readProjectFile } from "../../services/tauri-bridge";
+import type { SchemaColumn, SchemaTable } from "./schema";
+import type { ProjectScope } from "../projects/project-scope-files";
+import { useEditorStore } from "../editor/editor-store";
+import { readProjectFile } from "../../shared/services/tauri-bridge";
 
 export interface DiagramFileScope {
   entryPoint: string | null;

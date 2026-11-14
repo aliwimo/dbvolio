@@ -6,15 +6,15 @@ import {
   ZoomOut,
 } from "lucide-solid";
 import { createSignal, onCleanup, onMount, Show } from "solid-js";
-import type { LayoutScope } from "../../features/diagram-layout/layout-options";
-import { useDiagramStore } from "../../stores/diagram-store";
+import type { LayoutScope } from "../diagram-layout/layout-options";
+import { useDiagramStore } from "./diagram-store";
 import {
   useDiagramViewStore,
   type LayoutAlgorithm,
-} from "../../stores/diagram-view-store";
+} from "./diagram-view-store";
 import { useCanvasContext } from "./canvas-context";
 import { LayoutMenu } from "./LayoutMenu";
-import { Button, Checkbox, SearchField } from "../ui";
+import { Button, Checkbox, SearchField } from "../../shared/ui";
 
 export interface DiagramLayoutActions {
   runLayout: (scope: LayoutScope, algorithm?: LayoutAlgorithm) => void;

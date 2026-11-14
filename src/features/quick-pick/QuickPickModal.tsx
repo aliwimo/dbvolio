@@ -1,15 +1,15 @@
 import { Clock, FileCode } from "lucide-solid";
 import { createMemo, createEffect, onCleanup, onMount, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
-import { filesForScope } from "../../features/open/project-scope-files";
-import { openDbmlInWorkspace } from "../../features/open/open-dbml-in-workspace";
-import { quickPickMatchesQuery } from "../../features/quick-pick/filter-quick-pick-items";
+import { filesForScope } from "../projects/project-scope-files";
+import { openDbmlInWorkspace } from "../projects/open-dbml-in-workspace";
+import { quickPickMatchesQuery } from "./filter-quick-pick-items";
 import { recentProjectLabel } from "../projects/RecentProjectsList";
-import { useProjectStore } from "../../stores/project-store";
+import { useProjectStore } from "../projects/project-store";
 import {
   useQuickPickStore,
   type QuickPickKind,
-} from "../../stores/quick-pick-store";
+} from "./quick-pick-store";
 
 interface PickItem {
   id: string;

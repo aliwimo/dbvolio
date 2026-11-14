@@ -1,5 +1,5 @@
-import type { Edge, Node } from "../../types/flow";
-import type { TableNodeData } from "../../components/diagram/TableNode";
+import type { Edge, Node } from "./flow";
+import type { TableNodeData } from "./TableNode";
 import { isGroupNode } from "../diagram-layout/table-group-bounds";
 import { columnFromHandle } from "./column-handle-id";
 

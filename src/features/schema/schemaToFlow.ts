@@ -1,10 +1,10 @@
-import type { Edge, Node } from "../../types/flow";
-import type { SchemaModel } from "../../types/schema";
-import type { TableNodeData } from "../../components/diagram/TableNode";
+import type { Edge, Node } from "../diagram/flow";
+import type { SchemaModel } from "./schema";
+import type { TableNodeData } from "../diagram/TableNode";
 import {
   resolveGroupColor,
   type TableGroupNodeData,
-} from "../../components/diagram/TableGroupNode";
+} from "../diagram/TableGroupNode";
 import {
   GROUP_NODE_TYPE,
   groupNodeId,

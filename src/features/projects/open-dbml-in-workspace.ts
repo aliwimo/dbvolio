@@ -1,6 +1,6 @@
-import { useEditorStore } from "../../stores/editor-store";
-import { useProjectStore } from "../../stores/project-store";
-import { useUiStore } from "../../stores/ui-store";
+import { useEditorStore } from "../editor/editor-store";
+import { useProjectStore } from "./project-store";
+import { useUiStore } from "../../shared/stores/ui-store";
 
 export function openDbmlInWorkspace(relativePath: string): void {
   useProjectStore.getState().setEntryPoint(relativePath);

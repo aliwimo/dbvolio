@@ -2,9 +2,9 @@ import { cleanup, render, screen } from "@solidjs/testing-library";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "solid-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DiagramContextMenu } from "../../src/components/diagram/DiagramContextMenu";
-import { useDiagramStore } from "../../src/stores/diagram-store";
-import type { Node } from "../../src/types/flow";
+import { DiagramContextMenu } from "../../src/features/diagram/DiagramContextMenu";
+import { useDiagramStore } from "../../src/features/diagram/diagram-store";
+import type { Node } from "../../src/features/diagram/flow";
 
 function renderMenu(
   overrides: Partial<ComponentProps<typeof DiagramContextMenu>> = {},
