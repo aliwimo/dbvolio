@@ -1,4 +1,4 @@
-import type { Node } from "../../types/flow";
+import type { Node } from "../diagram/flow";
 import { NODE_WIDTH, tableNodeHeight } from "./dagre-layout";
 
 export function layoutNodeSize(node: Node): { width: number; height: number } {

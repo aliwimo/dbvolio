@@ -1,4 +1,4 @@
-import type { Node } from "../../types/flow";
+import type { Node } from "../diagram/flow";
 import {
   GROUP_PADDING_BOTTOM,
   GROUP_PADDING_X,

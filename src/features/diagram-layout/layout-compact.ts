@@ -1,5 +1,5 @@
-import type { Node } from "../../types/flow";
-import type { LayoutSpacing } from "../../stores/diagram-view-store";
+import type { Node } from "../diagram/flow";
+import type { LayoutSpacing } from "../diagram/diagram-view-store";
 import { spacingMetrics } from "./layout-spacing";
 import { layoutNodeSize } from "./layout-node-bounds";
 

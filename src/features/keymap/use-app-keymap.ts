@@ -1,6 +1,6 @@
 import { createEffect, onCleanup } from "solid-js";
-import { useKeymapStore } from "../../stores/keymap-store";
-import { useQuickPickStore } from "../../stores/quick-pick-store";
+import { useKeymapStore } from "./keymap-store";
+import { useQuickPickStore } from "../quick-pick/quick-pick-store";
 import { executeCommand } from "./execute-command";
 import { findCommandForKeyboardEvent } from "./resolve-keybindings";
 

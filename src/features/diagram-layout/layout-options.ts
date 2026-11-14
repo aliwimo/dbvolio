@@ -1,8 +1,8 @@
 import type {
   LayoutAlgorithm,
   LayoutSpacing,
-} from "../../stores/diagram-view-store";
-import type { LayoutDirection } from "../../stores/diagram-view-store";
+} from "../diagram/diagram-view-store";
+import type { LayoutDirection } from "../diagram/diagram-view-store";
 
 export type LayoutScope = "all" | "selection";
 

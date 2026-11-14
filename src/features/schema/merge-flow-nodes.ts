@@ -1,6 +1,6 @@
-import type { Node } from "../../types/flow";
-import type { TableNodeData } from "../../components/diagram/TableNode";
-import type { TableGroupNodeData } from "../../components/diagram/TableGroupNode";
+import type { Node } from "../diagram/flow";
+import type { TableNodeData } from "../diagram/TableNode";
+import type { TableGroupNodeData } from "../diagram/TableGroupNode";
 import { isGroupNode } from "../diagram-layout/table-group-bounds";
 
 function tableDataEqual(a: TableNodeData, b: TableNodeData): boolean {

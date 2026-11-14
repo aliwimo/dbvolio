@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizePendingOpens } from "../../src/features/open/normalize-pending-opens";
+import { normalizePendingOpens } from "../../src/features/projects/normalize-pending-opens";
 
 describe("normalizePendingOpens", () => {
   it("prefers file open over folder open for the same root", () => {

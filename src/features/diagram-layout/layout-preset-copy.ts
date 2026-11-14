@@ -1,4 +1,4 @@
-import type { LayoutAlgorithm } from "../../stores/diagram-view-store";
+import type { LayoutAlgorithm } from "../diagram/diagram-view-store";
 
 export const LAYOUT_PRESET_COPY: Record<
   LayoutAlgorithm,

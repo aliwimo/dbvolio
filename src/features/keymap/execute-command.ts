@@ -1,7 +1,7 @@
-import { useEditorStore } from "../../stores/editor-store";
-import { useProjectStore } from "../../stores/project-store";
-import { useQuickPickStore } from "../../stores/quick-pick-store";
-import { useUiStore } from "../../stores/ui-store";
+import { useEditorStore } from "../editor/editor-store";
+import { useProjectStore } from "../projects/project-store";
+import { useQuickPickStore } from "../quick-pick/quick-pick-store";
+import { useUiStore } from "../../shared/stores/ui-store";
 import type { CommandId } from "./types";
 
 function requireProjectForPanelToggle(): boolean {

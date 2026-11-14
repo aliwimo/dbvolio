@@ -1,7 +1,7 @@
 import { formatKeybinding } from "./default-keybindings";
 import { getEffectiveKeybinding } from "./resolve-keybindings";
 import type { CommandId } from "./types";
-import { useKeymapStore } from "../../stores/keymap-store";
+import { useKeymapStore } from "./keymap-store";
 
 export function formatCommandKeybinding(
   commandId: CommandId,

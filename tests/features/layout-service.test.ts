@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   getDiagramLayout,
   normalizeLayoutMetadata,
-} from "../../src/services/layout-service";
-import { LEGACY_LAYOUT_KEY } from "../../src/types/layout";
+} from "../../src/features/diagram-layout/layout-service";
+import { LEGACY_LAYOUT_KEY } from "../../src/features/diagram-layout/layout";
 
 describe("layout-service", () => {
   it("migrates v1 layout into legacy bucket", () => {

@@ -1,7 +1,7 @@
 import { createEffect } from "solid-js";
 import { revealTableInEditorIfOpen } from "../schema/apply-schema-edits";
-import { useDiagramStore } from "../../stores/diagram-store";
-import { useProjectStore } from "../../stores/project-store";
+import { useDiagramStore } from "../diagram/diagram-store";
+import { useProjectStore } from "../projects/project-store";
 
 /** When a diagram table is selected, scroll to its definition if the file tab is open. */
 export function useRevealTableInEditor() {

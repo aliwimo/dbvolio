@@ -1,4 +1,4 @@
-import type { SchemaColumn, SchemaTable } from "../../types/schema";
+import type { SchemaColumn, SchemaTable } from "./schema";
 
 export interface TableBlockLocation {
   startLine: number;
