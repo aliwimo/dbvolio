@@ -361,6 +361,8 @@ function lineColToOffset(doc: EditorState["doc"], line: number, col: number): nu
 export function DbmlEditor() {
   let editorView: EditorView | null = null;
   let isUpdatingDoc = false;
+  let lastActivePath: string | null = null;
+  const scrollPositions = new Map<string, { top: number; left: number }>();
 
   const [cursorPos, setCursorPos] = createSignal({ line: 1, col: 1, selected: 0 });
 
@@ -459,7 +461,19 @@ export function DbmlEditor() {
   // Sync content when active tab or active path changes
   createEffect(() => {
     const tab = activeTab();
+    const nextPath = tab?.relativePath ?? null;
     if (!editorView) return;
+
+    const pathChanged = nextPath !== lastActivePath;
+    if (pathChanged) {
+      if (lastActivePath) {
+        scrollPositions.set(lastActivePath, {
+          top: editorView.scrollDOM.scrollTop,
+          left: editorView.scrollDOM.scrollLeft,
+        });
+      }
+      lastActivePath = nextPath;
+    }
 
     const currentVal = editorView.state.doc.toString();
     const targetVal = tab?.content ?? "";
@@ -469,6 +483,17 @@ export function DbmlEditor() {
         changes: { from: 0, to: currentVal.length, insert: targetVal },
       });
       isUpdatingDoc = false;
+    }
+
+    if (pathChanged && nextPath) {
+      const saved = scrollPositions.get(nextPath);
+      requestAnimationFrame(() => {
+        if (!editorView) return;
+        const pending = useEditorStore.getState().pendingEditorReveal;
+        if (pending && pending.relativePath === nextPath) return;
+        editorView.scrollDOM.scrollTop = saved?.top ?? 0;
+        editorView.scrollDOM.scrollLeft = saved?.left ?? 0;
+      });
     }
   });
 
