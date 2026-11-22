@@ -1,4 +1,5 @@
 import { createEffect, createSignal, onCleanup, Show } from "solid-js";
+import { EyeOff, FileCode2 } from "lucide-solid";
 import {
   EditorView,
   keymap,
@@ -590,12 +591,28 @@ export function DbmlEditor() {
       <Show
         when={activePath()}
         fallback={
-          <div class="dbml-editor-empty">
-            <p>
-              {projectRoot()
-                ? "Select a file from the explorer to edit."
-                : "Open a folder or DBML file to get started."}
-            </p>
+          <div class="flex flex-1 min-h-0 items-center justify-center px-4 py-6">
+            <div class="flex max-w-[240px] flex-col items-center gap-1.5 text-center">
+              <FileCode2 size={28} class="mb-1 text-[var(--text-muted)] opacity-45" />
+              <p class="m-0 text-[13px] font-semibold text-[var(--text)]">
+                {projectRoot() ? "No file open" : "No project open"}
+              </p>
+              <p class="m-0 text-xs leading-relaxed text-[var(--text-muted)]">
+                {projectRoot()
+                  ? "Select a file from the explorer to edit."
+                  : "Open a folder or DBML file to get started."}
+              </p>
+              <Show when={projectRoot()}>
+                <button
+                  type="button"
+                  class="mt-2 inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--bg-panel)] px-2.5 text-xs font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
+                  onClick={() => useUiStore.getState().setPanel("editor", false)}
+                >
+                  <EyeOff size={13} />
+                  <span>Hide editor</span>
+                </button>
+              </Show>
+            </div>
           </div>
         }
       >
