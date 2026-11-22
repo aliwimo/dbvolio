@@ -1,4 +1,5 @@
 import { createEffect, createSignal, onCleanup, Show } from "solid-js";
+import { EyeOff, FileCode2 } from "lucide-solid";
 import {
   EditorView,
   keymap,
@@ -361,6 +362,8 @@ function lineColToOffset(doc: EditorState["doc"], line: number, col: number): nu
 export function DbmlEditor() {
   let editorView: EditorView | null = null;
   let isUpdatingDoc = false;
+  let lastActivePath: string | null = null;
+  const scrollPositions = new Map<string, { top: number; left: number }>();
 
   const [cursorPos, setCursorPos] = createSignal({ line: 1, col: 1, selected: 0 });
 
@@ -459,7 +462,19 @@ export function DbmlEditor() {
   // Sync content when active tab or active path changes
   createEffect(() => {
     const tab = activeTab();
+    const nextPath = tab?.relativePath ?? null;
     if (!editorView) return;
+
+    const pathChanged = nextPath !== lastActivePath;
+    if (pathChanged) {
+      if (lastActivePath) {
+        scrollPositions.set(lastActivePath, {
+          top: editorView.scrollDOM.scrollTop,
+          left: editorView.scrollDOM.scrollLeft,
+        });
+      }
+      lastActivePath = nextPath;
+    }
 
     const currentVal = editorView.state.doc.toString();
     const targetVal = tab?.content ?? "";
@@ -469,6 +484,17 @@ export function DbmlEditor() {
         changes: { from: 0, to: currentVal.length, insert: targetVal },
       });
       isUpdatingDoc = false;
+    }
+
+    if (pathChanged && nextPath) {
+      const saved = scrollPositions.get(nextPath);
+      requestAnimationFrame(() => {
+        if (!editorView) return;
+        const pending = useEditorStore.getState().pendingEditorReveal;
+        if (pending && pending.relativePath === nextPath) return;
+        editorView.scrollDOM.scrollTop = saved?.top ?? 0;
+        editorView.scrollDOM.scrollLeft = saved?.left ?? 0;
+      });
     }
   });
 
@@ -565,12 +591,28 @@ export function DbmlEditor() {
       <Show
         when={activePath()}
         fallback={
-          <div class="dbml-editor-empty">
-            <p>
-              {projectRoot()
-                ? "Select a file from the explorer to edit."
-                : "Open a folder or DBML file to get started."}
-            </p>
+          <div class="flex flex-1 min-h-0 items-center justify-center px-4 py-6">
+            <div class="flex max-w-[240px] flex-col items-center gap-1.5 text-center">
+              <FileCode2 size={28} class="mb-1 text-[var(--text-muted)] opacity-45" />
+              <p class="m-0 text-[13px] font-semibold text-[var(--text)]">
+                {projectRoot() ? "No file open" : "No project open"}
+              </p>
+              <p class="m-0 text-xs leading-relaxed text-[var(--text-muted)]">
+                {projectRoot()
+                  ? "Select a file from the explorer to edit."
+                  : "Open a folder or DBML file to get started."}
+              </p>
+              <Show when={projectRoot()}>
+                <button
+                  type="button"
+                  class="mt-2 inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--bg-panel)] px-2.5 text-xs font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
+                  onClick={() => useUiStore.getState().setPanel("editor", false)}
+                >
+                  <EyeOff size={13} />
+                  <span>Hide editor</span>
+                </button>
+              </Show>
+            </div>
           </div>
         }
       >
